@@ -159,18 +159,20 @@ def score_c4_human_calibration(
     if not decisions:
         return 0.1  # no data — neutral
 
-    # Map failure_class to human verdict space
+    # Only count decisions where the triage guess matches the class we're scoring
     expected_verdict = "heal" if failure_class == "locator_drift" else "defect"
 
     agreements = 0
     disagreements = 0
 
     for d in decisions:
-        if d.get("triage_guess") == failure_class or d.get("human_verdict") == expected_verdict:
-            if d.get("human_verdict") == expected_verdict:
-                agreements += 1
-            else:
-                disagreements += 1
+        # Only consider decisions where Triage made the same classification
+        if d.get("triage_guess") != failure_class:
+            continue
+        if d.get("human_verdict") == expected_verdict:
+            agreements += 1
+        else:
+            disagreements += 1
 
     if agreements > disagreements and agreements >= 2:
         return 0.2
@@ -253,8 +255,9 @@ def apply_guards(
             guards.append("G3: no DOM snapshot → capped at 0.5")
 
     # Guard 4: TimeoutError alone (no DOM) → cap at 0.6
+    # Only applies if G3 hasn't already capped lower
     if _TIMEOUT_PATTERN.search(error) and not dom_snapshot:
-        if score > 0.6:
+        if score > 0.6 and not any("G3" in g for g in guards):
             score = 0.6
             guards.append("G4: timeout without DOM → capped at 0.6")
 

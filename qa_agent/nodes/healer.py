@@ -18,6 +18,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from qa_agent.config import get_model
 from qa_agent.memory import MemoryStore, extract_locator_from_error
+from qa_agent.sanitizer import sanitize_text
 from qa_agent.prompts.healer import SYSTEM_PROMPT
 from qa_agent.state import QAState
 
@@ -102,7 +103,18 @@ async def healer(state: QAState) -> dict:
     logger.info("Healer: attempt %d — fixing locator drift", state.attempts + 1)
 
     memory = MemoryStore()
-    route = state.plan[0].route if state.plan else "/"
+    # Use route from the first failed test case, not just the first planned test
+    route = "/"
+    if state.run_results and state.run_results.failed_cases and state.plan:
+        failed_id = state.run_results.failed_cases[0]
+        for tc in state.plan:
+            if tc.id == failed_id:
+                route = tc.route
+                break
+        else:
+            route = state.plan[0].route
+    elif state.plan:
+        route = state.plan[0].route
     old_locator = extract_locator_from_error(state.error or "")
     element = _identify_element(old_locator)
 
@@ -128,8 +140,8 @@ async def healer(state: QAState) -> dict:
 
     # --- Slow path: ask LLM, with memory context + lessons ---
     memory.record_healer_event("llm_call")
-    memory_context = memory.build_healer_memory_context(route, element)
-    lessons_context = memory.build_lessons_context(route=route, max_tokens=250)
+    memory_context = sanitize_text(memory.build_healer_memory_context(route, element), field_type="description")
+    lessons_context = sanitize_text(memory.build_lessons_context(route=route, max_tokens=250), field_type="description")
     if lessons_context:
         memory_context = (memory_context + "\n\n" + lessons_context).strip()
 
@@ -162,13 +174,14 @@ async def healer(state: QAState) -> dict:
             logger.error("Healer: guardrail REJECTED diff for %s: %s", r, e)
             validated_page_objects[r] = old_source
 
-    # Record successful fixes in memory
+    # Record fixes as UNVERIFIED — success=False until executor confirms
+    # The executor will mark them as success=True if the re-run passes
     for change in changes:
         old_loc = change.get("old_locator", "")
         new_loc = change.get("new_locator", "")
         reason = change.get("reason", "")
         if old_loc and new_loc:
-            memory.record_locator_change(route, element, old_loc, new_loc, reason, success=True)
+            memory.record_locator_change(route, element, old_loc, new_loc, reason, success=False)
 
     # Record failure pattern
     if state.error:

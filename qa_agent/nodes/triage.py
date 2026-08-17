@@ -52,12 +52,16 @@ async def triage(state: QAState) -> dict:
     if lessons_context:
         calibration_context = (calibration_context + "\n\n" + lessons_context).strip()
 
-    # Pre-compute rubric score (structured confidence)
-    rubric_breakdown = score_confidence(
-        error=state.error or "",
-        failure_class="unknown",  # pre-score before LLM decides
-        dom_snapshot=state.dom_snapshot,
-        memory=memory,
+    # Pre-compute partial rubric score (C1, C3, C5 only — C2 and C4 need failure_class)
+    # This gives the LLM a starting signal without biasing toward any classification
+    from qa_agent.confidence import score_c1_error_type, score_c3_history_match, score_c5_consistency, ConfidenceBreakdown
+    c1 = score_c1_error_type(state.error or "")
+    c3 = score_c3_history_match(state.error or "", memory)
+    c5 = score_c5_consistency(c1, 0.0, c3, 0.1)  # neutral C2=0, C4=0.1
+    rubric_breakdown = ConfidenceBreakdown(
+        c1_error_type=c1, c2_dom_evidence=0.0, c3_history_match=c3,
+        c4_human_calibration=0.0, c5_consistency=c5,
+        raw_score=round(c1 + c3 + c5, 2), final_score=round(c1 + c3 + c5, 2),
     )
 
     model = ChatAnthropic(

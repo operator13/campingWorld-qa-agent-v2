@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from qa_agent.memory import MemoryStore
 from qa_agent.state import QAState
 from qa_agent.surfaces.jira_defect import JiraDefectSurface, compute_fingerprint
 
@@ -25,6 +26,20 @@ async def defect_report(state: QAState) -> dict:
 
     # Try to file a Jira ticket (gracefully degrades if Jira not configured)
     jira_result = await _file_jira(state, report)
+
+    # Record the defect failure in memory (so Triage can learn from app_defect patterns)
+    memory = MemoryStore()
+    if state.error:
+        resolution = "defect_filed"
+        if jira_result and jira_result.get("issue_key"):
+            resolution = f"defect:{jira_result['issue_key']}"
+        route = state.plan[0].route if state.plan else "/"
+        memory.record_failure(
+            error_signature=state.error,
+            failure_class=state.failure_class or "app_defect",
+            resolution=resolution,
+            route=route,
+        )
 
     error_msg = f"DEFECT: {report.get('error', 'Unknown error')}"
     if jira_result and jira_result.get("issue_key"):

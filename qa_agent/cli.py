@@ -167,7 +167,8 @@ def _memory_learn() -> None:
     else:
         print("No patterns found (need more run data)")
 
-    # Generate route insights
+    # Clear old auto-generated route insights, then regenerate
+    store.clear_auto_generated_insights()
     insights = store.generate_route_insights()
     if insights:
         print(f"\nRoute insights: {len(insights)} routes analyzed")

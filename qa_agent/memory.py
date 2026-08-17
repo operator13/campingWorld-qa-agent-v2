@@ -12,7 +12,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def normalize_error(error: str) -> str:
     s = error
     s = re.sub(r"line \d+", "line N", s)
     s = re.sub(r"column \d+", "column N", s)
-    s = re.sub(r"/[\w./\-]+\.(ts|js|py)", "FILE", s)
+    s = re.sub(r"/[\w./\-]+\.(ts|tsx|js|jsx|mjs|cjs|py|vue|svelte)", "FILE", s)
     s = re.sub(r"Timeout \d+ms", "Timeout Nms", s)
     s = re.sub(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[.\d]*Z?", "DATETIME", s)
     s = re.sub(r"\d+\.\d+\.\d+\.\d+", "IP", s)
@@ -46,14 +46,15 @@ def extract_locator_from_error(error: str) -> str | None:
     Looks for getByRole(...), getByTestId(...), getByText(...), etc.
     Returns the matched locator string or None.
     """
+    # Support nested parentheses (e.g. getByRole('button', { name: 'Submit (draft)' }))
     patterns = [
-        r"getByRole\([^)]+\)",
-        r"getByTestId\([^)]+\)",
-        r"getByText\([^)]+\)",
-        r"getByLabel\([^)]+\)",
-        r"getByPlaceholder\([^)]+\)",
-        r"getByAltText\([^)]+\)",
-        r"locator\([^)]+\)",
+        r"getByRole\((?:[^)(]|\([^)]*\))+\)",
+        r"getByTestId\((?:[^)(]|\([^)]*\))+\)",
+        r"getByText\((?:[^)(]|\([^)]*\))+\)",
+        r"getByLabel\((?:[^)(]|\([^)]*\))+\)",
+        r"getByPlaceholder\((?:[^)(]|\([^)]*\))+\)",
+        r"getByAltText\((?:[^)(]|\([^)]*\))+\)",
+        r"locator\((?:[^)(]|\([^)]*\))+\)",
     ]
     for pattern in patterns:
         match = re.search(pattern, error)
@@ -80,12 +81,59 @@ class MemoryStore:
 
     @staticmethod
     def _write_locked(filepath: Path, content: str) -> None:
-        """Write to a file with an exclusive lock (prevents concurrent corruption)."""
-        import fcntl
-        with open(filepath, "w") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            f.write(content)
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        """Write to a file with an exclusive lock (prevents concurrent corruption).
+
+        Lock is held until the file handle closes (no explicit LOCK_UN).
+        Falls back to unlocked write on platforms without fcntl (Windows).
+        """
+        try:
+            import fcntl
+            with open(filepath, "w") as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                f.write(content)
+                f.flush()
+                # Lock releases automatically when f closes — no explicit LOCK_UN
+        except ImportError:
+            # Windows: no fcntl available — write without locking
+            self._write_locked(filepath,content)
+
+    @staticmethod
+    def _append_locked(filepath: Path, text: str) -> None:
+        """Append to a file with an exclusive lock."""
+        try:
+            import fcntl
+            with open(filepath, "a") as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                f.write(text)
+                f.flush()
+        except ImportError:
+            with open(filepath, "a") as f:
+                f.write(text)
+
+    def _read_modify_write(self, filepath: Path, modifier: "Callable[[str], str]") -> None:
+        """Atomically read, modify, and write a file under lock.
+
+        Prevents TOCTOU races by holding the lock across the entire read-modify-write.
+        """
+        try:
+            import fcntl
+            with open(filepath, "r+") as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                content = f.read()
+                new_content = modifier(content)
+                f.seek(0)
+                f.write(new_content)
+                f.truncate()
+                f.flush()
+        except ImportError:
+            content = filepath.read_text() if filepath.exists() else ""
+            self._write_locked(filepath,modifier(content))
+
+    @staticmethod
+    def _sanitize_for_prompt(text: str) -> str:
+        """Sanitize memory content before injecting into LLM prompts."""
+        from qa_agent.sanitizer import sanitize_text
+        return sanitize_text(text, field_type="description")
 
     def _enabled(self, node: str | None = None) -> bool:
         """Check if memory is enabled (globally and per-node)."""
@@ -207,11 +255,16 @@ class MemoryStore:
         if old_pattern not in content:
             return
 
+        # Only modify entries within the correct element section
         lines = content.split("\n")
+        in_target_section = False
+        element_header = f"## {element}"
         for i, line in enumerate(lines):
-            if old_pattern in line and "success: yes" in line:
+            if line.strip().startswith("## "):
+                in_target_section = line.strip() == element_header
+            if in_target_section and old_pattern in line and "success: yes" in line:
                 lines[i] = line.replace("success: yes", "success: no")
-        filepath.write_text("\n".join(lines))
+        self._write_locked(filepath, "\n".join(lines))
         logger.info("Memory: marked fix as failed for %s → %s", route, element)
 
     @staticmethod
@@ -296,14 +349,27 @@ class MemoryStore:
         content = filepath.read_text()
         patterns = self._parse_failure_patterns(content)
 
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         for pattern in patterns:
+            # Skip stale patterns
+            stale_after = pattern.get("stale_after", "9999-12-31")
+            if isinstance(stale_after, str) and stale_after < now:
+                continue
+
             stored_sig = pattern.get("signature", "")
-            # Substring match — require minimum 20 chars overlap to avoid false positives
-            shorter = min(len(stored_sig), len(normalized))
-            if shorter < 20:
-                if stored_sig == normalized:
+            # Word-level similarity matching
+            stored_words = set(stored_sig.lower().split())
+            normalized_words = set(normalized.lower().split())
+            if not stored_words or not normalized_words:
+                continue
+            intersection = stored_words & normalized_words
+            smaller_set = min(len(stored_words), len(normalized_words))
+            # Short signatures (< 4 words): require exact match
+            if smaller_set < 4:
+                if stored_sig.lower() == normalized.lower():
                     return pattern
-            elif stored_sig in normalized or normalized in stored_sig:
+            # Longer signatures: require >60% overlap with at least 3 matching words
+            elif len(intersection) >= 3 and len(intersection) / smaller_set >= 0.6:
                 return pattern
 
         return None
@@ -336,6 +402,8 @@ class MemoryStore:
                     current["occurrences"] = 1
             elif line.startswith("- **Last seen:**"):
                 current["last_seen"] = line.split(":", 1)[1].strip().lstrip("*").rstrip("*").strip()
+            elif line.startswith("- **Stale after:**"):
+                current["stale_after"] = line.split(":", 1)[1].strip().lstrip("*").rstrip("*").strip()
 
         if current and "id" in current:
             patterns.append(current)
@@ -361,7 +429,7 @@ class MemoryStore:
             elif in_target and "**Last seen:**" in line:
                 lines[i] = f"- **Last seen:** {date}"
 
-        filepath.write_text("\n".join(lines))
+        self._write_locked(filepath,"\n".join(lines))
 
     # -------------------------------------------------------------------
     # Human Decisions
@@ -384,7 +452,7 @@ class MemoryStore:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         if not filepath.exists():
-            filepath.write_text(
+            self._write_locked(filepath,
                 "# Human Review Decisions\n\n"
                 "| Date | Route | Error (summary) | Triage guess | Confidence | Human verdict | Reasoning |\n"
                 "|------|-------|----------------|--------------|------------|---------------|----------|\n"
@@ -395,8 +463,7 @@ class MemoryStore:
         reasoning_clean = reasoning.replace("|", "/").replace("\n", " ")[:100]
 
         row = f"| {now} | {route} | {error_clean} | {triage_guess} | {confidence:.2f} | {verdict} | {reasoning_clean} |\n"
-        with open(filepath, "a") as f:
-            f.write(row)
+        self._append_locked(filepath, row)
 
         logger.info("Memory: recorded human decision — %s → %s", triage_guess, verdict)
 
@@ -520,7 +587,7 @@ class MemoryStore:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         if not filepath.exists():
-            filepath.write_text("# App Structure\n")
+            self._write_locked(filepath,"# App Structure\n")
 
         content = filepath.read_text()
         section_header = f"## {route}"
@@ -575,7 +642,7 @@ class MemoryStore:
             )
             content = content.rstrip() + "\n" + new_section
 
-        filepath.write_text(content)
+        self._write_locked(filepath,content)
         logger.info("Memory: updated route %s", route)
 
     def increment_route_changes(self, route: str) -> None:
@@ -612,7 +679,7 @@ class MemoryStore:
                                 break
                 break
 
-        filepath.write_text("\n".join(lines))
+        self._write_locked(filepath,"\n".join(lines))
 
     def get_route_info(self, route: str) -> dict[str, Any] | None:
         """Read info for a specific route from APP_STRUCTURE.md."""
@@ -676,22 +743,28 @@ class MemoryStore:
     def _parse_route_section(route: str, section: str) -> dict[str, Any]:
         """Parse a route section into a dict."""
         info: dict[str, Any] = {"route": route}
+
+        def _extract_value(line: str) -> str:
+            """Extract value after the bold field name, handling colons in values."""
+            m = re.search(r"\*\*[^*]+:\*\*\s*(.*)", line)
+            return m.group(1).strip() if m else ""
+
         for line in section.split("\n"):
             if "**First seen:**" in line:
-                info["first_seen"] = line.split(":**")[1].strip().rstrip("*").strip()
+                info["first_seen"] = _extract_value(line)
             elif "**Last seen:**" in line:
-                info["last_seen"] = line.split(":**")[1].strip().rstrip("*").strip()
+                info["last_seen"] = _extract_value(line)
             elif "**Changes:**" in line:
-                m = re.search(r"\d+", line)
+                m = re.search(r"\d+", _extract_value(line))
                 info["changes"] = int(m.group()) if m else 0
             elif "**Change frequency:**" in line:
-                m = re.search(r"[\d.]+", line)
+                m = re.search(r"[\d.]+", _extract_value(line))
                 info["change_frequency"] = float(m.group()) if m else 0.0
             elif "**Known testids:**" in line:
-                raw = line.split(":**")[1].strip().rstrip("*").strip()
+                raw = _extract_value(line)
                 info["testids"] = [t.strip() for t in raw.split(",")] if raw != "none discovered" else []
             elif "**Components:**" in line:
-                raw = line.split(":**")[1].strip().rstrip("*").strip()
+                raw = _extract_value(line)
                 info["components"] = [c.strip() for c in raw.split(",")] if raw != "none discovered" else []
         return info
 
@@ -757,7 +830,7 @@ class MemoryStore:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         if not filepath.exists():
-            filepath.write_text(
+            self._write_locked(filepath,
                 "# Test Stability\n\n"
                 "| Test ID | Route | Runs | Passes | Fails | Flakiness | Last run | Last failure |\n"
                 "|---------|-------|------|--------|-------|-----------|----------|-------------|\n"
@@ -782,7 +855,7 @@ class MemoryStore:
                     row["last_run"] = now
                     lines[i] = self._format_stability_row(row)
                     break
-            filepath.write_text("\n".join(lines))
+            self._write_locked(filepath,"\n".join(lines))
         else:
             # Append new row
             runs = 1
@@ -791,8 +864,7 @@ class MemoryStore:
             flakiness = 0.0 if passed else 1.0
             last_failure = "—" if passed else (failure_class or "unknown")
             row = f"| {test_id} | {route} | {runs} | {passes} | {fails} | {flakiness:.2f} | {now} | {last_failure} |\n"
-            with open(filepath, "a") as f:
-                f.write(row)
+            self._append_locked(filepath, row)
 
         logger.debug("Memory: recorded test result for %s (passed=%s)", test_id, passed)
 
@@ -995,7 +1067,7 @@ class MemoryStore:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         if not filepath.exists():
-            filepath.write_text(
+            self._write_locked(filepath,
                 "# Lessons Learned\n\n"
                 "## Pattern Scoreboard\n\n"
                 "| Pattern | Occurrences | Success rate | Best strategy |\n"
@@ -1047,7 +1119,7 @@ class MemoryStore:
             else:
                 content = content.rstrip() + "\n" + entry
 
-        filepath.write_text(content)
+        self._write_locked(filepath,content)
         logger.info("Memory: recorded lesson (%s) for %s", category, route)
 
     def record_decision_reflection(
@@ -1136,7 +1208,19 @@ class MemoryStore:
                 in_scoreboard = False
             new_lines.append(line)
 
-        filepath.write_text("\n".join(new_lines))
+    def clear_auto_generated_insights(self) -> None:
+        """Remove auto-generated route insight entries from LESSONS.md."""
+        filepath = self.memory_dir / "LESSONS.md"
+        if not filepath.exists():
+            return
+
+        content = filepath.read_text()
+        # Remove lines containing "(source: auto-generated)"
+        lines = content.split("\n")
+        new_lines = [l for l in lines if "*(source: auto-generated)*" not in l]
+        self._write_locked(filepath, "\n".join(new_lines))
+
+        self._write_locked(filepath,"\n".join(new_lines))
 
     def get_pattern_scoreboard(self) -> list[dict[str, str]]:
         """Read the pattern scoreboard table from LESSONS.md."""
@@ -1281,8 +1365,6 @@ class MemoryStore:
                 elif role_fixes > 0:
                     parts.append("**Best locator strategy:** getByRole (names are stable here)")
 
-            # Flaky test count
-            stability = self.get_test_history(route) if hasattr(self, '_all_test_routes') else None
             testids = route_info.get("testids", [])
             if testids:
                 parts.append(f"**Known testids:** {', '.join(testids[:5])}")
@@ -1338,14 +1420,14 @@ class MemoryStore:
             return
         filepath = self.memory_dir / "HEALER_STATS.md"
         if not filepath.exists():
-            filepath.write_text("# Healer Stats\n\ncache_hits: 0\nllm_calls: 0\n")
+            self._write_locked(filepath,"# Healer Stats\n\ncache_hits: 0\nllm_calls: 0\n")
 
         content = filepath.read_text()
         if event == "cache_hit":
             content = re.sub(r"cache_hits: (\d+)", lambda m: f"cache_hits: {int(m.group(1)) + 1}", content)
         elif event == "llm_call":
             content = re.sub(r"llm_calls: (\d+)", lambda m: f"llm_calls: {int(m.group(1)) + 1}", content)
-        filepath.write_text(content)
+        self._write_locked(filepath,content)
 
     def get_healer_cache_hit_rate(self) -> float:
         """Return the healer cache hit rate (hits / total attempts)."""
@@ -1386,7 +1468,7 @@ class MemoryStore:
                     continue
                 new_lines.append(line)
             if pruned:
-                filepath.write_text("\n".join(new_lines))
+                self._write_locked(filepath,"\n".join(new_lines))
                 total_pruned += pruned
 
         # 2. Prune failure patterns
@@ -1406,7 +1488,7 @@ class MemoryStore:
                     total_pruned += 1
                     continue
                 kept.append(section)
-            filepath.write_text("".join(kept))
+            self._write_locked(filepath,"".join(kept))
 
         # 3. Prune human decisions
         filepath = self.memory_dir / "HUMAN_DECISIONS.md"
@@ -1421,7 +1503,7 @@ class MemoryStore:
                     total_pruned += 1
                     continue
                 new_lines.append(line)
-            filepath.write_text("\n".join(new_lines))
+            self._write_locked(filepath,"\n".join(new_lines))
 
         if total_pruned:
             logger.info("Memory: pruned %d stale entries (older than %d days)", total_pruned, max_age_days)
@@ -1470,7 +1552,7 @@ class MemoryStore:
                 f"- **Last seen:** {p.get('last_seen', 'unknown')}\n"
                 f"- **Stale after:** {stale_date}\n"
             )
-        filepath.write_text(content)
+        self._write_locked(filepath,content)
         logger.info("Memory: merged %d duplicate failure patterns", merged)
         return merged
 

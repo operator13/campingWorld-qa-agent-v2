@@ -60,10 +60,25 @@ async def executor(state: QAState) -> dict:
         memory.update_route(route, testids=testids)
 
     # Record per-test results for stability tracking
+    # Note: failure_class left as None — Triage determines the actual class later
     for tc in state.plan:
         test_passed = tc.id not in run_result.failed_cases
-        failure_class = None if test_passed else "unknown"
-        memory.record_test_result(tc.id, tc.route, test_passed, failure_class)
+        memory.record_test_result(tc.id, tc.route, test_passed)
+
+    # If this is a re-run after healing and it passed, verify the fix in memory
+    if run_result.passed and state.attempts > 0:
+        # The healer recorded fixes as unverified — now mark them as verified
+        for route in state.page_objects:
+            history = memory.get_locator_history(route)
+            for entry in history:
+                if not entry.get("success"):
+                    # Mark the most recent unverified fix as successful
+                    memory.record_locator_change(
+                        route, entry["element"],
+                        entry["old_locator"], entry["new_locator"],
+                        entry["reason"] + " (verified by re-run)", success=True,
+                    )
+                    break  # only the most recent unverified per route
 
     # Increment route change count on failure (locator drift signal)
     if not run_result.passed:
