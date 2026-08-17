@@ -90,7 +90,7 @@ class TestTrendArrow:
 
 class TestGatherStats:
     def test_with_runs(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         for i in range(7):
             db.record_run(
                 goal=f"t-{i}", route="/", passed=i < 5,
@@ -110,7 +110,7 @@ class TestGatherStats:
         assert round(stats["pass_rate"], 2) == 0.71
 
     def test_empty_db(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         memory = MemoryStore(memory_dir=tmp_path / "mem")
         stats = gather_review_stats(db=db, memory=memory)
 
@@ -182,7 +182,7 @@ class TestPrescriptions:
 
 class TestGenerateReview:
     def test_produces_complete_review(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         db.record_run(
             goal="test", route="/", passed=True,
             failed_cases=[], failure_class=None,
@@ -202,7 +202,7 @@ class TestGenerateReview:
         assert review["grade"] in ("A", "B+", "B", "B-", "C+", "C", "C-", "D", "F")
 
     def test_markdown_contains_stats_table(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         db.record_run(
             goal="test", route="/", passed=True,
             failed_cases=[], failure_class=None,
@@ -220,7 +220,7 @@ class TestGenerateReview:
         assert "Prescriptions" in md
 
     def test_includes_trends_when_previous(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         db.record_run(
             goal="test", route="/", passed=True,
             failed_cases=[], failure_class=None,

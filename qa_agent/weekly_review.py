@@ -95,17 +95,10 @@ def gather_review_stats(
     escape = db.compute_escape_rate()
     accuracy = db.compute_triage_accuracy()
 
-    # Count runs this week (last 7 days) from the DB
-    import sqlite3
+    # Count runs this week (last 7 days)
     from datetime import timedelta
-    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-    with sqlite3.connect(db.db_path) as conn:
-        total_runs = conn.execute(
-            "SELECT COUNT(*) FROM runs WHERE timestamp >= ?", (week_ago,)
-        ).fetchone()[0]
-        passed_runs = conn.execute(
-            "SELECT COUNT(*) FROM runs WHERE passed = 1 AND timestamp >= ?", (week_ago,)
-        ).fetchone()[0]
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    total_runs, passed_runs = db.get_run_count(since=week_ago)
 
     pass_rate = passed_runs / total_runs if total_runs > 0 else 0.0
 

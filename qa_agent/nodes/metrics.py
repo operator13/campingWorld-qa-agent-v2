@@ -1,15 +1,14 @@
-"""Metrics · Escape-rate Audit — persists runs and measures Triage accuracy.
+"""Metrics — markdown-backed run history, Triage audit, and escape tracking.
 
-Stores every run + Triage call to a SQLite DB. Computes:
+Stores every run + Triage call to git-tracked markdown files. Computes:
   - Escape rate: bugs that slipped past a green run
   - Triage precision: was the classification correct?
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import sqlite3
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -18,54 +17,71 @@ from qa_agent.state import QAState
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent.parent / "metrics.db"
+_DEFAULT_MEMORY_DIR = Path(__file__).resolve().parent.parent.parent / "memory"
 
 
 class MetricsDB:
-    """SQLite-backed metrics store for run history and Triage audit."""
+    """Markdown-backed metrics store for run history and Triage audit.
+
+    Drop-in replacement for the former SQLite MetricsDB — same API,
+    markdown storage instead of database.
+    """
 
     def __init__(self, db_path: str | Path | None = None) -> None:
-        self.db_path = str(db_path or _DEFAULT_DB_PATH)
-        self._init_db()
+        # db_path is now treated as the memory directory for backward compat
+        if db_path and Path(db_path).suffix == ".db":
+            # Old-style path — use parent directory / "memory" or default
+            self.memory_dir = Path(db_path).parent
+        else:
+            self.memory_dir = Path(db_path) if db_path else _DEFAULT_MEMORY_DIR
+        self.memory_dir.mkdir(parents=True, exist_ok=True)
+        self._init_files()
 
-    def _init_db(self) -> None:
-        """Create tables if they don't exist."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.executescript("""
-                CREATE TABLE IF NOT EXISTS runs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    goal TEXT NOT NULL,
-                    route TEXT,
-                    passed INTEGER NOT NULL,
-                    failed_cases TEXT,
-                    failure_class TEXT,
-                    confidence REAL,
-                    attempts INTEGER DEFAULT 0,
-                    fingerprint TEXT,
-                    outcome TEXT NOT NULL
-                );
+    def _init_files(self) -> None:
+        """Create markdown files if they don't exist."""
+        runs = self.memory_dir / "RUN_HISTORY.md"
+        if not runs.exists():
+            runs.write_text(
+                "# Run History\n\n"
+                "| ID | Timestamp | Goal | Route | Passed | Failed cases | Failure class | Confidence | Attempts | Fingerprint | Outcome |\n"
+                "|----|-----------|------|-------|--------|-------------|---------------|------------|----------|-------------|--------|\n"
+            )
 
-                CREATE TABLE IF NOT EXISTS triage_calls (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    run_id INTEGER,
-                    failure_class TEXT NOT NULL,
-                    confidence REAL NOT NULL,
-                    human_override TEXT,
-                    was_correct INTEGER,
-                    FOREIGN KEY (run_id) REFERENCES runs(id)
-                );
+        triage = self.memory_dir / "TRIAGE_CALLS.md"
+        if not triage.exists():
+            triage.write_text(
+                "# Triage Calls\n\n"
+                "| ID | Timestamp | Run ID | Failure class | Confidence | Human override | Was correct |\n"
+                "|----|-----------|--------|---------------|------------|----------------|-------------|\n"
+            )
 
-                CREATE TABLE IF NOT EXISTS escapes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    run_id INTEGER NOT NULL,
-                    bug_ticket TEXT NOT NULL,
-                    route TEXT,
-                    FOREIGN KEY (run_id) REFERENCES runs(id)
-                );
-            """)
+        escapes = self.memory_dir / "ESCAPES.md"
+        if not escapes.exists():
+            escapes.write_text(
+                "# Escapes\n\n"
+                "| ID | Timestamp | Run ID | Bug ticket | Route |\n"
+                "|----|-----------|--------|------------|-------|\n"
+            )
+
+    def _next_id(self, filepath: Path) -> int:
+        """Get the next auto-increment ID from a markdown table."""
+        if not filepath.exists():
+            return 1
+        content = filepath.read_text()
+        ids = re.findall(r"^\| (\d+) \|", content, re.M)
+        return max((int(i) for i in ids), default=0) + 1
+
+    def _append_row(self, filepath: Path, row: str) -> None:
+        """Append a table row to a markdown file with locking."""
+        try:
+            import fcntl
+            with open(filepath, "a") as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                f.write(row)
+                f.flush()
+        except ImportError:
+            with open(filepath, "a") as f:
+                f.write(row)
 
     def record_run(
         self,
@@ -80,20 +96,20 @@ class MetricsDB:
         outcome: str,
     ) -> int:
         """Record a completed run. Returns the run ID."""
-        now = datetime.now(timezone.utc).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """INSERT INTO runs
-                   (timestamp, goal, route, passed, failed_cases, failure_class,
-                    confidence, attempts, fingerprint, outcome)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    now, goal, route, int(passed),
-                    json.dumps(failed_cases), failure_class,
-                    confidence, attempts, fingerprint, outcome,
-                ),
-            )
-            return cursor.lastrowid  # type: ignore[return-value]
+        filepath = self.memory_dir / "RUN_HISTORY.md"
+        run_id = self._next_id(filepath)
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        passed_str = "yes" if passed else "no"
+        failed_str = ", ".join(failed_cases).replace("|", "/") if failed_cases else "—"
+        goal_clean = goal[:50].replace("|", "/")
+
+        row = (
+            f"| {run_id} | {now} | {goal_clean} | {route} | {passed_str} "
+            f"| {failed_str} | {failure_class or '—'} | {confidence:.2f} "
+            f"| {attempts} | {fingerprint or '—'} | {outcome} |\n"
+        )
+        self._append_row(filepath, row)
+        return run_id
 
     def record_triage_call(
         self,
@@ -103,65 +119,140 @@ class MetricsDB:
         human_override: Optional[str] = None,
     ) -> int:
         """Record a Triage classification for later audit."""
-        now = datetime.now(timezone.utc).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """INSERT INTO triage_calls
-                   (timestamp, run_id, failure_class, confidence, human_override)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (now, run_id, failure_class, confidence, human_override),
-            )
-            return cursor.lastrowid  # type: ignore[return-value]
+        filepath = self.memory_dir / "TRIAGE_CALLS.md"
+        triage_id = self._next_id(filepath)
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+        row = (
+            f"| {triage_id} | {now} | {run_id} | {failure_class} "
+            f"| {confidence:.2f} | {human_override or '—'} | — |\n"
+        )
+        self._append_row(filepath, row)
+        return triage_id
 
     def record_escape(self, run_id: int, bug_ticket: str, route: str) -> None:
         """Record a bug that escaped a green run."""
-        now = datetime.now(timezone.utc).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT INTO escapes (timestamp, run_id, bug_ticket, route) VALUES (?, ?, ?, ?)",
-                (now, run_id, bug_ticket, route),
-            )
+        filepath = self.memory_dir / "ESCAPES.md"
+        escape_id = self._next_id(filepath)
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+        row = f"| {escape_id} | {now} | {run_id} | {bug_ticket} | {route} |\n"
+        self._append_row(filepath, row)
 
     def mark_triage_correctness(self, triage_id: int, was_correct: bool) -> None:
         """Mark whether a Triage call was correct (from human audit)."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "UPDATE triage_calls SET was_correct = ? WHERE id = ?",
-                (int(was_correct), triage_id),
-            )
+        filepath = self.memory_dir / "TRIAGE_CALLS.md"
+        if not filepath.exists():
+            return
 
-    def compute_escape_rate(self, window_days: int = 30) -> dict[str, Any]:
-        """Compute escape rate: green runs that later had a bug filed.
+        content = filepath.read_text()
+        lines = content.split("\n")
+        correct_str = "yes" if was_correct else "no"
+        target = f"| {triage_id} |"
 
-        Returns {"total_green_runs": N, "escapes": M, "escape_rate": float}
-        """
-        with sqlite3.connect(self.db_path) as conn:
-            total = conn.execute(
-                "SELECT COUNT(*) FROM runs WHERE passed = 1"
-            ).fetchone()[0]
-            escapes = conn.execute(
-                "SELECT COUNT(*) FROM escapes"
-            ).fetchone()[0]
+        for i, line in enumerate(lines):
+            if line.startswith(target):
+                # Replace the last "—" (was_correct column) with yes/no
+                parts = line.rsplit("| — |", 1)
+                if len(parts) == 2:
+                    lines[i] = parts[0] + f"| {correct_str} |"
+                break
 
-        rate = escapes / total if total > 0 else 0.0
+        filepath.write_text("\n".join(lines))
+
+    def _parse_runs(self, since: str | None = None) -> list[dict[str, Any]]:
+        """Parse all runs from RUN_HISTORY.md, optionally filtered by timestamp."""
+        filepath = self.memory_dir / "RUN_HISTORY.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        runs = []
+
+        for line in content.split("\n"):
+            if not re.match(r"^\| \d+ \|", line):
+                continue
+            parts = [p.strip() for p in line.split("|")][1:-1]
+            if len(parts) < 11:
+                continue
+            try:
+                timestamp = parts[1]
+                if since and timestamp < since:
+                    continue
+                runs.append({
+                    "id": int(parts[0]),
+                    "timestamp": timestamp,
+                    "goal": parts[2],
+                    "route": parts[3],
+                    "passed": parts[4] == "yes",
+                    "failed_cases": parts[5],
+                    "failure_class": parts[6] if parts[6] != "—" else None,
+                    "confidence": float(parts[7]),
+                    "attempts": int(parts[8]),
+                    "fingerprint": parts[9] if parts[9] != "—" else None,
+                    "outcome": parts[10],
+                })
+            except (ValueError, IndexError):
+                continue
+
+        return runs
+
+    def _parse_triage_calls(self) -> list[dict[str, Any]]:
+        """Parse all triage calls from TRIAGE_CALLS.md."""
+        filepath = self.memory_dir / "TRIAGE_CALLS.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        calls = []
+
+        for line in content.split("\n"):
+            if not re.match(r"^\| \d+ \|", line):
+                continue
+            parts = [p.strip() for p in line.split("|")][1:-1]
+            if len(parts) < 7:
+                continue
+            try:
+                was_correct_str = parts[6]
+                was_correct = True if was_correct_str == "yes" else (False if was_correct_str == "no" else None)
+                calls.append({
+                    "id": int(parts[0]),
+                    "timestamp": parts[1],
+                    "run_id": int(parts[2]),
+                    "failure_class": parts[3],
+                    "confidence": float(parts[4]),
+                    "human_override": parts[5] if parts[5] != "—" else None,
+                    "was_correct": was_correct,
+                })
+            except (ValueError, IndexError):
+                continue
+
+        return calls
+
+    def compute_escape_rate(self) -> dict[str, Any]:
+        """Compute escape rate: green runs that later had a bug filed."""
+        runs = self._parse_runs()
+        total_green = sum(1 for r in runs if r["passed"])
+
+        filepath = self.memory_dir / "ESCAPES.md"
+        escapes = 0
+        if filepath.exists():
+            content = filepath.read_text()
+            escapes = len(re.findall(r"^\| \d+ \|", content, re.M))
+
+        rate = escapes / total_green if total_green > 0 else 0.0
         return {
-            "total_green_runs": total,
+            "total_green_runs": total_green,
             "escapes": escapes,
             "escape_rate": round(rate, 4),
         }
 
     def compute_triage_accuracy(self) -> dict[str, Any]:
-        """Compute Triage accuracy from audited calls.
-
-        Returns {"total_audited": N, "correct": M, "accuracy": float}
-        """
-        with sqlite3.connect(self.db_path) as conn:
-            total = conn.execute(
-                "SELECT COUNT(*) FROM triage_calls WHERE was_correct IS NOT NULL"
-            ).fetchone()[0]
-            correct = conn.execute(
-                "SELECT COUNT(*) FROM triage_calls WHERE was_correct = 1"
-            ).fetchone()[0]
+        """Compute Triage accuracy from audited calls."""
+        calls = self._parse_triage_calls()
+        audited = [c for c in calls if c["was_correct"] is not None]
+        correct = sum(1 for c in audited if c["was_correct"])
+        total = len(audited)
 
         accuracy = correct / total if total > 0 else 0.0
         return {
@@ -177,13 +268,25 @@ class MetricsDB:
             "triage_accuracy": self.compute_triage_accuracy(),
         }
 
+    def get_recent_runs(self, n: int = 30) -> list[dict[str, Any]]:
+        """Return the last N runs."""
+        runs = self._parse_runs()
+        return runs[-n:]
+
+    def get_run_count(self, since: str | None = None) -> tuple[int, int]:
+        """Return (total_runs, passed_runs) optionally filtered by timestamp."""
+        runs = self._parse_runs(since=since)
+        total = len(runs)
+        passed = sum(1 for r in runs if r["passed"])
+        return total, passed
+
 
 # ---------------------------------------------------------------------------
 # Graph node
 # ---------------------------------------------------------------------------
 
 async def metrics(state: QAState) -> dict:
-    """Record the run outcome in the metrics DB.
+    """Record the run outcome in the metrics store.
 
     Called on every graph completion (pass or fail).
     """

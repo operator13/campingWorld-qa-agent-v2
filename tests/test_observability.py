@@ -14,7 +14,7 @@ from qa_agent.observability import (
 
 class TestAlerts:
     def test_no_alerts_when_healthy(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         # 10 green runs, no escapes
         for i in range(10):
             db.record_run(
@@ -26,7 +26,7 @@ class TestAlerts:
         assert len(alerts) == 0
 
     def test_escape_rate_alert(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         run_ids = []
         for i in range(10):
             rid = db.record_run(
@@ -46,7 +46,7 @@ class TestAlerts:
         assert alerts[0]["value"] > ESCAPE_RATE_ALERT
 
     def test_triage_accuracy_alert(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         run_id = db.record_run(
             goal="t", route="/", passed=False,
             failed_cases=["tc-1"], failure_class="unknown",
@@ -63,7 +63,7 @@ class TestAlerts:
 
     def test_no_alert_with_insufficient_data(self, tmp_path):
         """Alerts require minimum sample size."""
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         # Only 2 runs (< 5 minimum)
         for i in range(2):
             rid = db.record_run(
@@ -79,7 +79,7 @@ class TestAlerts:
 
 class TestAutoTuning:
     def test_no_tuning_with_good_accuracy(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         run_id = db.record_run(
             goal="t", route="/", passed=False,
             failed_cases=["tc-1"], failure_class="locator_drift",
@@ -94,7 +94,7 @@ class TestAutoTuning:
         assert recommended == 0.75  # unchanged
 
     def test_raises_conf_sure_on_low_accuracy(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         run_id = db.record_run(
             goal="t", route="/", passed=False,
             failed_cases=["tc-1"], failure_class="unknown",
@@ -109,7 +109,7 @@ class TestAutoTuning:
         assert recommended == 0.75 + CONF_SURE_STEP  # raised
 
     def test_never_exceeds_max(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         run_id = db.record_run(
             goal="t", route="/", passed=False,
             failed_cases=["tc-1"], failure_class="unknown",
@@ -125,13 +125,13 @@ class TestAutoTuning:
 
 class TestObservabilityCheck:
     def test_full_report(self, tmp_path):
-        db = MetricsDB(tmp_path / "test.db")
+        db = MetricsDB(tmp_path)
         db.record_run(
             goal="t", route="/", passed=True,
             failed_cases=[], failure_class=None,
             confidence=0.0, attempts=0, fingerprint=None, outcome="pass",
         )
-        report = run_observability_check(db_path=str(tmp_path / "test.db"))
+        report = run_observability_check(db_path=str(tmp_path))
         assert "dashboard" in report
         assert "alerts" in report
         assert "current_conf_sure" in report

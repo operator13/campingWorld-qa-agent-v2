@@ -1,4 +1,4 @@
-"""Tests for the Metrics node and MetricsDB."""
+"""Tests for the Metrics node and MetricsDB (markdown-backed)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from qa_agent.state import QAState
 @pytest.fixture
 def db(tmp_path):
     """Create a fresh MetricsDB in a temp directory."""
-    return MetricsDB(db_path=tmp_path / "test_metrics.db")
+    return MetricsDB(db_path=tmp_path)
 
 
 class TestMetricsDB:
@@ -109,14 +109,30 @@ class TestMetricsDB:
         t_id = db.record_triage_call(run_id, "unknown", 0.5, human_override="heal")
         assert t_id >= 1
 
+    def test_get_run_count(self, db):
+        """get_run_count returns correct total and passed counts."""
+        db.record_run(goal="t1", route="/", passed=True, failed_cases=[], failure_class=None, confidence=0.0, attempts=0, fingerprint=None, outcome="pass")
+        db.record_run(goal="t2", route="/", passed=False, failed_cases=["tc-1"], failure_class="drift", confidence=0.8, attempts=0, fingerprint=None, outcome="failed")
+
+        total, passed = db.get_run_count()
+        assert total == 2
+        assert passed == 1
+
+    def test_markdown_files_created(self, tmp_path):
+        """MetricsDB creates markdown files on init."""
+        db = MetricsDB(db_path=tmp_path)
+        assert (tmp_path / "RUN_HISTORY.md").exists()
+        assert (tmp_path / "TRIAGE_CALLS.md").exists()
+        assert (tmp_path / "ESCAPES.md").exists()
+
 
 class TestMetricsNode:
     @pytest.mark.asyncio
     async def test_metrics_records_pass(self, tmp_path):
         """Metrics node records a passing run."""
         import qa_agent.nodes.metrics as metrics_mod
-        original = metrics_mod._DEFAULT_DB_PATH
-        metrics_mod._DEFAULT_DB_PATH = tmp_path / "test.db"
+        original = metrics_mod._DEFAULT_MEMORY_DIR
+        metrics_mod._DEFAULT_MEMORY_DIR = tmp_path
 
         try:
             state = QAState(
@@ -127,18 +143,18 @@ class TestMetricsNode:
             assert result == {}
 
             # Verify it was recorded
-            db = MetricsDB(tmp_path / "test.db")
+            db = MetricsDB(tmp_path)
             stats = db.compute_escape_rate()
             assert stats["total_green_runs"] == 1
         finally:
-            metrics_mod._DEFAULT_DB_PATH = original
+            metrics_mod._DEFAULT_MEMORY_DIR = original
 
     @pytest.mark.asyncio
     async def test_metrics_records_defect(self, tmp_path):
         """Metrics node records a defect outcome with triage call."""
         import qa_agent.nodes.metrics as metrics_mod
-        original = metrics_mod._DEFAULT_DB_PATH
-        metrics_mod._DEFAULT_DB_PATH = tmp_path / "test.db"
+        original = metrics_mod._DEFAULT_MEMORY_DIR
+        metrics_mod._DEFAULT_MEMORY_DIR = tmp_path
 
         try:
             state = QAState(
@@ -151,9 +167,9 @@ class TestMetricsNode:
             result = await metrics(state)
             assert result == {}
 
-            db = MetricsDB(tmp_path / "test.db")
+            db = MetricsDB(tmp_path)
             stats = db.compute_triage_accuracy()
             # One triage call recorded, not yet audited
             assert stats["total_audited"] == 0
         finally:
-            metrics_mod._DEFAULT_DB_PATH = original
+            metrics_mod._DEFAULT_MEMORY_DIR = original

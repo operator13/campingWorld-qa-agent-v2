@@ -179,3 +179,23 @@
 ### Prescriptions
 1. **Pass rate is low** (0%) — investigate recurring failures. Check flaky tests and volatile routes.
 2. **Healer cache hit rate is low** (0%) — locators are changing in new ways. Review if testid conventions have shifted.
+
+## Week of 2026-08-17
+
+### Stats
+| Metric | Value | Trend |
+|--------|-------|-------|
+| Total runs | 0 | — |
+| Pass rate | 0% | — |
+| Escape rate | 0% | — |
+| Triage accuracy | 0% | — |
+| Healer cache hit | 0% | — |
+| Flaky tests | 0 | — |
+| Volatile routes | 0 | — |
+| Human decisions | 64 | — |
+
+### Grade: D (25/100)
+
+### Prescriptions
+1. **Pass rate is low** (0%) — investigate recurring failures. Check flaky tests and volatile routes.
+2. **Healer cache hit rate is low** (0%) — locators are changing in new ways. Review if testid conventions have shifted.

@@ -13,5 +13,4 @@ node_modules/
 test-results/
 playwright-report/
 checkpoints.db
-metrics.db
 .qa_cache/

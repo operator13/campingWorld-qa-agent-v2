@@ -15,6 +15,12 @@
 | locator_drift (from failure patterns) | 32 | 0/32 (0%) | n/a |
 | Button/element text rename | 16 | 13/16 (81%) | getByRole |
 | app_defect (from failure patterns) | 6 | 0/6 (0%) | n/a |
+| locator_drift (from failure patterns) | 34 | 0/34 (0%) | n/a |
+| Button/element text rename | 17 | 13/17 (76%) | getByRole |
+| app_defect (from failure patterns) | 8 | 0/8 (0%) | n/a |
+
+
+
 
 
 
