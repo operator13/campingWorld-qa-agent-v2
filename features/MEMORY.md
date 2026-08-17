@@ -350,55 +350,40 @@ Markdown files use **append-only writes** within a single run. If parallel CI jo
 
 ## G. Build Phases
 
-### Phase M1 — Storage + Healer memory
+### Phase M1 — Storage + Healer memory [DONE]
 **Goal:** Healer remembers past fixes and reuses them.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Create `memory/` directory structure + `.gitkeep` files | TODO |
-| 2 | Implement `MemoryStore` class — markdown read/write, locator history methods | TODO |
-| 3 | Implement `normalize_error()` and `extract_locator_from_error()` | TODO |
-| 4 | Integrate into Healer — known-fix fast path **with guardrail validation** | TODO |
-| 6 | Implement `mark_fix_failed()` for stale fix protection | TODO |
-| 7 | Integrate into Healer prompt — inject locator history as context | TODO |
-| 8 | Add `MEMORY_ENABLED` + `HEALER_MEMORY` kill switches to config | TODO |
+| 1 | Create `memory/` directory structure + `.gitkeep` files | DONE |
+| 2 | Implement `MemoryStore` class — markdown read/write, locator history methods | DONE |
+| 3 | Implement `normalize_error()` and `extract_locator_from_error()` | DONE |
+| 4 | Integrate into Healer — known-fix fast path **with guardrail validation** | DONE |
+| 5 | Implement `mark_fix_failed()` for stale fix protection | DONE |
+| 6 | Integrate into Healer prompt — inject locator history as context | DONE |
+| 7 | Add `MEMORY_ENABLED` + `HEALER_MEMORY` kill switches to config | DONE |
 
-**Tests:**
-- Unit: `MemoryStore` round-trip — write locator change, read it back
-- Unit: `normalize_error()` strips line numbers, paths, timestamps
-- Unit: `extract_locator_from_error()` finds getByRole/getByTestId in Playwright errors
-- Unit: known-fix fast path applies cached fix and passes guardrail
-- Unit: known-fix fast path **rejected** when cached fix touches assertions
-- Unit: `mark_fix_failed()` prevents reuse of a stale fix
-- Unit: kill switch disables memory reads/writes
-- Integration: second heal of same drift is instant (memory hit)
-- Integration: stale fix fails → marked failed → LLM slow path runs
+**Tests:** 39/39 passing (commit `171be18`)
 
-**Done when:** Healer reuses past fixes safely; stale fixes are caught; PII is scrubbed; kill switch works.
+**Done when:** Healer reuses past fixes safely; stale fixes are caught; kill switch works. — **MET**
 
 ---
 
-### Phase M2 — Triage calibration + Human Review storage
+### Phase M2 — Triage calibration + Human Review storage [DONE]
 **Goal:** Triage learns from human corrections.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | `MemoryStore` — `record_human_decision()` writes to `human_decisions.md` | TODO |
-| 2 | `MemoryStore` — `get_triage_calibration(n=10)` reads last N decisions | TODO |
-| 3 | Wire Human Review node to call `record_human_decision()` after each verdict | TODO |
-| 4 | Inject calibration history into Triage prompt (with token cap) | TODO |
-| 5 | `find_similar_failure()` using normalized signature substring matching | TODO |
-| 6 | Add `TRIAGE_MEMORY` kill switch | TODO |
+| 1 | `MemoryStore` — `record_human_decision()` writes to `HUMAN_DECISIONS.md` | DONE |
+| 2 | `MemoryStore` — `get_triage_calibration(n=10)` reads last N decisions | DONE |
+| 3 | Wire Human Review node to call `record_human_decision()` after each verdict | DONE |
+| 4 | Inject calibration history into Triage prompt (with token cap) | DONE |
+| 5 | `find_similar_failure()` using normalized signature substring matching | DONE |
+| 6 | Add `TRIAGE_MEMORY` kill switch | DONE |
 
-**Tests:**
-- Unit: human decisions written and parsed from markdown table
-- Unit: calibration returns last N entries in reverse chronological order
-- Unit: Triage prompt includes calibration section
-- Unit: `find_similar_failure()` matches on normalized signature
-- Unit: kill switch disables Triage memory
-- Integration: after 5 human overrides on the same pattern, Triage receives them as context
+**Tests:** 14 new tests passing (commit `4d85764`)
 
-**Done when:** Human verdicts are stored in markdown; Triage prompt includes recent corrections; similar failures are found.
+**Done when:** Human verdicts are stored in markdown; Triage prompt includes recent corrections; similar failures are found. — **MET**
 
 **Note:** This phase provides the *data storage* for Triage calibration. The *automatic threshold adjustment* (raising/lowering `CONF_SURE`) is owned by the [AUTO_THRESHOLD_TUNING](./AUTO_THRESHOLD_TUNING.md) feature — no overlap.
 
@@ -454,6 +439,205 @@ Markdown files use **append-only writes** within a single run. If parallel CI jo
 
 ---
 
+### Phase M5 — Lessons learned (inspired by trading_bot/LESSONS.md)
+**Goal:** Agents synthesize strategic lessons from accumulated data — not just raw logs, but actionable insights.
+
+**Why:** The trading bot tracks a **pattern scoreboard** (which strategies win most) and **per-trade reflections** (what was decided, why, what to do differently). Our system stores raw data (locator drifts, failure counts) but never asks "what did we learn?" The difference between "this element drifted 6 times" and "buttons on /checkout rename every deploy — always use testid" is the difference between data and wisdom.
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Create `memory/LESSONS.md` — agent-generated insights from accumulated data | TODO |
+| 2 | `MemoryStore` — `record_lesson()` writes structured lesson entries | TODO |
+| 3 | `MemoryStore` — `get_lessons(route=None, node=None)` reads relevant lessons | TODO |
+| 4 | Lesson generation: after every N runs (configurable), LLM reads raw memory and extracts patterns | TODO |
+| 5 | **Pattern scoreboard**: track which failure types are most common, which fixes work best, which routes are most stable/unstable | TODO |
+| 6 | **Decision reflections**: after each Triage + Healer cycle, record what was tried, whether it worked, and what to do differently | TODO |
+| 7 | Inject relevant lessons into Healer, Triage, Planner, and Generator prompts | TODO |
+| 8 | Add `LESSONS_MEMORY` kill switch | TODO |
+
+**File format — `memory/LESSONS.md`:**
+```markdown
+# Lessons Learned
+
+## Pattern Scoreboard
+| Pattern | Occurrences | Success rate | Best strategy |
+|---------|-------------|-------------|---------------|
+| Button text rename | 12 | 100% heal | Use getByTestId, never getByRole name |
+| Testid prefix change | 4 | 75% heal | Check if parent testid is stable |
+| Element removed entirely | 3 | 0% heal (always defect) | Don't attempt heal — file immediately |
+| HTTP 500 on submit | 5 | 0% heal (always defect) | High confidence app_defect |
+
+## Route Insights
+### /checkout
+- **Stability:** LOW — locators change ~2x/week
+- **Best locator strategy:** getByTestId (button names change constantly)
+- **Common failure:** submit button renamed every deploy
+- **Lesson:** Never use getByRole('button', {name: ...}) on this route
+
+### /login
+- **Stability:** HIGH — unchanged for 30+ runs
+- **Best locator strategy:** getByRole works fine (names are stable)
+- **Lesson:** No special handling needed
+
+## Decision Reflections
+### 2026-08-14 — /checkout submit button
+- **Error:** Timeout on getByRole('button', {name: 'Submit'})
+- **Triage said:** locator_drift (0.82) ✓ correct
+- **Healer fix:** Changed to getByTestId('checkout-submit')
+- **Outcome:** Passed on retry
+- **Lesson recorded:** Submit button on /checkout uses changing labels — prefer testid
+```
+
+**Tests:**
+- Unit: lesson entries written and parsed from markdown
+- Unit: pattern scoreboard correctly aggregates from failure/locator history
+- Unit: relevant lessons injected into prompts by route
+- Unit: kill switch disables lesson reads/writes
+- Integration: after 10 runs, meaningful lessons are generated
+
+**Done when:** System produces actionable, synthesized insights — not just raw data — and injects them into agent prompts.
+
+---
+
+### Phase M6 — Weekly review (inspired by trading_bot/WEEKLY-REVIEW.md)
+**Goal:** Automated periodic reviews that grade the system's performance and prescribe concrete adjustments.
+
+**Why:** The trading bot does Friday reviews with stats tables, letter grades (C- to A-), and explicit prescriptions ("tighten stops on sector X"). Our system accumulates metrics but never steps back to ask "how did we do this week?" The weekly review closes the loop between measurement and action.
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Create `memory/WEEKLY_REVIEW.md` — append-only weekly review entries | TODO |
+| 2 | `MemoryStore` — `generate_weekly_review()` reads metrics + memory and produces a review | TODO |
+| 3 | Review template: stats table, grades, open issues, prescriptions | TODO |
+| 4 | **Grading rubric**: A (escape rate <5%, Triage >90%) through F (escape rate >20%, Triage <60%) | TODO |
+| 5 | **Prescriptions**: concrete actions derived from grades ("raise CONF_SURE", "add tests for /dashboard") | TODO |
+| 6 | CLI command: `qa-agent review weekly` | TODO |
+| 7 | Auto-trigger: run after every 7th nightly run (or on cron) | TODO |
+| 8 | Feed prescriptions into TPM agent as input for gap analysis | TODO |
+
+**File format — `memory/WEEKLY_REVIEW.md`:**
+```markdown
+# Weekly Reviews
+
+## Week of 2026-08-11
+
+### Stats
+| Metric | This week | Last week | Trend |
+|--------|-----------|-----------|-------|
+| Total runs | 7 | 7 | — |
+| Pass rate | 71% (5/7) | 86% (6/7) | ↓ |
+| Escape rate | 8% | 3% | ↑ BAD |
+| Triage accuracy | 83% | 90% | ↓ |
+| Healer cache hit | 40% | 25% | ↑ GOOD |
+| Mean heal time | 12s | 28s | ↑ GOOD |
+
+### Grade: B-
+- Pass rate down, escape rate up — two bugs slipped through on /search
+- Triage accuracy declining — 2 misclassifications on timeout errors
+- Memory is working well — cache hits up, heal time halved
+
+### Prescriptions
+1. **Add test coverage for /search** — 2 escapes this week, 0 tests exist
+2. **Refine Triage timeout rubric** — 2 misclassifications, both on ambiguous timeouts
+3. **Keep current CONF_SURE (0.75)** — accuracy still above 0.70 threshold
+4. **Review /checkout stability** — 3 locator drifts this week, consider notifying dev team
+```
+
+**Tests:**
+- Unit: review generation produces all required sections (stats, grade, prescriptions)
+- Unit: grading rubric maps metrics to correct letter grade
+- Unit: prescriptions are concrete and data-backed
+- Unit: trend comparison works (this week vs last week)
+- Integration: after 7 simulated runs, a coherent weekly review is generated
+
+**Done when:** System produces weekly self-assessments with grades and actionable prescriptions.
+
+---
+
+### Phase M7 — Confidence rubric (inspired by trading_bot/CONFIDENCE-SCORING.md)
+**Goal:** Formalize Triage's confidence scoring with a multi-criteria rubric, worked examples, and anti-gaming guards.
+
+**Why:** The trading bot uses a rigorous 5-criterion scoring system (0-5 scale) with worked examples, anti-loophole guards, and a kill switch. Our Triage just says "rate your confidence 0-1" — vague, uncalibrated, and inconsistent. Two identical errors could score 0.6 or 0.8 depending on the LLM's mood.
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Create `memory/CONFIDENCE_RUBRIC.md` — the formal scoring rubric | TODO |
+| 2 | Define 5 scoring criteria, each worth 0.0–0.2 (total 0.0–1.0) | TODO |
+| 3 | Write worked examples for each confidence band (high, medium, low) | TODO |
+| 4 | Add **anti-inflation guards**: rules that cap confidence in specific scenarios | TODO |
+| 5 | Add **calibration feedback**: when humans override, adjust the rubric guidance | TODO |
+| 6 | Inject the rubric into Triage's system prompt (replaces the current loose guidance) | TODO |
+| 7 | Track rubric accuracy over time — does the formal rubric improve Triage vs the loose prompt? | TODO |
+
+**File format — `memory/CONFIDENCE_RUBRIC.md`:**
+```markdown
+# Triage Confidence Rubric
+
+## Scoring Criteria (each 0.0–0.2, total 0.0–1.0)
+
+### C1: Error type signal (0.0–0.2)
+- 0.2 — Clear signal: `selector-not-found` (drift) or `AssertionError: wrong value` (defect)
+- 0.1 — Moderate signal: `TimeoutError` (could be either)
+- 0.0 — No signal: generic error, no pattern match
+
+### C2: DOM evidence (0.0–0.2)
+- 0.2 — Element exists in DOM but with different selector/name (drift)
+- 0.2 — Element completely absent AND no similar element (defect)
+- 0.1 — Element partially matches (renamed but similar structure)
+- 0.0 — No DOM snapshot available
+
+### C3: Historical pattern match (0.0–0.2)
+- 0.2 — Identical error signature seen before with known resolution
+- 0.1 — Similar error on same route, different element
+- 0.0 — No matching history
+
+### C4: Human calibration alignment (0.0–0.2)
+- 0.2 — Past human decisions agree with this classification
+- 0.1 — Mixed human decisions on similar errors
+- 0.0 — Humans have overridden this pattern before (reduce confidence)
+
+### C5: Consistency check (0.0–0.2)
+- 0.2 — Multiple independent signals agree (error type + DOM + history)
+- 0.1 — Two signals agree, one contradicts
+- 0.0 — Signals conflict or only one signal available
+
+## Anti-Inflation Guards
+- **Guard 1:** If this is the first time seeing this error pattern, cap at 0.7 regardless of criteria scores
+- **Guard 2:** If humans have overridden this classification 2+ times, cap at 0.6
+- **Guard 3:** If the DOM snapshot is unavailable, cap at 0.5
+- **Guard 4:** TimeoutError alone (no DOM evidence) is never above 0.6
+
+## Worked Examples
+
+### Example A: High confidence locator_drift (0.90)
+- Error: "selector-not-found: getByRole('button', {name: 'Submit'})" → C1: 0.2
+- DOM: button exists with name "Place Order" → C2: 0.2
+- History: same drift fixed 3 times before → C3: 0.2
+- Humans confirmed locator_drift twice → C4: 0.2
+- All signals agree → C5: 0.1 (not 0.2 because name change could be intentional removal)
+- **Total: 0.9 → locator_drift, auto-heal**
+
+### Example B: Low confidence (0.45)
+- Error: "TimeoutError waiting for navigation" → C1: 0.1
+- DOM: page loaded but different content than expected → C2: 0.1
+- History: no similar error → C3: 0.0
+- No human decisions on this pattern → C4: 0.05
+- Conflicting signals → C5: 0.0
+- Guard 4 applies (timeout, ambiguous) → capped at 0.6, but raw score is 0.25
+- **Total: 0.25 → unknown, route to human review**
+```
+
+**Tests:**
+- Unit: rubric criteria produce correct scores for known scenarios
+- Unit: anti-inflation guards enforce caps correctly
+- Unit: worked examples score correctly when run through the rubric
+- Unit: Triage prompt includes the full rubric
+- Integration: Triage accuracy improves with rubric vs without (A/B on golden set)
+
+**Done when:** Triage uses a formal, auditable rubric; confidence scores are consistent and calibrated; anti-inflation guards prevent overconfidence.
+
+---
+
 ## H. Assumptions
 
 - Storage is **git-tracked markdown files** in `memory/` — human-readable, no database.
@@ -478,10 +662,14 @@ Markdown files use **append-only writes** within a single run. If parallel CI jo
 
 ## J. Success Metrics
 
-| Metric | How to measure | Target |
-|--------|---------------|--------|
-| Healer cache hit rate | known-fix reuses / total heal attempts | > 30% after 30 runs |
-| Triage accuracy improvement | accuracy with memory vs without (A/B on golden set) | +10% accuracy |
-| Mean heal time | wall-clock from failure to green | 50% reduction (skip LLM) |
-| Flaky test detection precision | tests flagged as flaky that are actually flaky | > 80% precision |
-| Stale fix rejection rate | stale fixes caught by guardrail or mark_fix_failed | 100% (zero stale fixes applied) |
+| Metric | How to measure | Target | Phase |
+|--------|---------------|--------|-------|
+| Healer cache hit rate | known-fix reuses / total heal attempts | > 30% after 30 runs | M1 |
+| Triage accuracy improvement | accuracy with memory vs without (A/B on golden set) | +10% accuracy | M2 |
+| Mean heal time | wall-clock from failure to green | 50% reduction (skip LLM) | M1 |
+| Flaky test detection precision | tests flagged as flaky that are actually flaky | > 80% precision | M3 |
+| Stale fix rejection rate | stale fixes caught by guardrail or mark_fix_failed | 100% (zero stale fixes applied) | M1 |
+| Lesson actionability | lessons that lead to a prompt/config change within 7 days | > 50% of generated lessons | M5 |
+| Weekly review grade accuracy | grade correlates with actual escape rate trend | > 80% agreement | M6 |
+| Confidence calibration | rubric-scored confidence vs actual outcome (Brier score) | < 0.15 Brier score | M7 |
+| Confidence consistency | same error twice → scores within 0.1 of each other | > 90% of pairs | M7 |
