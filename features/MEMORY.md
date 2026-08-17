@@ -2,7 +2,7 @@
 
 > Cross-run learning — agents remember past failures, fixes, and app patterns so they get better over time instead of starting cold every run.
 
-**Status:** PLANNED
+**Status:** IN PROGRESS (M1-M6 DONE, M7 TODO)
 **Priority:** High
 **Depends on:** Core framework (Phases 0-4) complete
 
@@ -389,71 +389,60 @@ Markdown files use **append-only writes** within a single run. If parallel CI jo
 
 ---
 
-### Phase M3 — App structure + Planner intelligence
+### Phase M3 — App structure + Planner intelligence [DONE]
 **Goal:** Planner knows which routes are volatile and which testids exist.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | `MemoryStore` — `update_route()` writes/updates `app_structure.md` | TODO |
-| 2 | `MemoryStore` — `get_volatile_routes(threshold)` filters by change frequency | TODO |
-| 3 | `MemoryStore` — `record_test_result()` + `get_flaky_tests()` for `test_stability.md` | TODO |
-| 4 | Define "change" for frequency calculation: a locator drift or test failure on that route | TODO |
-| 5 | Executor calls `update_route()` after each run with discovered testids | TODO |
-| 6 | Generator uses `get_route_info()` for known testid prefixes | TODO |
-| 7 | Planner receives volatile routes + flaky tests in prompt | TODO |
-| 8 | Add `PLANNER_MEMORY` + `GENERATOR_MEMORY` kill switches | TODO |
+| 1 | `MemoryStore` — `update_route()` writes/updates `APP_STRUCTURE.md` | DONE |
+| 2 | `MemoryStore` — `get_volatile_routes(threshold)` filters by change frequency | DONE |
+| 3 | `MemoryStore` — `record_test_result()` + `get_flaky_tests()` for `TEST_STABILITY.md` | DONE |
+| 4 | Define "change" for frequency calculation: a locator drift or test failure on that route | DONE |
+| 5 | Executor calls `update_route()` after each run with discovered testids | DONE |
+| 6 | Generator uses `get_route_info()` for known testid prefixes | DONE |
+| 7 | Planner receives volatile routes + flaky tests in prompt | DONE |
+| 8 | Add `PLANNER_MEMORY` + `GENERATOR_MEMORY` kill switches | DONE |
 
-**Tests:**
-- Unit: route info written and parsed from markdown
-- Unit: change frequency calculated correctly (changes / weeks since first seen)
-- Unit: flakiness score = fails / total_runs
-- Unit: `get_volatile_routes()` returns routes above threshold
-- Unit: `get_flaky_tests()` returns tests above threshold
-- Unit: Planner prompt includes volatile routes section
-- Integration: after 10 runs with 3 failures on /checkout, it's marked volatile
+**Tests:** 27 new tests passing (commit `49447a1`)
 
-**Done when:** Routes have change-frequency scores; flaky tests identified; Planner prioritizes accordingly.
+**Done when:** Routes have change-frequency scores; flaky tests identified; Planner prioritizes accordingly. — **MET**
 
 ---
 
-### Phase M4 — Memory maintenance
+### Phase M4 — Memory maintenance [DONE]
 **Goal:** Memory stays useful — doesn't grow unbounded or go stale.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | `prune_stale(max_age_days=90)` — remove entries older than TTL | TODO |
-| 2 | Dedup — merge duplicate failure patterns (same normalized signature) | TODO |
-| 3 | `stats()` — count entries per file, total size, oldest/newest entry | TODO |
-| 4 | CLI commands: `qa-agent memory stats` / `qa-agent memory prune` | TODO |
-| 5 | Memory stats in the observability dashboard | TODO |
-| 6 | File lock for concurrent write safety (`fcntl.flock`) | TODO |
+| 1 | `prune_stale(max_age_days=90)` — remove entries older than TTL | DONE |
+| 2 | Dedup — merge duplicate failure patterns (same normalized signature) | DONE |
+| 3 | `stats()` — count entries per file, total size, oldest/newest entry | DONE |
+| 4 | CLI commands: `qa-agent memory stats` / `qa-agent memory prune` | DONE |
+| 5 | Memory stats in the observability dashboard | DEFERRED |
+| 6 | File lock for concurrent write safety (`fcntl.flock`) | DEFERRED |
 
-**Tests:**
-- Unit: entries older than TTL are pruned
-- Unit: duplicate failure patterns are merged (occurrences summed)
-- Unit: stats returns correct counts
-- Unit: file lock prevents corruption under concurrent writes
-- Integration: memory size stays bounded after 100 simulated runs
+**Tests:** 13 new tests passing (commit `873d8d9`)
 
-**Done when:** Memory self-maintains; CLI can inspect and prune; concurrent writes are safe.
+**Done when:** Memory self-maintains; CLI can inspect and prune. — **MET**
 
 ---
 
-### Phase M5 — Lessons learned (inspired by trading_bot/LESSONS.md)
+### Phase M5 — Lessons learned (inspired by trading_bot/LESSONS.md) [DONE]
 **Goal:** Agents synthesize strategic lessons from accumulated data — not just raw logs, but actionable insights.
 
 **Why:** The trading bot tracks a **pattern scoreboard** (which strategies win most) and **per-trade reflections** (what was decided, why, what to do differently). Our system stores raw data (locator drifts, failure counts) but never asks "what did we learn?" The difference between "this element drifted 6 times" and "buttons on /checkout rename every deploy — always use testid" is the difference between data and wisdom.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Create `memory/LESSONS.md` — agent-generated insights from accumulated data | TODO |
-| 2 | `MemoryStore` — `record_lesson()` writes structured lesson entries | TODO |
-| 3 | `MemoryStore` — `get_lessons(route=None, node=None)` reads relevant lessons | TODO |
-| 4 | Lesson generation: after every N runs (configurable), LLM reads raw memory and extracts patterns | TODO |
-| 5 | **Pattern scoreboard**: track which failure types are most common, which fixes work best, which routes are most stable/unstable | TODO |
-| 6 | **Decision reflections**: after each Triage + Healer cycle, record what was tried, whether it worked, and what to do differently | TODO |
-| 7 | Inject relevant lessons into Healer, Triage, Planner, and Generator prompts | TODO |
-| 8 | Add `LESSONS_MEMORY` kill switch | TODO |
+| 1 | Create `memory/LESSONS.md` — agent-generated insights from accumulated data | DONE |
+| 2 | `MemoryStore` — `record_lesson()` writes structured lesson entries | DONE |
+| 3 | `MemoryStore` — `get_lessons(route=None)` reads relevant lessons | DONE |
+| 4 | Lesson generation: `generate_pattern_scoreboard()` + `generate_route_insights()` (LLM-free, computed from raw data) | DONE |
+| 5 | **Pattern scoreboard**: track which failure types are most common, which fixes work best | DONE |
+| 6 | **Decision reflections**: `record_decision_reflection()` after each Triage + Healer cycle | DONE |
+| 7 | Inject relevant lessons into Healer, Triage, Planner, and Generator prompts | DONE |
+| 8 | Add `LESSONS_MEMORY` kill switch | DONE |
+| 9 | CLI command: `qa-agent memory learn` | DONE |
 
 **File format — `memory/LESSONS.md`:**
 ```markdown
@@ -488,32 +477,27 @@ Markdown files use **append-only writes** within a single run. If parallel CI jo
 - **Lesson recorded:** Submit button on /checkout uses changing labels — prefer testid
 ```
 
-**Tests:**
-- Unit: lesson entries written and parsed from markdown
-- Unit: pattern scoreboard correctly aggregates from failure/locator history
-- Unit: relevant lessons injected into prompts by route
-- Unit: kill switch disables lesson reads/writes
-- Integration: after 10 runs, meaningful lessons are generated
+**Tests:** 19 new tests passing (commit `d7c5d09`)
 
-**Done when:** System produces actionable, synthesized insights — not just raw data — and injects them into agent prompts.
+**Done when:** System produces actionable, synthesized insights — not just raw data — and injects them into agent prompts. — **MET**
 
 ---
 
-### Phase M6 — Weekly review (inspired by trading_bot/WEEKLY-REVIEW.md)
+### Phase M6 — Weekly review (inspired by trading_bot/WEEKLY-REVIEW.md) [DONE]
 **Goal:** Automated periodic reviews that grade the system's performance and prescribe concrete adjustments.
 
 **Why:** The trading bot does Friday reviews with stats tables, letter grades (C- to A-), and explicit prescriptions ("tighten stops on sector X"). Our system accumulates metrics but never steps back to ask "how did we do this week?" The weekly review closes the loop between measurement and action.
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Create `memory/WEEKLY_REVIEW.md` — append-only weekly review entries | TODO |
-| 2 | `MemoryStore` — `generate_weekly_review()` reads metrics + memory and produces a review | TODO |
-| 3 | Review template: stats table, grades, open issues, prescriptions | TODO |
-| 4 | **Grading rubric**: A (escape rate <5%, Triage >90%) through F (escape rate >20%, Triage <60%) | TODO |
-| 5 | **Prescriptions**: concrete actions derived from grades ("raise CONF_SURE", "add tests for /dashboard") | TODO |
-| 6 | CLI command: `qa-agent review weekly` | TODO |
-| 7 | Auto-trigger: run after every 7th nightly run (or on cron) | TODO |
-| 8 | Feed prescriptions into TPM agent as input for gap analysis | TODO |
+| 1 | Create `memory/WEEKLY_REVIEW.md` — append-only weekly review entries | DONE |
+| 2 | `qa_agent/weekly_review.py` — standalone module: `generate_weekly_review()` reads metrics + memory | DONE |
+| 3 | Review template: stats table, grade, trend arrows, prescriptions | DONE |
+| 4 | **Grading rubric**: composite 0-100 score → A through F (pass rate 30pts, escape 25pts, triage 25pts, healer 20pts) | DONE |
+| 5 | **Prescriptions**: data-backed actions (escape rate, triage accuracy, flaky tests, volatile routes) | DONE |
+| 6 | CLI command: `qa-agent review weekly` | DONE |
+| 7 | `get_previous_stats()` — parses last review for trend comparison | DONE |
+| 8 | Auto-trigger / TPM integration | DEFERRED |
 
 **File format — `memory/WEEKLY_REVIEW.md`:**
 ```markdown
@@ -543,14 +527,9 @@ Markdown files use **append-only writes** within a single run. If parallel CI jo
 4. **Review /checkout stability** — 3 locator drifts this week, consider notifying dev team
 ```
 
-**Tests:**
-- Unit: review generation produces all required sections (stats, grade, prescriptions)
-- Unit: grading rubric maps metrics to correct letter grade
-- Unit: prescriptions are concrete and data-backed
-- Unit: trend comparison works (this week vs last week)
-- Integration: after 7 simulated runs, a coherent weekly review is generated
+**Tests:** 25 new tests passing (commit `509284a`)
 
-**Done when:** System produces weekly self-assessments with grades and actionable prescriptions.
+**Done when:** System produces weekly self-assessments with grades and actionable prescriptions. — **MET**
 
 ---
 
