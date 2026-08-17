@@ -45,8 +45,11 @@ async def triage(state: QAState) -> dict:
                 similar.get("id"), similar.get("failure_class"), similar.get("resolution"),
             )
 
-    # Build calibration context from human decisions
+    # Build calibration context from human decisions + lessons
     calibration_context = memory.build_triage_calibration_context()
+    lessons_context = memory.build_lessons_context(max_tokens=250)
+    if lessons_context:
+        calibration_context = (calibration_context + "\n\n" + lessons_context).strip()
 
     model = ChatAnthropic(
         model=get_model("triage"),

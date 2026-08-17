@@ -125,8 +125,11 @@ async def healer(state: QAState) -> dict:
                 logger.warning("Healer: known fix touches assertions — marking failed, falling through to LLM")
                 memory.mark_fix_failed(route, element, old_locator)
 
-    # --- Slow path: ask LLM, with memory context ---
+    # --- Slow path: ask LLM, with memory context + lessons ---
     memory_context = memory.build_healer_memory_context(route, element)
+    lessons_context = memory.build_lessons_context(route=route, max_tokens=250)
+    if lessons_context:
+        memory_context = (memory_context + "\n\n" + lessons_context).strip()
 
     model = ChatAnthropic(
         model=get_model("healer"),

@@ -120,6 +120,43 @@ async def _run(sources: list[str]) -> None:
     print(f"  Test files: {len(result.get('test_code', {}))}")
 
 
+def _memory_learn() -> None:
+    """Generate lessons from accumulated memory data."""
+    from qa_agent.memory import MemoryStore
+
+    store = MemoryStore()
+
+    print("=== QA Agent · Memory Learn ===\n")
+
+    # Generate pattern scoreboard
+    scoreboard = store.generate_pattern_scoreboard()
+    if scoreboard:
+        print(f"Pattern scoreboard: {len(scoreboard)} patterns found")
+        # Write to LESSONS.md
+        for p in scoreboard:
+            store.record_lesson(
+                "pattern",
+                "/",
+                f"{p['pattern']} | {p['occurrences']} | {p['success_rate']} | {p['best_strategy']}",
+            )
+        for p in scoreboard:
+            print(f"  - {p['pattern']}: {p['occurrences']}x, success {p['success_rate']}, best: {p['best_strategy']}")
+    else:
+        print("No patterns found (need more run data)")
+
+    # Generate route insights
+    insights = store.generate_route_insights()
+    if insights:
+        print(f"\nRoute insights: {len(insights)} routes analyzed")
+        for route, insight in insights.items():
+            store.record_lesson("route_insight", route, insight, source="auto-generated")
+            print(f"  {route}: {insight.split(chr(10))[0]}")
+    else:
+        print("No route insights (need more run data)")
+
+    print("\n[OK] Lessons written to memory/LESSONS.md")
+
+
 def _memory_stats() -> None:
     """Print memory statistics."""
     from qa_agent.memory import MemoryStore
@@ -186,7 +223,7 @@ def main() -> None:
         "subcommand",
         nargs="?",
         default=None,
-        help="Subcommand: stats, prune (for memory command)",
+        help="Subcommand: stats, prune, learn (for memory command)",
     )
     parser.add_argument(
         "--max-age",
@@ -215,8 +252,10 @@ def main() -> None:
             _memory_stats()
         elif args.subcommand == "prune":
             _memory_prune(args.max_age)
+        elif args.subcommand == "learn":
+            _memory_learn()
         else:
-            print("Usage: qa-agent memory stats | qa-agent memory prune [--max-age 90]")
+            print("Usage: qa-agent memory stats | prune [--max-age 90] | learn")
             sys.exit(1)
     else:
         parser.print_help()

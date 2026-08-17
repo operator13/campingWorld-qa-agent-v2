@@ -26,7 +26,7 @@ async def generator(state: QAState) -> dict:
     """Generate page objects and test specs from the test plan."""
     logger.info("Generator: building tests for %d case(s)", len(state.plan))
 
-    # Gather memory context per route
+    # Gather memory context per route + lessons
     memory = MemoryStore()
     routes = {tc.route for tc in state.plan}
     memory_context = ""
@@ -34,6 +34,9 @@ async def generator(state: QAState) -> dict:
         ctx = memory.build_generator_memory_context(route)
         if ctx:
             memory_context += ctx + "\n"
+    lessons_context = memory.build_lessons_context(max_tokens=250)
+    if lessons_context:
+        memory_context = (memory_context + "\n" + lessons_context).strip()
 
     model = ChatAnthropic(
         model=get_model("generator"),

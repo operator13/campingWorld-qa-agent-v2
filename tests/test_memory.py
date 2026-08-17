@@ -1025,3 +1025,167 @@ class TestCLIMemory:
         """CLI memory prune doesn't crash."""
         from qa_agent.cli import _memory_prune
         _memory_prune(max_age=90)
+
+    def test_memory_learn_runs(self):
+        """CLI memory learn doesn't crash."""
+        from qa_agent.cli import _memory_learn
+        _memory_learn()
+
+
+# ---------------------------------------------------------------------------
+# Phase M5: Lessons
+# ---------------------------------------------------------------------------
+
+class TestRecordLesson:
+    def test_record_route_insight(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("route_insight", "/checkout", "Buttons rename every deploy — use testid")
+
+        lessons = store.get_lessons(route="/checkout")
+        assert len(lessons) >= 1
+        assert "testid" in lessons[0]["content"]
+
+    def test_record_decision_reflection(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_decision_reflection(
+            route="/checkout",
+            error="Timeout on Submit button",
+            triage_class="locator_drift",
+            triage_confidence=0.82,
+            triage_correct=True,
+            healer_fix="Changed to getByTestId",
+            outcome="Passed on retry",
+        )
+
+        lessons = store.get_lessons(route="/checkout")
+        reflections = [l for l in lessons if l["type"] == "decision_reflection"]
+        assert len(reflections) >= 1
+        assert "locator_drift" in reflections[0]["content"]
+
+    def test_record_pattern(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("pattern", "/", "Button text rename | 5 | 100% | getByTestId")
+
+        scoreboard = store.get_pattern_scoreboard()
+        assert len(scoreboard) >= 1
+
+    def test_creates_lessons_file(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("route_insight", "/login", "Stable route")
+
+        assert (tmp_path / "LESSONS.md").exists()
+
+    def test_multiple_lessons_same_route(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("route_insight", "/checkout", "Lesson 1")
+        store.record_lesson("route_insight", "/checkout", "Lesson 2")
+
+        lessons = store.get_lessons(route="/checkout")
+        route_insights = [l for l in lessons if l["type"] == "route_insight"]
+        assert len(route_insights) >= 1
+        # Both should be in the content
+        content = route_insights[0]["content"]
+        assert "Lesson 1" in content
+        assert "Lesson 2" in content
+
+    def test_filter_by_route(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("route_insight", "/checkout", "Checkout lesson")
+        store.record_lesson("route_insight", "/login", "Login lesson")
+
+        checkout = store.get_lessons(route="/checkout")
+        assert all("/checkout" in l.get("route", "") for l in checkout)
+
+    def test_disabled_by_kill_switch(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("LESSONS_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("route_insight", "/checkout", "Should not be saved")
+        assert store.get_lessons() == []
+
+
+class TestPatternScoreboard:
+    def test_generates_from_locator_history(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        # Seed locator history
+        store.record_locator_change("/checkout", "btn",
+            "getByRole('button', { name: 'Submit' })",
+            "getByTestId('checkout-submit')", "name changed")
+        store.record_locator_change("/checkout", "btn2",
+            "getByRole('button', { name: 'Cancel' })",
+            "getByTestId('checkout-cancel')", "name changed")
+
+        scoreboard = store.generate_pattern_scoreboard()
+        assert len(scoreboard) >= 1
+        # Should identify button text rename pattern
+        assert any("rename" in p["pattern"].lower() or "text" in p["pattern"].lower() for p in scoreboard)
+
+    def test_empty_on_no_data(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        scoreboard = store.generate_pattern_scoreboard()
+        assert scoreboard == []
+
+    def test_disabled_by_kill_switch(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("LESSONS_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        assert store.generate_pattern_scoreboard() == []
+
+
+class TestRouteInsightsGeneration:
+    def test_generates_stability_insight(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["checkout-submit"])
+        for _ in range(15):
+            store.increment_route_changes("/checkout")
+
+        insights = store.generate_route_insights()
+        assert "/checkout" in insights
+        assert "LOW" in insights["/checkout"] or "MEDIUM" in insights["/checkout"]
+
+    def test_stable_route_insight(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/login", testids=["login-email"])
+        # No changes — should be HIGH stability
+
+        insights = store.generate_route_insights()
+        assert "/login" in insights
+        assert "HIGH" in insights["/login"]
+
+    def test_empty_on_no_routes(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        insights = store.generate_route_insights()
+        assert insights == {}
+
+
+class TestLessonsContext:
+    def test_includes_scoreboard(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("pattern", "/", "Button rename | 5 | 100% | getByTestId")
+
+        context = store.build_lessons_context()
+        assert "Pattern Scoreboard" in context
+
+    def test_includes_route_insights(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_lesson("route_insight", "/checkout", "Buttons change every deploy")
+
+        context = store.build_lessons_context(route="/checkout")
+        assert "Route Insights" in context
+        assert "Buttons change" in context
+
+    def test_empty_when_no_lessons(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        context = store.build_lessons_context()
+        assert context == ""
+
+    def test_empty_when_disabled(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("LESSONS_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        assert store.build_lessons_context() == ""
+
+    def test_respects_token_cap(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        for i in range(20):
+            store.record_lesson("pattern", "/", f"Pattern {i} long description " * 5 + f"| {i} | 50% | mixed")
+
+        context = store.build_lessons_context(max_tokens=100)
+        assert len(context) <= 500

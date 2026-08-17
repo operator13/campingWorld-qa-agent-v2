@@ -25,9 +25,12 @@ async def planner(state: QAState) -> dict:
     """Turn UI spec + acceptance criteria into categorized test cases."""
     logger.info("Planner: generating test cases for goal=%r", state.goal)
 
-    # Gather memory context: volatile routes + flaky tests
+    # Gather memory context: volatile routes + flaky tests + lessons
     memory = MemoryStore()
     memory_context = memory.build_planner_memory_context()
+    lessons_context = memory.build_lessons_context(max_tokens=250)
+    if lessons_context:
+        memory_context = (memory_context + "\n\n" + lessons_context).strip()
 
     model = ChatAnthropic(
         model=get_model("planner"),

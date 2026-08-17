@@ -948,6 +948,331 @@ class MemoryStore:
 
 
     # -------------------------------------------------------------------
+    # Lessons
+    # -------------------------------------------------------------------
+
+    def record_lesson(
+        self,
+        category: str,
+        route: str,
+        lesson: str,
+        source: str = "",
+    ) -> None:
+        """Record a single lesson entry under a category in LESSONS.md."""
+        if not self._enabled("lessons"):
+            return
+
+        filepath = self.memory_dir / "LESSONS.md"
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        if not filepath.exists():
+            filepath.write_text(
+                "# Lessons Learned\n\n"
+                "## Pattern Scoreboard\n\n"
+                "| Pattern | Occurrences | Success rate | Best strategy |\n"
+                "|---------|-------------|-------------|---------------|\n\n"
+                "## Route Insights\n\n"
+                "## Decision Reflections\n"
+            )
+
+        content = filepath.read_text()
+
+        if category == "route_insight":
+            section = f"### {route}"
+            entry = f"- **{now}:** {lesson}"
+            if source:
+                entry += f" *(source: {source})*"
+
+            if section in content:
+                idx = content.index(section)
+                next_section = content.find("\n### ", idx + len(section))
+                next_h2 = content.find("\n## ", idx + len(section))
+                end = min(
+                    next_section if next_section != -1 else len(content),
+                    next_h2 if next_h2 != -1 else len(content),
+                )
+                content = content[:end].rstrip() + "\n" + entry + "\n" + content[end:]
+            else:
+                # Insert before "## Decision Reflections"
+                marker = "## Decision Reflections"
+                if marker in content:
+                    idx = content.index(marker)
+                    content = content[:idx] + f"{section}\n{entry}\n\n" + content[idx:]
+                else:
+                    content = content.rstrip() + f"\n\n{section}\n{entry}\n"
+
+        elif category == "decision_reflection":
+            entry = (
+                f"\n### {now} — {route}\n"
+                f"{lesson}\n"
+            )
+            content = content.rstrip() + "\n" + entry
+
+        elif category == "pattern":
+            # Append to the pattern scoreboard table
+            # Find the table end (empty line after header row)
+            entry = f"| {lesson} |\n"
+            table_end = content.find("\n\n", content.find("| Pattern |"))
+            if table_end != -1:
+                content = content[:table_end] + "\n" + entry + content[table_end:]
+            else:
+                content = content.rstrip() + "\n" + entry
+
+        filepath.write_text(content)
+        logger.info("Memory: recorded lesson (%s) for %s", category, route)
+
+    def record_decision_reflection(
+        self,
+        route: str,
+        error: str,
+        triage_class: str,
+        triage_confidence: float,
+        triage_correct: bool,
+        healer_fix: str = "",
+        outcome: str = "",
+    ) -> None:
+        """Record a structured decision reflection after a heal/defect cycle."""
+        if not self._enabled("lessons"):
+            return
+
+        correct_mark = "correct" if triage_correct else "WRONG"
+        lesson_text = (
+            f"- **Error:** {error[:100]}\n"
+            f"- **Triage said:** {triage_class} ({triage_confidence:.2f}) — {correct_mark}\n"
+        )
+        if healer_fix:
+            lesson_text += f"- **Healer fix:** {healer_fix}\n"
+        lesson_text += f"- **Outcome:** {outcome}\n"
+
+        self.record_lesson("decision_reflection", route, lesson_text)
+
+    def get_lessons(self, route: str | None = None) -> list[dict[str, Any]]:
+        """Read lessons, optionally filtered by route."""
+        if not self._enabled("lessons"):
+            return []
+
+        filepath = self.memory_dir / "LESSONS.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        lessons: list[dict[str, Any]] = []
+
+        # Parse route insights
+        for match in re.finditer(r"### (/\S+)\n(.*?)(?=\n### |\n## |\Z)", content, re.S):
+            r = match.group(1)
+            if route and r != route:
+                continue
+            body = match.group(2).strip()
+            if body:
+                lessons.append({"type": "route_insight", "route": r, "content": body})
+
+        # Parse decision reflections (after "## Decision Reflections")
+        dr_section = content.split("## Decision Reflections")[-1] if "## Decision Reflections" in content else ""
+        for match in re.finditer(r"### (\d{4}-\d{2}-\d{2}) — (/\S+)\n(.*?)(?=\n### |\Z)", dr_section, re.S):
+            r = match.group(2)
+            if route and r != route:
+                continue
+            lessons.append({
+                "type": "decision_reflection",
+                "date": match.group(1),
+                "route": r,
+                "content": match.group(3).strip(),
+            })
+
+        return lessons
+
+    def get_pattern_scoreboard(self) -> list[dict[str, str]]:
+        """Read the pattern scoreboard table from LESSONS.md."""
+        if not self._enabled("lessons"):
+            return []
+
+        filepath = self.memory_dir / "LESSONS.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        patterns = []
+
+        for line in content.split("\n"):
+            line = line.strip()
+            if line.startswith("| ") and not line.startswith("| Pattern") and not line.startswith("|---"):
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 2:
+                    parts = parts[1:-1]
+                if len(parts) >= 4:
+                    patterns.append({
+                        "pattern": parts[0],
+                        "occurrences": parts[1],
+                        "success_rate": parts[2],
+                        "best_strategy": parts[3],
+                    })
+
+        return patterns
+
+    def generate_pattern_scoreboard(self) -> list[dict[str, Any]]:
+        """Compute the pattern scoreboard from raw memory data.
+
+        Analyzes locator history and failure patterns to produce a ranked
+        list of failure types with their success rates and best strategies.
+        """
+        if not self._enabled("lessons"):
+            return []
+
+        # Gather all locator changes across routes
+        patterns: dict[str, dict[str, Any]] = {}
+
+        for filepath in self.locators_dir.glob("*.md"):
+            if filepath.name == ".gitkeep":
+                continue
+            history = self.get_locator_history(
+                "/" + filepath.stem.lower() if filepath.stem != "ROOT" else "/",
+            )
+            for entry in history:
+                old = entry.get("old_locator", "")
+                new = entry.get("new_locator", "")
+
+                # Categorize the drift
+                if "getByRole" in old and "name:" in old:
+                    ptype = "Button/element text rename"
+                elif "getByTestId" in old:
+                    ptype = "Testid change"
+                elif "getByText" in old:
+                    ptype = "Text content change"
+                else:
+                    ptype = "Locator change (other)"
+
+                if ptype not in patterns:
+                    patterns[ptype] = {"occurrences": 0, "successes": 0, "strategies": []}
+
+                patterns[ptype]["occurrences"] += 1
+                if entry.get("success"):
+                    patterns[ptype]["successes"] += 1
+                    # Track what worked
+                    if "getByTestId" in new:
+                        patterns[ptype]["strategies"].append("getByTestId")
+                    elif "getByRole" in new:
+                        patterns[ptype]["strategies"].append("getByRole")
+                    else:
+                        patterns[ptype]["strategies"].append("other")
+
+        # Also count failure patterns by class
+        failure_patterns = self._parse_failure_patterns(
+            (self.memory_dir / "FAILURES.md").read_text()
+        ) if (self.memory_dir / "FAILURES.md").exists() else []
+
+        for fp in failure_patterns:
+            fc = fp.get("failure_class", "unknown")
+            ptype = f"{fc} (from failure patterns)"
+            if ptype not in patterns:
+                patterns[ptype] = {"occurrences": 0, "successes": 0, "strategies": []}
+            patterns[ptype]["occurrences"] += fp.get("occurrences", 1)
+
+        # Build scoreboard
+        scoreboard = []
+        for ptype, data in sorted(patterns.items(), key=lambda x: x[1]["occurrences"], reverse=True):
+            occ = data["occurrences"]
+            succ = data["successes"]
+            rate = f"{succ}/{occ} ({100 * succ // occ}%)" if occ > 0 else "n/a"
+
+            # Most common strategy
+            strats = data.get("strategies", [])
+            if strats:
+                from collections import Counter
+                best = Counter(strats).most_common(1)[0][0]
+            else:
+                best = "n/a"
+
+            scoreboard.append({
+                "pattern": ptype,
+                "occurrences": str(occ),
+                "success_rate": rate,
+                "best_strategy": best,
+            })
+
+        return scoreboard
+
+    def generate_route_insights(self) -> dict[str, str]:
+        """Generate route-level insights from combined memory data.
+
+        Returns {route: insight_text} for routes with enough data.
+        """
+        if not self._enabled("lessons"):
+            return {}
+
+        insights: dict[str, str] = {}
+
+        for route_info in self.get_all_routes():
+            route = route_info["route"]
+            parts = []
+
+            freq = route_info.get("change_frequency", 0)
+            if freq >= 2.0:
+                parts.append(f"**Stability:** LOW — changes {freq}x/week")
+            elif freq >= 0.5:
+                parts.append(f"**Stability:** MEDIUM — changes {freq}x/week")
+            else:
+                parts.append(f"**Stability:** HIGH — changes {freq}x/week")
+
+            # Analyze locator history for best strategy
+            history = self.get_locator_history(route)
+            successful = [e for e in history if e.get("success")]
+            if successful:
+                testid_fixes = sum(1 for e in successful if "getByTestId" in e.get("new_locator", ""))
+                role_fixes = sum(1 for e in successful if "getByRole" in e.get("new_locator", ""))
+                if testid_fixes > role_fixes:
+                    parts.append("**Best locator strategy:** getByTestId (proven stable)")
+                elif role_fixes > 0:
+                    parts.append("**Best locator strategy:** getByRole (names are stable here)")
+
+            # Flaky test count
+            stability = self.get_test_history(route) if hasattr(self, '_all_test_routes') else None
+            testids = route_info.get("testids", [])
+            if testids:
+                parts.append(f"**Known testids:** {', '.join(testids[:5])}")
+
+            if parts:
+                insights[route] = "\n".join(parts)
+
+        return insights
+
+    def build_lessons_context(self, route: str | None = None, max_tokens: int = 500) -> str:
+        """Build lessons context for injection into any agent prompt."""
+        if not self._enabled("lessons"):
+            return ""
+
+        parts = []
+
+        # Pattern scoreboard (top 3)
+        scoreboard = self.get_pattern_scoreboard()
+        if scoreboard:
+            parts.append("## Memory: Lessons — Pattern Scoreboard")
+            for p in scoreboard[:3]:
+                parts.append(
+                    f"- **{p['pattern']}** — {p['occurrences']}x, "
+                    f"success: {p['success_rate']}, best: {p['best_strategy']}"
+                )
+            parts.append("")
+
+        # Route-specific lessons
+        lessons = self.get_lessons(route=route)
+        route_insights = [l for l in lessons if l["type"] == "route_insight"]
+        if route_insights:
+            parts.append(f"## Memory: Lessons — Route Insights{f' for {route}' if route else ''}")
+            for l in route_insights[:3]:
+                parts.append(f"**{l['route']}:**\n{l['content'][:200]}")
+            parts.append("")
+
+        if not parts:
+            return ""
+
+        result = "\n".join(parts)
+        char_limit = max_tokens * 4
+        if len(result) > char_limit:
+            result = result[:char_limit].rsplit("\n", 1)[0]
+        return result
+
+    # -------------------------------------------------------------------
     # Maintenance
     # -------------------------------------------------------------------
 
