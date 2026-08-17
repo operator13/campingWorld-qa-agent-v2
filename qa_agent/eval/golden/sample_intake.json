@@ -1,0 +1,11 @@
+{
+  "goal": "Test the checkout flow",
+  "acceptance_criteria": [
+    "User can fill in email address",
+    "User can click Submit to place order",
+    "Confirmation page is displayed after submission",
+    "Email field shows validation error when empty"
+  ],
+  "figma_ref": null,
+  "app_url": "http://localhost:3000"
+}

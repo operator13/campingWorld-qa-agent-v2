@@ -1,0 +1,34 @@
+[
+  {
+    "scenario": "selector_not_found",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded. Waiting for getByRole('button', { name: 'Submit' })",
+    "dom_has_element": true,
+    "dom_element_renamed": "Place Order",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75
+  },
+  {
+    "scenario": "assertion_value_mismatch",
+    "error": "AssertionError: Expected 'Order Confirmed' but received 'Error: Payment Failed'",
+    "dom_has_element": true,
+    "dom_element_renamed": false,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.80
+  },
+  {
+    "scenario": "http_500_error",
+    "error": "net::ERR_FAILED 500 Internal Server Error on /api/checkout",
+    "dom_has_element": true,
+    "dom_element_renamed": false,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.85
+  },
+  {
+    "scenario": "ambiguous_timeout",
+    "error": "TimeoutError: page.waitForNavigation: Timeout 30000ms exceeded",
+    "dom_has_element": false,
+    "dom_element_renamed": false,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0
+  }
+]

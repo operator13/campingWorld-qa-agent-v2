@@ -1,0 +1,42 @@
+[
+  {
+    "id": "tc-checkout-01",
+    "title": "User can fill in email address",
+    "feature": "checkout",
+    "route": "/checkout",
+    "tags": ["@checkout"],
+    "steps": ["Navigate to /checkout", "Fill email field with test@example.com"],
+    "expected": ["Email field contains test@example.com"],
+    "source": "jira"
+  },
+  {
+    "id": "tc-checkout-02",
+    "title": "User can submit order",
+    "feature": "checkout",
+    "route": "/checkout",
+    "tags": ["@smoke", "@checkout"],
+    "steps": ["Navigate to /checkout", "Fill email", "Click Submit"],
+    "expected": ["Confirmation page is displayed", "URL contains /confirmation"],
+    "source": "jira"
+  },
+  {
+    "id": "tc-checkout-03",
+    "title": "Confirmation page shown after submission",
+    "feature": "checkout",
+    "route": "/checkout",
+    "tags": ["@checkout"],
+    "steps": ["Navigate to /checkout", "Fill valid email", "Click Submit"],
+    "expected": ["Confirmation page visible with order details"],
+    "source": "jira"
+  },
+  {
+    "id": "tc-checkout-04",
+    "title": "Email validation error when empty",
+    "feature": "checkout",
+    "route": "/checkout",
+    "tags": ["@checkout", "@validation"],
+    "steps": ["Navigate to /checkout", "Leave email empty", "Click Submit"],
+    "expected": ["Validation error message is displayed"],
+    "source": "jira"
+  }
+]
