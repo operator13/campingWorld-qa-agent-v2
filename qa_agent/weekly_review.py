@@ -256,8 +256,15 @@ def write_weekly_review(
     if not filepath.exists():
         filepath.write_text("# Weekly Reviews\n")
 
-    with open(filepath, "a") as f:
-        f.write("\n" + review["markdown"])
+    try:
+        import fcntl
+        with open(filepath, "a") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            f.write("\n" + review["markdown"])
+            f.flush()
+    except ImportError:
+        with open(filepath, "a") as f:
+            f.write("\n" + review["markdown"])
 
     logger.info("Weekly review written for %s (grade: %s)", review["date"], review["grade"])
 

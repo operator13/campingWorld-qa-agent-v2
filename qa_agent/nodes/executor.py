@@ -67,18 +67,9 @@ async def executor(state: QAState) -> dict:
 
     # If this is a re-run after healing and it passed, verify the fix in memory
     if run_result.passed and state.attempts > 0:
-        # The healer recorded fixes as unverified — now mark them as verified
+        # The healer recorded fixes as unverified — mark them as verified in place
         for route in state.page_objects:
-            history = memory.get_locator_history(route)
-            for entry in history:
-                if not entry.get("success"):
-                    # Mark the most recent unverified fix as successful
-                    memory.record_locator_change(
-                        route, entry["element"],
-                        entry["old_locator"], entry["new_locator"],
-                        entry["reason"] + " (verified by re-run)", success=True,
-                    )
-                    break  # only the most recent unverified per route
+            memory.verify_unverified_fixes(route)
 
     # Increment route change count on failure (locator drift signal)
     if not run_result.passed:

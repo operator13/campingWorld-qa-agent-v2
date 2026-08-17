@@ -5,7 +5,7 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 30
+- **Occurrences:** 33
 - **Last seen:** 2026-08-17
 - **Stale after:** 2026-11-15
 
@@ -14,7 +14,7 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 4
+- **Occurrences:** 7
 - **Last seen:** 2026-08-17
 - **Stale after:** 2026-11-15
 
@@ -23,6 +23,6 @@
 - **Class:** app_defect
 - **Resolution:** defect:QA-999
 - **Routes:** /
-- **Occurrences:** 8
+- **Occurrences:** 14
 - **Last seen:** 2026-08-17
 - **Stale after:** 2026-11-15

@@ -63,25 +63,30 @@ class MetricsDB:
                 "|----|-----------|--------|------------|-------|\n"
             )
 
-    def _next_id(self, filepath: Path) -> int:
-        """Get the next auto-increment ID from a markdown table."""
-        if not filepath.exists():
-            return 1
-        content = filepath.read_text()
-        ids = re.findall(r"^\| (\d+) \|", content, re.M)
-        return max((int(i) for i in ids), default=0) + 1
+    def _append_row_with_id(self, filepath: Path, row_template: str) -> int:
+        """Atomically compute next ID and append row under lock. Returns the ID.
 
-    def _append_row(self, filepath: Path, row: str) -> None:
-        """Append a table row to a markdown file with locking."""
+        row_template should contain '{id}' which will be replaced with the actual ID.
+        """
         try:
             import fcntl
-            with open(filepath, "a") as f:
+            with open(filepath, "r+") as f:
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                content = f.read()
+                ids = re.findall(r"^\| (\d+) \|", content, re.M)
+                next_id = max((int(i) for i in ids), default=0) + 1
+                row = row_template.replace("{id}", str(next_id))
                 f.write(row)
                 f.flush()
+            return next_id
         except ImportError:
+            content = filepath.read_text() if filepath.exists() else ""
+            ids = re.findall(r"^\| (\d+) \|", content, re.M)
+            next_id = max((int(i) for i in ids), default=0) + 1
+            row = row_template.replace("{id}", str(next_id))
             with open(filepath, "a") as f:
                 f.write(row)
+            return next_id
 
     def record_run(
         self,
@@ -97,19 +102,17 @@ class MetricsDB:
     ) -> int:
         """Record a completed run. Returns the run ID."""
         filepath = self.memory_dir / "RUN_HISTORY.md"
-        run_id = self._next_id(filepath)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
         passed_str = "yes" if passed else "no"
         failed_str = ", ".join(failed_cases).replace("|", "/") if failed_cases else "—"
         goal_clean = goal[:50].replace("|", "/")
 
-        row = (
-            f"| {run_id} | {now} | {goal_clean} | {route} | {passed_str} "
+        row_template = (
+            f"| {{id}} | {now} | {goal_clean} | {route} | {passed_str} "
             f"| {failed_str} | {failure_class or '—'} | {confidence:.2f} "
             f"| {attempts} | {fingerprint or '—'} | {outcome} |\n"
         )
-        self._append_row(filepath, row)
-        return run_id
+        return self._append_row_with_id(filepath, row_template)
 
     def record_triage_call(
         self,
@@ -120,24 +123,21 @@ class MetricsDB:
     ) -> int:
         """Record a Triage classification for later audit."""
         filepath = self.memory_dir / "TRIAGE_CALLS.md"
-        triage_id = self._next_id(filepath)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
 
-        row = (
-            f"| {triage_id} | {now} | {run_id} | {failure_class} "
+        row_template = (
+            f"| {{id}} | {now} | {run_id} | {failure_class} "
             f"| {confidence:.2f} | {human_override or '—'} | — |\n"
         )
-        self._append_row(filepath, row)
-        return triage_id
+        return self._append_row_with_id(filepath, row_template)
 
     def record_escape(self, run_id: int, bug_ticket: str, route: str) -> None:
         """Record a bug that escaped a green run."""
         filepath = self.memory_dir / "ESCAPES.md"
-        escape_id = self._next_id(filepath)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
 
-        row = f"| {escape_id} | {now} | {run_id} | {bug_ticket} | {route} |\n"
-        self._append_row(filepath, row)
+        row_template = f"| {{id}} | {now} | {run_id} | {bug_ticket} | {route} |\n"
+        self._append_row_with_id(filepath, row_template)
 
     def mark_triage_correctness(self, triage_id: int, was_correct: bool) -> None:
         """Mark whether a Triage call was correct (from human audit)."""
@@ -145,20 +145,35 @@ class MetricsDB:
         if not filepath.exists():
             return
 
-        content = filepath.read_text()
-        lines = content.split("\n")
         correct_str = "yes" if was_correct else "no"
         target = f"| {triage_id} |"
 
-        for i, line in enumerate(lines):
-            if line.startswith(target):
-                # Replace the last "—" (was_correct column) with yes/no
-                parts = line.rsplit("| — |", 1)
-                if len(parts) == 2:
-                    lines[i] = parts[0] + f"| {correct_str} |"
-                break
-
-        filepath.write_text("\n".join(lines))
+        try:
+            import fcntl
+            with open(filepath, "r+") as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                content = f.read()
+                lines = content.split("\n")
+                for i, line in enumerate(lines):
+                    if line.startswith(target):
+                        parts = line.rsplit("| — |", 1)
+                        if len(parts) == 2:
+                            lines[i] = parts[0] + f"| {correct_str} |"
+                        break
+                f.seek(0)
+                f.write("\n".join(lines))
+                f.truncate()
+                f.flush()
+        except ImportError:
+            content = filepath.read_text()
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if line.startswith(target):
+                    parts = line.rsplit("| — |", 1)
+                    if len(parts) == 2:
+                        lines[i] = parts[0] + f"| {correct_str} |"
+                    break
+            filepath.write_text("\n".join(lines))
 
     def _parse_runs(self, since: str | None = None) -> list[dict[str, Any]]:
         """Parse all runs from RUN_HISTORY.md, optionally filtered by timestamp."""

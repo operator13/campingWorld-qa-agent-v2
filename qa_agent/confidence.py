@@ -230,13 +230,17 @@ def apply_guards(
     # Guard 2: Humans have overridden 2+ times → cap at 0.6
     decisions = memory.get_triage_calibration(n=20)
     normalized = normalize_error(error)
+    norm_words = set(normalized.lower().split())
     override_count = 0
     for d in decisions:
         d_norm = normalize_error(d.get("error_summary", ""))
-        # Require substantial overlap (>50% of shorter string)
-        shorter_len = min(len(normalized), len(d_norm))
-        if shorter_len > 0 and (d_norm in normalized or normalized in d_norm):
-            # Check it's actually an override, not agreement
+        d_words = set(d_norm.lower().split())
+        # Word-level matching: require >50% overlap with at least 3 words
+        if not norm_words or not d_words:
+            continue
+        intersection = norm_words & d_words
+        smaller = min(len(norm_words), len(d_words))
+        if smaller >= 3 and len(intersection) / smaller >= 0.5:
             guess = d.get("triage_guess", "")
             verdict = d.get("human_verdict", "")
             is_agree = (guess == "locator_drift" and verdict == "heal") or \

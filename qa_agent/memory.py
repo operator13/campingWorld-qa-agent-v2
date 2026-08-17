@@ -1,8 +1,7 @@
 """Agent memory — markdown-backed persistent store for cross-run learning.
 
 Git-tracked markdown files that agents read/write so past experience
-informs future decisions. Separate from metrics (SQLite) which handles
-aggregation queries.
+informs future decisions. All storage is markdown — no databases.
 """
 
 from __future__ import annotations
@@ -92,10 +91,9 @@ class MemoryStore:
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 f.write(content)
                 f.flush()
-                # Lock releases automatically when f closes — no explicit LOCK_UN
         except ImportError:
-            # Windows: no fcntl available — write without locking
-            self._write_locked(filepath,content)
+            with open(filepath, "w") as f:
+                f.write(content)
 
     @staticmethod
     def _append_locked(filepath: Path, text: str) -> None:
@@ -110,13 +108,16 @@ class MemoryStore:
             with open(filepath, "a") as f:
                 f.write(text)
 
-    def _read_modify_write(self, filepath: Path, modifier: "Callable[[str], str]") -> None:
+    def _read_modify_write(self, filepath: Path, modifier: Callable[[str], str]) -> None:
         """Atomically read, modify, and write a file under lock.
 
         Prevents TOCTOU races by holding the lock across the entire read-modify-write.
         """
         try:
             import fcntl
+            # Create file if it doesn't exist
+            if not filepath.exists():
+                filepath.write_text("")
             with open(filepath, "r+") as f:
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 content = f.read()
@@ -127,7 +128,8 @@ class MemoryStore:
                 f.flush()
         except ImportError:
             content = filepath.read_text() if filepath.exists() else ""
-            self._write_locked(filepath,modifier(content))
+            with open(filepath, "w") as f:
+                f.write(modifier(content))
 
     @staticmethod
     def _sanitize_for_prompt(text: str) -> str:
@@ -171,30 +173,23 @@ class MemoryStore:
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         success_str = "yes" if success else "no"
         entry = f"- {now}: `{old_locator}` → `{new_locator}` | reason: {reason} | success: {success_str}\n"
-
-        # Read existing content or start fresh
-        if filepath.exists():
-            content = filepath.read_text()
-        else:
-            content = f"# Locator History: {route}\n\n"
-
-        # Find or create the element section
         section_header = f"## {element}"
-        if section_header in content:
-            # Append under existing section
-            idx = content.index(section_header)
-            # Find the end of this section (next ## or EOF)
-            next_section = content.find("\n## ", idx + len(section_header))
-            if next_section == -1:
-                content = content.rstrip() + "\n" + entry
-            else:
-                # Ensure entry ends with newline before next section
-                content = content[:next_section].rstrip() + "\n" + entry + content[next_section:]
-        else:
-            # Add new section
-            content = content.rstrip() + f"\n\n{section_header}\n{entry}"
+        default = f"# Locator History: {route}\n\n"
 
-        self._write_locked(filepath, content)
+        def _modify(content: str) -> str:
+            if not content:
+                content = default
+            if section_header in content:
+                idx = content.index(section_header)
+                next_section = content.find("\n## ", idx + len(section_header))
+                if next_section == -1:
+                    return content.rstrip() + "\n" + entry
+                return content[:next_section].rstrip() + "\n" + entry + content[next_section:]
+            return content.rstrip() + f"\n\n{section_header}\n{entry}"
+
+        if not filepath.exists():
+            self._write_locked(filepath, default)
+        self._read_modify_write(filepath, _modify)
         logger.info("Memory: recorded locator change for %s → %s", route, element)
 
     def get_locator_history(self, route: str, element_name: str | None = None) -> list[dict[str, Any]]:
@@ -250,22 +245,42 @@ class MemoryStore:
         if not filepath.exists():
             return
 
-        content = filepath.read_text()
         old_pattern = f"`{old_locator}` →"
-        if old_pattern not in content:
+        element_header = f"## {element}"
+
+        def _modify(content: str) -> str:
+            if old_pattern not in content:
+                return content
+            lines = content.split("\n")
+            in_target_section = False
+            for i, line in enumerate(lines):
+                if line.strip().startswith("## "):
+                    in_target_section = line.strip() == element_header
+                if in_target_section and old_pattern in line and "success: yes" in line:
+                    lines[i] = line.replace("success: yes", "success: no")
+            return "\n".join(lines)
+
+        self._read_modify_write(filepath, _modify)
+        logger.info("Memory: marked fix as failed for %s → %s", route, element)
+
+    def verify_unverified_fixes(self, route: str) -> None:
+        """Mark all unverified (success: no) fixes for a route as verified (success: yes).
+
+        Called by the Executor after a successful re-run confirms the fix works.
+        Updates entries in place instead of appending duplicates.
+        """
+        if not self._enabled("healer"):
             return
 
-        # Only modify entries within the correct element section
-        lines = content.split("\n")
-        in_target_section = False
-        element_header = f"## {element}"
-        for i, line in enumerate(lines):
-            if line.strip().startswith("## "):
-                in_target_section = line.strip() == element_header
-            if in_target_section and old_pattern in line and "success: yes" in line:
-                lines[i] = line.replace("success: yes", "success: no")
-        self._write_locked(filepath, "\n".join(lines))
-        logger.info("Memory: marked fix as failed for %s → %s", route, element)
+        filepath = self._locator_file(route)
+        if not filepath.exists():
+            return
+
+        def _modify(content: str) -> str:
+            return content.replace("success: no", "success: yes")
+
+        self._read_modify_write(filepath, _modify)
+        logger.info("Memory: verified unverified fixes for %s", route)
 
     @staticmethod
     def _parse_locator_entry(line: str, element: str) -> dict[str, Any] | None:
@@ -412,24 +427,24 @@ class MemoryStore:
 
     def _increment_failure_occurrence(self, filepath: Path, fp_id: str, date: str) -> None:
         """Increment the occurrence count and update last_seen for a failure pattern."""
-        content = filepath.read_text()
-        lines = content.split("\n")
+        def _modify(content: str) -> str:
+            lines = content.split("\n")
+            in_target = False
+            for i, line in enumerate(lines):
+                if line.strip().startswith(f"## {fp_id}"):
+                    in_target = True
+                elif line.strip().startswith("## FP-") and in_target:
+                    break
+                elif in_target and "**Occurrences:**" in line:
+                    count_match = re.search(r"\d+", line)
+                    if count_match:
+                        new_count = int(count_match.group()) + 1
+                        lines[i] = f"- **Occurrences:** {new_count}"
+                elif in_target and "**Last seen:**" in line:
+                    lines[i] = f"- **Last seen:** {date}"
+            return "\n".join(lines)
 
-        in_target = False
-        for i, line in enumerate(lines):
-            if line.strip().startswith(f"## {fp_id}"):
-                in_target = True
-            elif line.strip().startswith("## FP-") and in_target:
-                break
-            elif in_target and "**Occurrences:**" in line:
-                count_match = re.search(r"\d+", line)
-                if count_match:
-                    new_count = int(count_match.group()) + 1
-                    lines[i] = f"- **Occurrences:** {new_count}"
-            elif in_target and "**Last seen:**" in line:
-                lines[i] = f"- **Last seen:** {date}"
-
-        self._write_locked(filepath,"\n".join(lines))
+        self._read_modify_write(filepath, _modify)
 
     # -------------------------------------------------------------------
     # Human Decisions
@@ -654,32 +669,32 @@ class MemoryStore:
         if not filepath.exists():
             return
 
-        content = filepath.read_text()
-        section_header = f"## {route}"
-        if section_header not in content:
-            return
+        def _modify(content: str) -> str:
+            section_header = f"## {route}"
+            if section_header not in content:
+                return content
 
-        lines = content.split("\n")
-        for i, line in enumerate(lines):
-            if "**Changes:**" in line and self._in_route_section(lines, i, route):
-                count_match = re.search(r"\d+", line)
-                if count_match:
-                    new_count = int(count_match.group()) + 1
-                    lines[i] = f"- **Changes:** {new_count}"
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if "**Changes:**" in line and self._in_route_section(lines, i, route):
+                    count_match = re.search(r"\d+", line)
+                    if count_match:
+                        new_count = int(count_match.group()) + 1
+                        lines[i] = f"- **Changes:** {new_count}"
 
-                    # Recalculate frequency
-                    first_seen = self._find_field_in_section(lines, i, "First seen")
-                    if first_seen:
-                        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                        weeks = max(1, (datetime.strptime(now, "%Y-%m-%d") - datetime.strptime(first_seen, "%Y-%m-%d")).days / 7)
-                        freq = round(new_count / weeks, 1)
-                        for j, l2 in enumerate(lines):
-                            if "**Change frequency:**" in l2 and self._in_route_section(lines, j, route):
-                                lines[j] = f"- **Change frequency:** {freq}/week"
-                                break
-                break
+                        first_seen = self._find_field_in_section(lines, i, "First seen")
+                        if first_seen:
+                            now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                            weeks = max(1, (datetime.strptime(now, "%Y-%m-%d") - datetime.strptime(first_seen, "%Y-%m-%d")).days / 7)
+                            freq = round(new_count / weeks, 1)
+                            for j, l2 in enumerate(lines):
+                                if "**Change frequency:**" in l2 and self._in_route_section(lines, j, route):
+                                    lines[j] = f"- **Change frequency:** {freq}/week"
+                                    break
+                    break
+            return "\n".join(lines)
 
-        self._write_locked(filepath,"\n".join(lines))
+        self._read_modify_write(filepath, _modify)
 
     def get_route_info(self, route: str) -> dict[str, Any] | None:
         """Read info for a specific route from APP_STRUCTURE.md."""
@@ -840,22 +855,26 @@ class MemoryStore:
 
         # Check if test_id already exists
         if f"| {test_id} |" in content:
-            # Update existing row
-            lines = content.split("\n")
-            for i, line in enumerate(lines):
-                if line.startswith(f"| {test_id} |"):
-                    row = self._parse_stability_row(line)
-                    row["runs"] += 1
-                    if passed:
-                        row["passes"] += 1
-                    else:
-                        row["fails"] += 1
-                        row["last_failure"] = failure_class or "unknown"
-                    row["flakiness"] = round(row["fails"] / row["runs"], 2) if row["runs"] > 0 else 0.0
-                    row["last_run"] = now
-                    lines[i] = self._format_stability_row(row)
-                    break
-            self._write_locked(filepath,"\n".join(lines))
+            # Update existing row atomically
+            def _modify(c: str) -> str:
+                lines = c.split("\n")
+                for i, line in enumerate(lines):
+                    if line.startswith(f"| {test_id} |"):
+                        row = self._parse_stability_row(line)
+                        if not row:
+                            break
+                        row["runs"] += 1
+                        if passed:
+                            row["passes"] += 1
+                        else:
+                            row["fails"] += 1
+                            row["last_failure"] = failure_class or "unknown"
+                        row["flakiness"] = round(row["fails"] / row["runs"], 2) if row["runs"] > 0 else 0.0
+                        row["last_run"] = now
+                        lines[i] = self._format_stability_row(row)
+                        break
+                return "\n".join(lines)
+            self._read_modify_write(filepath, _modify)
         else:
             # Append new row
             runs = 1
@@ -1208,6 +1227,8 @@ class MemoryStore:
                 in_scoreboard = False
             new_lines.append(line)
 
+        self._write_locked(filepath, "\n".join(new_lines))
+
     def clear_auto_generated_insights(self) -> None:
         """Remove auto-generated route insight entries from LESSONS.md."""
         filepath = self.memory_dir / "LESSONS.md"
@@ -1215,7 +1236,6 @@ class MemoryStore:
             return
 
         content = filepath.read_text()
-        # Remove lines containing "(source: auto-generated)"
         lines = content.split("\n")
         new_lines = [l for l in lines if "*(source: auto-generated)*" not in l]
         self._write_locked(filepath, "\n".join(new_lines))
@@ -1420,14 +1440,16 @@ class MemoryStore:
             return
         filepath = self.memory_dir / "HEALER_STATS.md"
         if not filepath.exists():
-            self._write_locked(filepath,"# Healer Stats\n\ncache_hits: 0\nllm_calls: 0\n")
+            self._write_locked(filepath, "# Healer Stats\n\ncache_hits: 0\nllm_calls: 0\n")
 
-        content = filepath.read_text()
-        if event == "cache_hit":
-            content = re.sub(r"cache_hits: (\d+)", lambda m: f"cache_hits: {int(m.group(1)) + 1}", content)
-        elif event == "llm_call":
-            content = re.sub(r"llm_calls: (\d+)", lambda m: f"llm_calls: {int(m.group(1)) + 1}", content)
-        self._write_locked(filepath,content)
+        def _modify(content: str) -> str:
+            if event == "cache_hit":
+                return re.sub(r"cache_hits: (\d+)", lambda m: f"cache_hits: {int(m.group(1)) + 1}", content)
+            elif event == "llm_call":
+                return re.sub(r"llm_calls: (\d+)", lambda m: f"llm_calls: {int(m.group(1)) + 1}", content)
+            return content
+
+        self._read_modify_write(filepath, _modify)
 
     def get_healer_cache_hit_rate(self) -> float:
         """Return the healer cache hit rate (hits / total attempts)."""
