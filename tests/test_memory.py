@@ -412,3 +412,217 @@ class TestHealerMemoryIntegration:
         # Check memory was written
         history = store.get_locator_history("/checkout")
         assert len(history) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Phase M2: Human Decisions
+# ---------------------------------------------------------------------------
+
+class TestHumanDecisions:
+    def test_record_and_read(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_human_decision(
+            triage_guess="locator_drift",
+            confidence=0.60,
+            verdict="heal",
+            error_summary="Timeout on Submit button",
+            reasoning="Button was renamed, not removed",
+            route="/checkout",
+        )
+        decisions = store.get_triage_calibration(n=10)
+        assert len(decisions) == 1
+        assert decisions[0]["triage_guess"] == "locator_drift"
+        assert decisions[0]["human_verdict"] == "heal"
+        assert decisions[0]["reasoning"] == "Button was renamed, not removed"
+
+    def test_multiple_decisions(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_human_decision("locator_drift", 0.6, "heal", "err1")
+        store.record_human_decision("app_defect", 0.5, "defect", "err2")
+        store.record_human_decision("unknown", 0.4, "heal", "err3")
+
+        decisions = store.get_triage_calibration(n=10)
+        assert len(decisions) == 3
+        # Most recent first
+        assert decisions[0]["human_verdict"] == "heal"
+        assert decisions[1]["human_verdict"] == "defect"
+
+    def test_respects_n_limit(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        for i in range(10):
+            store.record_human_decision("unknown", 0.5, "heal", f"err{i}")
+
+        decisions = store.get_triage_calibration(n=3)
+        assert len(decisions) == 3
+
+    def test_creates_file_with_header(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_human_decision("locator_drift", 0.5, "heal", "err")
+
+        filepath = tmp_path / "human_decisions.md"
+        assert filepath.exists()
+        content = filepath.read_text()
+        assert "| Date" in content
+        assert "|---" in content
+
+    def test_sanitizes_pipes_in_fields(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_human_decision("drift", 0.5, "heal", "error | with | pipes", "reason | pipes")
+
+        decisions = store.get_triage_calibration()
+        assert len(decisions) == 1
+        # Pipes should be replaced so they don't break the table
+        assert "|" not in decisions[0]["error_summary"]
+
+    def test_disabled_by_kill_switch(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TRIAGE_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_human_decision("drift", 0.5, "heal", "err")
+        assert store.get_triage_calibration() == []
+
+
+class TestTriageCalibrationContext:
+    def test_builds_context_with_corrections(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        # A correction (triage was wrong)
+        store.record_human_decision("locator_drift", 0.6, "defect", "Submit missing", "Button removed entirely")
+        # A confirmation (triage was right)
+        store.record_human_decision("app_defect", 0.8, "defect", "500 error")
+
+        context = store.build_triage_calibration_context()
+        assert "Corrections" in context
+        assert "Confirmations" in context
+        assert "Submit missing" in context
+
+    def test_empty_when_no_decisions(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        context = store.build_triage_calibration_context()
+        assert context == ""
+
+    def test_empty_when_disabled(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TRIAGE_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        context = store.build_triage_calibration_context()
+        assert context == ""
+
+    def test_respects_token_cap(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        for i in range(20):
+            store.record_human_decision("drift", 0.5, "heal" if i % 2 else "defect", f"long error message number {i} " * 5)
+
+        context = store.build_triage_calibration_context(max_tokens=100)
+        assert len(context) <= 500
+
+
+# ---------------------------------------------------------------------------
+# Phase M2: Human Review integration
+# ---------------------------------------------------------------------------
+
+class TestHumanReviewMemory:
+    def test_records_decision_on_heal(self, tmp_path):
+        """Human Review records the decision in memory."""
+        from qa_agent.surfaces.human_review import human_review
+        from qa_agent.state import QAState
+
+        store = MemoryStore(memory_dir=tmp_path)
+        state = QAState(
+            goal="test",
+            failure_class="unknown",
+            confidence=0.5,
+            error="Some error occurred",
+        )
+
+        with patch("qa_agent.surfaces.human_review.interrupt", return_value={"decision": "heal", "reasoning": "locator renamed"}), \
+             patch("qa_agent.surfaces.human_review.MemoryStore", lambda: store):
+            human_review(state)
+
+        decisions = store.get_triage_calibration()
+        assert len(decisions) == 1
+        assert decisions[0]["human_verdict"] == "heal"
+        assert decisions[0]["reasoning"] == "locator renamed"
+
+    def test_records_decision_on_defect(self, tmp_path):
+        from qa_agent.surfaces.human_review import human_review
+        from qa_agent.state import QAState
+
+        store = MemoryStore(memory_dir=tmp_path)
+        state = QAState(goal="test", failure_class="unknown", confidence=0.5)
+
+        with patch("qa_agent.surfaces.human_review.interrupt", return_value={"decision": "defect"}), \
+             patch("qa_agent.surfaces.human_review.MemoryStore", lambda: store):
+            human_review(state)
+
+        decisions = store.get_triage_calibration()
+        assert len(decisions) == 1
+        assert decisions[0]["human_verdict"] == "defect"
+
+
+# ---------------------------------------------------------------------------
+# Phase M2: Triage integration
+# ---------------------------------------------------------------------------
+
+class TestTriageMemory:
+    @pytest.mark.asyncio
+    async def test_triage_injects_calibration(self, tmp_path):
+        """Triage prompt includes calibration context from memory."""
+        from qa_agent.nodes.triage import triage
+        from qa_agent.schemas.models import RunResult
+        from qa_agent.state import QAState
+
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_human_decision("locator_drift", 0.6, "defect", "Submit gone", "Element removed")
+
+        mock_response = AsyncMock()
+        mock_response.content = '{"failure_class": "app_defect", "confidence": 0.85, "reasoning": "learned from past"}'
+
+        state = QAState(
+            goal="test",
+            error="TimeoutError on Submit button",
+            run_results=RunResult(passed=False, failed_cases=["tc-1"], logs="error"),
+        )
+
+        with patch("qa_agent.nodes.triage.MemoryStore", lambda: store), \
+             patch("qa_agent.nodes.triage.ChatAnthropic") as MockChat:
+            mock_model = AsyncMock()
+            mock_model.ainvoke = AsyncMock(return_value=mock_response)
+            MockChat.return_value = mock_model
+            result = await triage(state)
+
+            # Verify calibration was in the prompt
+            call_args = mock_model.ainvoke.call_args[0][0]
+            human_msg = call_args[1].content
+            assert "Corrections" in human_msg or "Similar past failure" in human_msg
+
+        assert result["failure_class"] == "app_defect"
+
+    @pytest.mark.asyncio
+    async def test_triage_finds_similar_failure(self, tmp_path):
+        """Triage includes similar past failure hint in prompt."""
+        from qa_agent.nodes.triage import triage
+        from qa_agent.schemas.models import RunResult
+        from qa_agent.state import QAState
+
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_failure("TimeoutError on Submit button", "locator_drift", "healed", "/checkout")
+
+        mock_response = AsyncMock()
+        mock_response.content = '{"failure_class": "locator_drift", "confidence": 0.9}'
+
+        state = QAState(
+            goal="test",
+            error="TimeoutError on Submit button again",
+            run_results=RunResult(passed=False, failed_cases=["tc-1"], logs="err"),
+        )
+
+        with patch("qa_agent.nodes.triage.MemoryStore", lambda: store), \
+             patch("qa_agent.nodes.triage.ChatAnthropic") as MockChat:
+            mock_model = AsyncMock()
+            mock_model.ainvoke = AsyncMock(return_value=mock_response)
+            MockChat.return_value = mock_model
+            result = await triage(state)
+
+            call_args = mock_model.ainvoke.call_args[0][0]
+            human_msg = call_args[1].content
+            assert "Similar past failure" in human_msg
+
+        assert result["failure_class"] == "locator_drift"

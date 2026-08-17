@@ -355,6 +355,139 @@ class MemoryStore:
         filepath.write_text("\n".join(lines))
 
     # -------------------------------------------------------------------
+    # Human Decisions
+    # -------------------------------------------------------------------
+
+    def record_human_decision(
+        self,
+        triage_guess: str,
+        confidence: float,
+        verdict: str,
+        error_summary: str = "",
+        reasoning: str = "",
+        route: str = "",
+    ) -> None:
+        """Record a Human Review verdict to human_decisions.md."""
+        if not self._enabled("triage"):
+            return
+
+        filepath = self.memory_dir / "human_decisions.md"
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        if not filepath.exists():
+            filepath.write_text(
+                "# Human Review Decisions\n\n"
+                "| Date | Route | Error (summary) | Triage guess | Confidence | Human verdict | Reasoning |\n"
+                "|------|-------|----------------|--------------|------------|---------------|----------|\n"
+            )
+
+        # Sanitize fields for markdown table (no pipes or newlines)
+        error_clean = error_summary.replace("|", "/").replace("\n", " ")[:100]
+        reasoning_clean = reasoning.replace("|", "/").replace("\n", " ")[:100]
+
+        row = f"| {now} | {route} | {error_clean} | {triage_guess} | {confidence:.2f} | {verdict} | {reasoning_clean} |\n"
+        with open(filepath, "a") as f:
+            f.write(row)
+
+        logger.info("Memory: recorded human decision — %s → %s", triage_guess, verdict)
+
+    def get_triage_calibration(self, n: int = 10) -> list[dict[str, Any]]:
+        """Read the last N human decisions for Triage calibration.
+
+        Returns most recent first.
+        """
+        if not self._enabled("triage"):
+            return []
+
+        filepath = self.memory_dir / "human_decisions.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        entries = []
+
+        for line in content.split("\n"):
+            line = line.strip()
+            if not line.startswith("|") or line.startswith("| Date") or line.startswith("|---"):
+                continue
+
+            # Split on | and drop the first/last empty strings from leading/trailing |
+            parts = [p.strip() for p in line.split("|")]
+            # A row like "| a | b | c |" splits to ['', 'a', 'b', 'c', '']
+            if len(parts) >= 2:
+                parts = parts[1:-1]  # drop empty first/last
+
+            if len(parts) >= 6:
+                conf_str = parts[4].strip()
+                try:
+                    conf = float(conf_str)
+                except ValueError:
+                    conf = 0.0
+                entries.append({
+                    "date": parts[0],
+                    "route": parts[1],
+                    "error_summary": parts[2],
+                    "triage_guess": parts[3],
+                    "confidence": conf,
+                    "human_verdict": parts[5],
+                    "reasoning": parts[6] if len(parts) > 6 else "",
+                })
+
+        # Return last N, most recent first
+        return list(reversed(entries[-n:]))
+
+    def build_triage_calibration_context(self, max_tokens: int = 500) -> str:
+        """Build calibration context for injection into the Triage prompt.
+
+        Includes recent human corrections as few-shot examples.
+        """
+        if not self._enabled("triage"):
+            return ""
+
+        decisions = self.get_triage_calibration(n=10)
+        if not decisions:
+            return ""
+
+        # Map triage_guess to human verdict space for comparison
+        # locator_drift → heal, app_defect → defect, unknown → neither
+        def _is_agreement(d: dict) -> bool:
+            guess = d["triage_guess"]
+            verdict = d["human_verdict"]
+            return (guess == "locator_drift" and verdict == "heal") or \
+                   (guess == "app_defect" and verdict == "defect")
+
+        corrections = [d for d in decisions if not _is_agreement(d)]
+        confirmations = [d for d in decisions if _is_agreement(d)]
+
+        lines = ["## Memory: Recent Human Review Decisions"]
+        lines.append("Learn from these — adjust your confidence accordingly.\n")
+
+        if corrections:
+            lines.append("**Corrections (you were wrong):**")
+            for d in corrections[:5]:
+                lines.append(
+                    f"- Error: \"{d['error_summary']}\" → You said: {d['triage_guess']} ({d['confidence']:.2f})"
+                    f" → Human corrected to: {d['human_verdict']}."
+                    + (f" Why: {d['reasoning']}" if d['reasoning'] else "")
+                )
+
+        if confirmations:
+            lines.append("\n**Confirmations (you were right):**")
+            for d in confirmations[:3]:
+                lines.append(
+                    f"- Error: \"{d['error_summary']}\" → You said: {d['triage_guess']} ({d['confidence']:.2f})"
+                    f" → Human confirmed."
+                )
+
+        result = "\n".join(lines)
+
+        char_limit = max_tokens * 4
+        if len(result) > char_limit:
+            result = result[:char_limit].rsplit("\n", 1)[0]
+
+        return result
+
+    # -------------------------------------------------------------------
     # Prompt injection helpers
     # -------------------------------------------------------------------
 
