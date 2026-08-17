@@ -116,12 +116,19 @@ def score_c2_dom_evidence(
     # If failure_class is defect and element is completely absent → 0.2
     # Partial match → 0.1
 
+    dom_lower = dom_snapshot.lower()
+    has_interactive = any(tag in dom_lower for tag in ["<button", "<input", "<a ", "<select", "role="])
+    has_error_state = any(s in dom_lower for s in ["error", "500", "404", "crash", "exception"])
+
     if failure_class == "locator_drift":
-        # DOM exists — element likely renamed (not absent)
-        return 0.2
+        if has_interactive:
+            return 0.2  # DOM has interactive elements — likely renamed, not removed
+        return 0.1  # DOM exists but no clear evidence of the element
     elif failure_class == "app_defect":
-        if "error" in dom_snapshot.lower() or "500" in dom_snapshot:
+        if has_error_state:
             return 0.2  # DOM shows error state
+        if not has_interactive:
+            return 0.2  # DOM is empty/broken — element completely absent
         return 0.1
 
     return 0.1
@@ -221,11 +228,19 @@ def apply_guards(
     # Guard 2: Humans have overridden 2+ times → cap at 0.6
     decisions = memory.get_triage_calibration(n=20)
     normalized = normalize_error(error)
-    override_count = sum(
-        1 for d in decisions
-        if normalized[:30] in normalize_error(d.get("error_summary", ""))
-        and d.get("triage_guess") != d.get("human_verdict")
-    )
+    override_count = 0
+    for d in decisions:
+        d_norm = normalize_error(d.get("error_summary", ""))
+        # Require substantial overlap (>50% of shorter string)
+        shorter_len = min(len(normalized), len(d_norm))
+        if shorter_len > 0 and (d_norm in normalized or normalized in d_norm):
+            # Check it's actually an override, not agreement
+            guess = d.get("triage_guess", "")
+            verdict = d.get("human_verdict", "")
+            is_agree = (guess == "locator_drift" and verdict == "heal") or \
+                       (guess == "app_defect" and verdict == "defect")
+            if not is_agree:
+                override_count += 1
     if override_count >= 2:
         if score > 0.6:
             score = 0.6

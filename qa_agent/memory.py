@@ -78,6 +78,15 @@ class MemoryStore:
         self.locators_dir = self.memory_dir / "locators"
         self.locators_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _write_locked(filepath: Path, content: str) -> None:
+        """Write to a file with an exclusive lock (prevents concurrent corruption)."""
+        import fcntl
+        with open(filepath, "w") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            f.write(content)
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
     def _enabled(self, node: str | None = None) -> bool:
         """Check if memory is enabled (globally and per-node)."""
         if os.getenv("MEMORY_ENABLED", "true").lower() != "true":
@@ -131,12 +140,13 @@ class MemoryStore:
             if next_section == -1:
                 content = content.rstrip() + "\n" + entry
             else:
-                content = content[:next_section] + entry + content[next_section:]
+                # Ensure entry ends with newline before next section
+                content = content[:next_section].rstrip() + "\n" + entry + content[next_section:]
         else:
             # Add new section
             content = content.rstrip() + f"\n\n{section_header}\n{entry}"
 
-        filepath.write_text(content)
+        self._write_locked(filepath, content)
         logger.info("Memory: recorded locator change for %s → %s", route, element)
 
     def get_locator_history(self, route: str, element_name: str | None = None) -> list[dict[str, Any]]:
@@ -193,28 +203,23 @@ class MemoryStore:
             return
 
         content = filepath.read_text()
-        # Find the entry with this old_locator and success: yes, change to success: no
         old_pattern = f"`{old_locator}` →"
-        if old_pattern in content:
-            content = content.replace(
-                f"{old_pattern}",
-                f"{old_pattern}",  # keep the locator
-            )
-            # Replace the last "success: yes" on lines containing this locator
-            lines = content.split("\n")
-            for i, line in enumerate(lines):
-                if old_pattern.replace("`", "`") in line and "success: yes" in line:
-                    lines[i] = line.replace("success: yes", "success: no")
-            content = "\n".join(lines)
-            filepath.write_text(content)
-            logger.info("Memory: marked fix as failed for %s → %s", route, element)
+        if old_pattern not in content:
+            return
+
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            if old_pattern in line and "success: yes" in line:
+                lines[i] = line.replace("success: yes", "success: no")
+        filepath.write_text("\n".join(lines))
+        logger.info("Memory: marked fix as failed for %s → %s", route, element)
 
     @staticmethod
     def _parse_locator_entry(line: str, element: str) -> dict[str, Any] | None:
         """Parse a locator history line into a dict."""
         # Format: - 2026-07-18: `old` → `new` | reason: text | success: yes
         match = re.match(
-            r"- (\d{4}-\d{2}-\d{2}): `([^`]+)` → `([^`]+)` \| reason: (.*?) \| success: (yes|no)",
+            r"- (\d{4}-\d{2}-\d{2}): `(.+?)` → `(.+?)` \| reason: (.*?) \| success: (yes|no)",
             line,
         )
         if not match:
@@ -272,7 +277,7 @@ class MemoryStore:
         )
 
         content = content.rstrip() + "\n" + entry
-        filepath.write_text(content)
+        self._write_locked(filepath, content)
         logger.info("Memory: recorded failure pattern %s", fp_id)
 
     def find_similar_failure(self, error_signature: str) -> dict[str, Any] | None:
@@ -293,8 +298,12 @@ class MemoryStore:
 
         for pattern in patterns:
             stored_sig = pattern.get("signature", "")
-            # Substring match in either direction
-            if stored_sig in normalized or normalized in stored_sig:
+            # Substring match — require minimum 20 chars overlap to avoid false positives
+            shorter = min(len(stored_sig), len(normalized))
+            if shorter < 20:
+                if stored_sig == normalized:
+                    return pattern
+            elif stored_sig in normalized or normalized in stored_sig:
                 return pattern
 
         return None
@@ -449,14 +458,20 @@ class MemoryStore:
             return ""
 
         # Map triage_guess to human verdict space for comparison
-        # locator_drift → heal, app_defect → defect, unknown → neither
+        # locator_drift → heal, app_defect → defect, unknown → neutral (not a correction)
         def _is_agreement(d: dict) -> bool:
             guess = d["triage_guess"]
             verdict = d["human_verdict"]
             return (guess == "locator_drift" and verdict == "heal") or \
                    (guess == "app_defect" and verdict == "defect")
 
-        corrections = [d for d in decisions if not _is_agreement(d)]
+        def _is_correction(d: dict) -> bool:
+            guess = d["triage_guess"]
+            if guess == "unknown":
+                return False  # "unknown" is honest uncertainty, not a wrong call
+            return not _is_agreement(d)
+
+        corrections = [d for d in decisions if _is_correction(d)]
         confirmations = [d for d in decisions if _is_agreement(d)]
 
         lines = ["## Memory: Recent Human Review Decisions"]
@@ -700,10 +715,24 @@ class MemoryStore:
 
     @staticmethod
     def _find_field_in_section(lines: list[str], line_idx: int, field: str) -> str | None:
-        """Find a field value in the same route section as line_idx."""
+        """Find a field value in the same route section as line_idx.
+
+        Searches both upward and downward from line_idx within the section.
+        """
+        # Find section boundaries
+        section_start = 0
+        section_end = len(lines)
         for i in range(line_idx, -1, -1):
             if lines[i].strip().startswith("## "):
+                section_start = i
                 break
+        for i in range(line_idx + 1, len(lines)):
+            if lines[i].strip().startswith("## "):
+                section_end = i
+                break
+
+        # Search within section
+        for i in range(section_start, section_end):
             if f"**{field}:**" in lines[i]:
                 m = re.search(r":\*\*\s*([\d-]+)", lines[i])
                 return m.group(1) if m else None
@@ -1082,6 +1111,33 @@ class MemoryStore:
 
         return lessons
 
+    def clear_pattern_scoreboard(self) -> None:
+        """Remove all data rows from the pattern scoreboard table in LESSONS.md."""
+        filepath = self.memory_dir / "LESSONS.md"
+        if not filepath.exists():
+            return
+
+        content = filepath.read_text()
+        lines = content.split("\n")
+        new_lines = []
+        in_scoreboard = False
+
+        for line in lines:
+            if "| Pattern |" in line:
+                in_scoreboard = True
+                new_lines.append(line)
+                continue
+            if in_scoreboard and line.strip().startswith("|---"):
+                new_lines.append(line)
+                continue
+            if in_scoreboard and line.strip().startswith("| "):
+                continue  # skip data rows
+            if in_scoreboard and not line.strip().startswith("| "):
+                in_scoreboard = False
+            new_lines.append(line)
+
+        filepath.write_text("\n".join(new_lines))
+
     def get_pattern_scoreboard(self) -> list[dict[str, str]]:
         """Read the pattern scoreboard table from LESSONS.md."""
         if not self._enabled("lessons"):
@@ -1271,6 +1327,38 @@ class MemoryStore:
         if len(result) > char_limit:
             result = result[:char_limit].rsplit("\n", 1)[0]
         return result
+
+    # -------------------------------------------------------------------
+    # Healer Cache Tracking
+    # -------------------------------------------------------------------
+
+    def record_healer_event(self, event: str) -> None:
+        """Record a healer event: 'cache_hit' or 'llm_call'."""
+        if not self._enabled("healer"):
+            return
+        filepath = self.memory_dir / "HEALER_STATS.md"
+        if not filepath.exists():
+            filepath.write_text("# Healer Stats\n\ncache_hits: 0\nllm_calls: 0\n")
+
+        content = filepath.read_text()
+        if event == "cache_hit":
+            content = re.sub(r"cache_hits: (\d+)", lambda m: f"cache_hits: {int(m.group(1)) + 1}", content)
+        elif event == "llm_call":
+            content = re.sub(r"llm_calls: (\d+)", lambda m: f"llm_calls: {int(m.group(1)) + 1}", content)
+        filepath.write_text(content)
+
+    def get_healer_cache_hit_rate(self) -> float:
+        """Return the healer cache hit rate (hits / total attempts)."""
+        filepath = self.memory_dir / "HEALER_STATS.md"
+        if not filepath.exists():
+            return 0.0
+        content = filepath.read_text()
+        hits_m = re.search(r"cache_hits: (\d+)", content)
+        calls_m = re.search(r"llm_calls: (\d+)", content)
+        hits = int(hits_m.group(1)) if hits_m else 0
+        calls = int(calls_m.group(1)) if calls_m else 0
+        total = hits + calls
+        return round(hits / total, 2) if total > 0 else 0.0
 
     # -------------------------------------------------------------------
     # Maintenance

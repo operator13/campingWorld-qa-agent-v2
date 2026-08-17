@@ -117,6 +117,7 @@ async def healer(state: QAState) -> dict:
                 for r, new_src in patched.items():
                     validate_healer_diff(state.page_objects.get(r, ""), new_src)
                 logger.info("Healer: applying known fix from memory (%s → %s)", old_locator, known_new)
+                memory.record_healer_event("cache_hit")
                 return {
                     "page_objects": {**state.page_objects, **patched},
                     "attempts": 1,
@@ -126,6 +127,7 @@ async def healer(state: QAState) -> dict:
                 memory.mark_fix_failed(route, element, old_locator)
 
     # --- Slow path: ask LLM, with memory context + lessons ---
+    memory.record_healer_event("llm_call")
     memory_context = memory.build_healer_memory_context(route, element)
     lessons_context = memory.build_lessons_context(route=route, max_tokens=250)
     if lessons_context:

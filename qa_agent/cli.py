@@ -149,11 +149,13 @@ def _memory_learn() -> None:
 
     print("=== QA Agent · Memory Learn ===\n")
 
+    # Clear old scoreboard rows before regenerating
+    store.clear_pattern_scoreboard()
+
     # Generate pattern scoreboard
     scoreboard = store.generate_pattern_scoreboard()
     if scoreboard:
         print(f"Pattern scoreboard: {len(scoreboard)} patterns found")
-        # Write to LESSONS.md
         for p in scoreboard:
             store.record_lesson(
                 "pattern",

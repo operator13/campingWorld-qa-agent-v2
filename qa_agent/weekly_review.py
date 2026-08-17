@@ -103,17 +103,8 @@ def gather_review_stats(
 
     pass_rate = passed_runs / total_runs if total_runs > 0 else 0.0
 
-    # Healer cache hit rate: approximate from locator history
-    # (entries with success=yes that were reused)
-    locator_stats = memory.stats()
-    locator_count = locator_stats["files"].get("locators", 0)
-    # Rough proxy: if we have locator entries, some were cache hits
-    healer_hit_rate = 0.0
-    if locator_count > 0 and total_runs > 0:
-        # Estimate: locator entries / (total_failed * 2) — rough proxy
-        failed_runs = total_runs - passed_runs
-        if failed_runs > 0:
-            healer_hit_rate = min(1.0, locator_count / (failed_runs * 2))
+    # Healer cache hit rate: actual tracked data
+    healer_hit_rate = memory.get_healer_cache_hit_rate()
 
     # Flaky tests
     flaky = memory.get_flaky_tests(threshold=0.2)
@@ -137,7 +128,7 @@ def gather_review_stats(
         "flaky_tests": len(flaky),
         "volatile_routes": len(volatile),
         "human_decisions": len(decisions),
-        "locator_entries": locator_count,
+        "locator_entries": memory.stats()["files"].get("locators", 0),
     }
 
 
