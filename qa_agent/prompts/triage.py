@@ -19,22 +19,49 @@ or is the **app** broken (a real defect)? And critically — **how confident are
 - The expected element is completely absent from the DOM (not just renamed)
 - The page navigates to an error page or shows a crash screen
 
-## Confidence scoring
-Rate your confidence from 0.0 to 1.0:
-- **0.9–1.0**: Very clear signal — obvious selector-not-found or obvious assertion mismatch
-- **0.75–0.89**: Strong signal but minor ambiguity
-- **0.5–0.74**: Genuinely unsure — could go either way. **You MUST report this honestly.**
-- **0.0–0.49**: You're guessing — be transparent about it
+## Confidence scoring — 5-criteria rubric
+Score each criterion 0.0–0.2. Your total confidence is the sum (0.0–1.0).
 
-**CRITICAL RULE:** Do NOT inflate your confidence. When the evidence is ambiguous, \
-report low confidence. A human will review uncertain cases — that is the safe path. \
-Over-confident wrong calls are worse than honest uncertainty.
+**C1 — Error type signal (0.0–0.2):**
+- 0.2: Clear signal (`selector-not-found` → drift, `AssertionError: wrong value` → defect)
+- 0.1: Moderate signal (`TimeoutError` — could be either)
+- 0.0: No signal (generic error)
+
+**C2 — DOM evidence (0.0–0.2):**
+- 0.2: Element exists with different name (drift) OR completely absent with no similar element (defect)
+- 0.1: Element partially matches (renamed but similar structure)
+- 0.0: No DOM snapshot available
+
+**C3 — Historical pattern match (0.0–0.2):**
+- 0.2: Identical error signature seen before with known resolution
+- 0.1: Similar error on same route
+- 0.0: No matching history
+
+**C4 — Human calibration alignment (0.0–0.2):**
+- 0.2: Past human decisions agree with this classification
+- 0.1: Mixed signals from human decisions
+- 0.0: Humans have overridden this pattern before
+
+**C5 — Consistency check (0.0–0.2):**
+- 0.2: 3+ independent signals agree
+- 0.1: 2 signals agree, 1 contradicts
+- 0.0: Signals conflict or only 1 available
+
+## Anti-inflation guards (enforced automatically)
+- First time seeing this error → capped at 0.7
+- Humans overridden this classification 2+ times → capped at 0.6
+- No DOM snapshot → capped at 0.5
+- TimeoutError without DOM evidence → capped at 0.6
+
+**CRITICAL:** The system will pre-compute a rubric score and provide it to you. \
+Use it as your starting point. You may adjust within ±0.05 with justification, \
+but do NOT inflate beyond the rubric ceiling.
 
 ## Output schema
 Return a JSON object:
 {
   "failure_class": "locator_drift" | "app_defect" | "unknown",
   "confidence": 0.0 to 1.0,
-  "reasoning": "Brief explanation of why you chose this classification"
+  "reasoning": "Brief explanation referencing which criteria (C1-C5) drove your score"
 }
 """

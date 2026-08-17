@@ -16,6 +16,7 @@ from typing import Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from qa_agent.confidence import score_confidence
 from qa_agent.config import get_model
 from qa_agent.memory import MemoryStore
 from qa_agent.prompts.triage import SYSTEM_PROMPT
@@ -51,6 +52,14 @@ async def triage(state: QAState) -> dict:
     if lessons_context:
         calibration_context = (calibration_context + "\n\n" + lessons_context).strip()
 
+    # Pre-compute rubric score (structured confidence)
+    rubric_breakdown = score_confidence(
+        error=state.error or "",
+        failure_class="unknown",  # pre-score before LLM decides
+        dom_snapshot=state.dom_snapshot,
+        memory=memory,
+    )
+
     model = ChatAnthropic(
         model=get_model("triage"),
         temperature=0,
@@ -59,20 +68,40 @@ async def triage(state: QAState) -> dict:
 
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=_build_prompt(state, similar=similar, calibration=calibration_context)),
+        HumanMessage(content=_build_prompt(
+            state,
+            similar=similar,
+            calibration=calibration_context,
+            rubric_breakdown=rubric_breakdown.to_prompt_string(),
+        )),
     ]
 
     response = await model.ainvoke(messages)
     result = _parse_response(response)
 
     failure_class = result.get("failure_class", "unknown")
-    confidence = result.get("confidence", 0.0)
+    llm_confidence = result.get("confidence", 0.0)
     reasoning = result.get("reasoning", "")
 
+    # Re-score with the LLM's chosen failure_class for accurate guard application
+    final_breakdown = score_confidence(
+        error=state.error or "",
+        failure_class=failure_class,
+        dom_snapshot=state.dom_snapshot,
+        memory=memory,
+    )
+
+    # Use the rubric's final score, clamped to within ±0.05 of LLM's suggestion
+    confidence = final_breakdown.final_score
+    if abs(llm_confidence - confidence) <= 0.05:
+        confidence = llm_confidence  # LLM is within rubric tolerance
+
     logger.info(
-        "Triage: class=%s confidence=%.2f reason=%s",
+        "Triage: class=%s confidence=%.2f (rubric=%.2f, llm=%.2f) reason=%s",
         failure_class,
         confidence,
+        final_breakdown.final_score,
+        llm_confidence,
         reasoning[:100],
     )
 
@@ -86,6 +115,7 @@ def _build_prompt(
     state: QAState,
     similar: dict[str, Any] | None = None,
     calibration: str = "",
+    rubric_breakdown: str = "",
 ) -> str:
     """Build the human message prompt for Triage."""
     parts = ["A test just failed. Analyze the failure and classify it.\n"]
@@ -126,6 +156,11 @@ def _build_prompt(
             parts.append(f"  - {el.role}: '{el.name}' (testid: {el.testid or 'none'})")
 
     parts.append(f"\nAttempts so far: {state.attempts}")
+
+    # Rubric pre-score
+    if rubric_breakdown:
+        parts.append(f"\n## Pre-computed rubric score\n{rubric_breakdown}")
+        parts.append("Use this as your starting point. Adjust within ±0.05 with justification.")
 
     return "\n".join(parts)
 

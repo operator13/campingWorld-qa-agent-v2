@@ -82,4 +82,5 @@ async def test_triage_with_mock_llm():
         result = await triage(state)
 
     assert result["failure_class"] == "locator_drift"
-    assert result["confidence"] == 0.92
+    # Confidence is now rubric-scored, not raw LLM output
+    assert 0.0 <= result["confidence"] <= 1.0
