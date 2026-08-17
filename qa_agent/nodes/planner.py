@@ -13,6 +13,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from qa_agent.config import get_model
+from qa_agent.memory import MemoryStore
 from qa_agent.prompts.planner import SYSTEM_PROMPT
 from qa_agent.schemas.models import TestCase
 from qa_agent.state import QAState
@@ -24,6 +25,10 @@ async def planner(state: QAState) -> dict:
     """Turn UI spec + acceptance criteria into categorized test cases."""
     logger.info("Planner: generating test cases for goal=%r", state.goal)
 
+    # Gather memory context: volatile routes + flaky tests
+    memory = MemoryStore()
+    memory_context = memory.build_planner_memory_context()
+
     model = ChatAnthropic(
         model=get_model("planner"),
         temperature=0,
@@ -32,7 +37,7 @@ async def planner(state: QAState) -> dict:
 
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=_build_prompt(state)),
+        HumanMessage(content=_build_prompt(state, memory_context=memory_context)),
     ]
 
     response = await model.ainvoke(messages)
@@ -42,7 +47,7 @@ async def planner(state: QAState) -> dict:
     return {"plan": test_cases}
 
 
-def _build_prompt(state: QAState) -> str:
+def _build_prompt(state: QAState, memory_context: str = "") -> str:
     """Build the human message prompt for the Planner."""
     parts = [f"Create test cases for: {state.goal}\n"]
 
@@ -68,6 +73,9 @@ def _build_prompt(state: QAState) -> str:
 
     if state.app_url:
         parts.append(f"App URL: {state.app_url}")
+
+    if memory_context:
+        parts.append(f"\n{memory_context}")
 
     return "\n".join(parts)
 

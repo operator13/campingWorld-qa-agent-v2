@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 
 from qa_agent.config import EnvConfig
+from qa_agent.memory import MemoryStore
 from qa_agent.schemas.models import RunResult
 from qa_agent.state import QAState
 
@@ -50,6 +51,26 @@ async def executor(state: QAState) -> dict:
 
     logger.info("Executor: passed=%s, failed=%d case(s)",
                 run_result.passed, len(run_result.failed_cases))
+
+    # 5. Update memory — record route testids and per-test results
+    memory = MemoryStore()
+    for route in state.page_objects:
+        # Discover testids from the page object source
+        testids = _extract_testids(state.page_objects[route])
+        memory.update_route(route, testids=testids)
+
+    # Record per-test results for stability tracking
+    for tc in state.plan:
+        test_passed = tc.id not in run_result.failed_cases
+        failure_class = None if test_passed else "unknown"
+        memory.record_test_result(tc.id, tc.route, test_passed, failure_class)
+
+    # Increment route change count on failure (locator drift signal)
+    if not run_result.passed:
+        for tc_id in run_result.failed_cases:
+            for tc in state.plan:
+                if tc.id == tc_id:
+                    memory.increment_route_changes(tc.route)
 
     return {
         "run_results": run_result,
@@ -144,6 +165,12 @@ def _extract_error(logs: str) -> str:
     lines = logs.split("\n")
     error_lines = [l for l in lines if "Error" in l or "error" in l or "FAIL" in l]
     return "\n".join(error_lines[:10]) if error_lines else "Test run failed (see logs)"
+
+
+def _extract_testids(source: str) -> list[str]:
+    """Extract data-testid values from page object source code."""
+    import re
+    return re.findall(r"getByTestId\(['\"]([^'\"]+)['\"]\)", source)
 
 
 def _route_to_filename(route: str) -> str:

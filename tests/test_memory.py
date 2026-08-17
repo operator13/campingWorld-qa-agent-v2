@@ -626,3 +626,226 @@ class TestTriageMemory:
             assert "Similar past failure" in human_msg
 
         assert result["failure_class"] == "locator_drift"
+
+
+# ---------------------------------------------------------------------------
+# Phase M3: App Structure
+# ---------------------------------------------------------------------------
+
+class TestAppStructure:
+    def test_update_and_read_route(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["checkout-submit", "checkout-email"], components=["CartSummary"])
+
+        info = store.get_route_info("/checkout")
+        assert info is not None
+        assert info["route"] == "/checkout"
+        assert "checkout-submit" in info["testids"]
+        assert "CartSummary" in info["components"]
+
+    def test_creates_app_structure_file(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/login", testids=["login-email"])
+
+        assert (tmp_path / "APP_STRUCTURE.md").exists()
+
+    def test_update_existing_route(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["old-id"])
+        store.update_route("/checkout", testids=["new-id"])
+
+        info = store.get_route_info("/checkout")
+        assert "new-id" in info["testids"]
+
+    def test_multiple_routes(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["a"])
+        store.update_route("/login", testids=["b"])
+
+        assert store.get_route_info("/checkout") is not None
+        assert store.get_route_info("/login") is not None
+
+    def test_returns_none_for_unknown_route(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        assert store.get_route_info("/nonexistent") is None
+
+    def test_increment_changes(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["a"])
+        store.increment_route_changes("/checkout")
+        store.increment_route_changes("/checkout")
+
+        info = store.get_route_info("/checkout")
+        assert info["changes"] == 2
+
+    def test_get_all_routes(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["a"])
+        store.update_route("/login", testids=["b"])
+
+        routes = store.get_all_routes()
+        assert len(routes) == 2
+
+
+class TestVolatileRoutes:
+    def test_returns_volatile_routes(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["a"])
+        for _ in range(10):
+            store.increment_route_changes("/checkout")
+
+        volatile = store.get_volatile_routes(threshold=0.5)
+        assert len(volatile) >= 1
+        assert volatile[0]["route"] == "/checkout"
+
+    def test_excludes_stable_routes(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/login", testids=["a"])
+
+        volatile = store.get_volatile_routes(threshold=1.0)
+        assert len(volatile) == 0
+
+    def test_sorted_by_frequency(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/a", testids=[])
+        store.update_route("/b", testids=[])
+        for _ in range(5):
+            store.increment_route_changes("/a")
+        for _ in range(10):
+            store.increment_route_changes("/b")
+
+        volatile = store.get_volatile_routes(threshold=0.1)
+        assert volatile[0]["route"] == "/b"
+
+    def test_disabled_by_kill_switch(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("MEMORY_ENABLED", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        assert store.get_volatile_routes() == []
+
+
+class TestTestStability:
+    def test_record_and_read(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_test_result("tc-checkout-01", "/checkout", True)
+
+        history = store.get_test_history("tc-checkout-01")
+        assert history is not None
+        assert history["runs"] == 1
+        assert history["passes"] == 1
+        assert history["fails"] == 0
+        assert history["flakiness"] == 0.0
+
+    def test_accumulates_results(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_test_result("tc-1", "/checkout", True)
+        store.record_test_result("tc-1", "/checkout", True)
+        store.record_test_result("tc-1", "/checkout", False, "locator_drift")
+
+        history = store.get_test_history("tc-1")
+        assert history["runs"] == 3
+        assert history["passes"] == 2
+        assert history["fails"] == 1
+        assert round(history["flakiness"], 2) == 0.33
+
+    def test_flaky_detection(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        for i in range(5):
+            store.record_test_result("tc-1", "/checkout", i < 3)
+
+        flaky = store.get_flaky_tests(threshold=0.2)
+        assert len(flaky) == 1
+        assert flaky[0]["test_id"] == "tc-1"
+
+    def test_stable_test_not_flagged(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        for _ in range(10):
+            store.record_test_result("tc-stable", "/login", True)
+
+        flaky = store.get_flaky_tests(threshold=0.2)
+        assert len(flaky) == 0
+
+    def test_multiple_tests(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_test_result("tc-1", "/checkout", True)
+        store.record_test_result("tc-2", "/login", False, "app_defect")
+
+        h1 = store.get_test_history("tc-1")
+        h2 = store.get_test_history("tc-2")
+        assert h1["passes"] == 1
+        assert h2["fails"] == 1
+
+    def test_returns_none_for_unknown_test(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        assert store.get_test_history("tc-nonexistent") is None
+
+    def test_disabled_by_kill_switch(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PLANNER_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_test_result("tc-1", "/checkout", True)
+        assert store.get_flaky_tests() == []
+
+    def test_records_failure_class(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_test_result("tc-1", "/checkout", False, "locator_drift")
+
+        history = store.get_test_history("tc-1")
+        assert history["last_failure"] == "locator_drift"
+
+
+class TestPlannerMemoryContext:
+    def test_includes_volatile_routes(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["a"])
+        for _ in range(10):
+            store.increment_route_changes("/checkout")
+
+        context = store.build_planner_memory_context()
+        assert "Volatile Routes" in context
+        assert "/checkout" in context
+
+    def test_includes_flaky_tests(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        for i in range(5):
+            store.record_test_result("tc-flaky", "/checkout", i < 2)
+
+        context = store.build_planner_memory_context()
+        assert "Flaky Tests" in context
+        assert "tc-flaky" in context
+
+    def test_empty_when_nothing_notable(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        context = store.build_planner_memory_context()
+        assert context == ""
+
+    def test_empty_when_disabled(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PLANNER_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        assert store.build_planner_memory_context() == ""
+
+
+class TestGeneratorMemoryContext:
+    def test_includes_known_testids(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.update_route("/checkout", testids=["checkout-submit", "checkout-email"])
+
+        context = store.build_generator_memory_context("/checkout")
+        assert "Known testids" in context
+        assert "checkout-submit" in context
+
+    def test_includes_drift_history(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_locator_change("/checkout", "btn", "old_loc", "new_loc", "drifted")
+
+        context = store.build_generator_memory_context("/checkout")
+        assert "drift history" in context
+        assert "old_loc" in context
+
+    def test_empty_for_unknown_route(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        context = store.build_generator_memory_context("/nonexistent")
+        assert context == ""
+
+    def test_empty_when_disabled(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("GENERATOR_MEMORY", "false")
+        store = MemoryStore(memory_dir=tmp_path)
+        assert store.build_generator_memory_context("/checkout") == ""

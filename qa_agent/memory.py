@@ -488,7 +488,420 @@ class MemoryStore:
         return result
 
     # -------------------------------------------------------------------
-    # Prompt injection helpers
+    # App Structure
+    # -------------------------------------------------------------------
+
+    def update_route(
+        self,
+        route: str,
+        testids: list[str] | None = None,
+        components: list[str] | None = None,
+    ) -> None:
+        """Write or update a route entry in APP_STRUCTURE.md."""
+        if not self._enabled("generator"):
+            return
+
+        filepath = self.memory_dir / "APP_STRUCTURE.md"
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        if not filepath.exists():
+            filepath.write_text("# App Structure\n")
+
+        content = filepath.read_text()
+        section_header = f"## {route}"
+
+        testids_str = ", ".join(testids) if testids else "none discovered"
+        components_str = ", ".join(components) if components else "none discovered"
+
+        new_section = (
+            f"\n{section_header}\n"
+            f"- **Last seen:** {now}\n"
+            f"- **Known testids:** {testids_str}\n"
+            f"- **Components:** {components_str}\n"
+        )
+
+        if section_header in content:
+            # Replace existing section
+            idx = content.index(section_header)
+            next_section = content.find("\n## ", idx + len(section_header))
+
+            # Preserve change_count if it exists
+            old_section = content[idx:next_section] if next_section != -1 else content[idx:]
+            change_count = self._extract_change_count(old_section)
+            first_seen = self._extract_first_seen(old_section) or now
+
+            weeks = max(1, (datetime.strptime(now, "%Y-%m-%d") - datetime.strptime(first_seen, "%Y-%m-%d")).days / 7)
+            change_freq = round(change_count / weeks, 1)
+
+            new_section = (
+                f"{section_header}\n"
+                f"- **First seen:** {first_seen}\n"
+                f"- **Last seen:** {now}\n"
+                f"- **Changes:** {change_count}\n"
+                f"- **Change frequency:** {change_freq}/week\n"
+                f"- **Known testids:** {testids_str}\n"
+                f"- **Components:** {components_str}\n"
+            )
+
+            if next_section != -1:
+                content = content[:idx] + new_section + content[next_section:]
+            else:
+                content = content[:idx] + new_section
+        else:
+            # New route — append
+            new_section = (
+                f"\n{section_header}\n"
+                f"- **First seen:** {now}\n"
+                f"- **Last seen:** {now}\n"
+                f"- **Changes:** 0\n"
+                f"- **Change frequency:** 0.0/week\n"
+                f"- **Known testids:** {testids_str}\n"
+                f"- **Components:** {components_str}\n"
+            )
+            content = content.rstrip() + "\n" + new_section
+
+        filepath.write_text(content)
+        logger.info("Memory: updated route %s", route)
+
+    def increment_route_changes(self, route: str) -> None:
+        """Increment the change count for a route (called on locator drift or test failure)."""
+        if not self._enabled():
+            return
+
+        filepath = self.memory_dir / "APP_STRUCTURE.md"
+        if not filepath.exists():
+            return
+
+        content = filepath.read_text()
+        section_header = f"## {route}"
+        if section_header not in content:
+            return
+
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            if "**Changes:**" in line and self._in_route_section(lines, i, route):
+                count_match = re.search(r"\d+", line)
+                if count_match:
+                    new_count = int(count_match.group()) + 1
+                    lines[i] = f"- **Changes:** {new_count}"
+
+                    # Recalculate frequency
+                    first_seen = self._find_field_in_section(lines, i, "First seen")
+                    if first_seen:
+                        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        weeks = max(1, (datetime.strptime(now, "%Y-%m-%d") - datetime.strptime(first_seen, "%Y-%m-%d")).days / 7)
+                        freq = round(new_count / weeks, 1)
+                        for j, l2 in enumerate(lines):
+                            if "**Change frequency:**" in l2 and self._in_route_section(lines, j, route):
+                                lines[j] = f"- **Change frequency:** {freq}/week"
+                                break
+                break
+
+        filepath.write_text("\n".join(lines))
+
+    def get_route_info(self, route: str) -> dict[str, Any] | None:
+        """Read info for a specific route from APP_STRUCTURE.md."""
+        if not self._enabled():
+            return None
+
+        filepath = self.memory_dir / "APP_STRUCTURE.md"
+        if not filepath.exists():
+            return None
+
+        content = filepath.read_text()
+        section_header = f"## {route}"
+        if section_header not in content:
+            return None
+
+        idx = content.index(section_header)
+        next_section = content.find("\n## ", idx + len(section_header))
+        section = content[idx:next_section] if next_section != -1 else content[idx:]
+
+        return self._parse_route_section(route, section)
+
+    def get_volatile_routes(self, threshold: float = 1.0) -> list[dict[str, Any]]:
+        """Return routes with change frequency above the threshold."""
+        if not self._enabled():
+            return []
+
+        filepath = self.memory_dir / "APP_STRUCTURE.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        routes = []
+
+        for match in re.finditer(r"## (/\S*)", content):
+            route = match.group(1)
+            info = self.get_route_info(route)
+            if info and info.get("change_frequency", 0) >= threshold:
+                routes.append(info)
+
+        return sorted(routes, key=lambda r: r.get("change_frequency", 0), reverse=True)
+
+    def get_all_routes(self) -> list[dict[str, Any]]:
+        """Return all known routes."""
+        if not self._enabled():
+            return []
+
+        filepath = self.memory_dir / "APP_STRUCTURE.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        routes = []
+        for match in re.finditer(r"## (/\S*)", content):
+            route = match.group(1)
+            info = self.get_route_info(route)
+            if info:
+                routes.append(info)
+        return routes
+
+    @staticmethod
+    def _parse_route_section(route: str, section: str) -> dict[str, Any]:
+        """Parse a route section into a dict."""
+        info: dict[str, Any] = {"route": route}
+        for line in section.split("\n"):
+            if "**First seen:**" in line:
+                info["first_seen"] = line.split(":**")[1].strip().rstrip("*").strip()
+            elif "**Last seen:**" in line:
+                info["last_seen"] = line.split(":**")[1].strip().rstrip("*").strip()
+            elif "**Changes:**" in line:
+                m = re.search(r"\d+", line)
+                info["changes"] = int(m.group()) if m else 0
+            elif "**Change frequency:**" in line:
+                m = re.search(r"[\d.]+", line)
+                info["change_frequency"] = float(m.group()) if m else 0.0
+            elif "**Known testids:**" in line:
+                raw = line.split(":**")[1].strip().rstrip("*").strip()
+                info["testids"] = [t.strip() for t in raw.split(",")] if raw != "none discovered" else []
+            elif "**Components:**" in line:
+                raw = line.split(":**")[1].strip().rstrip("*").strip()
+                info["components"] = [c.strip() for c in raw.split(",")] if raw != "none discovered" else []
+        return info
+
+    @staticmethod
+    def _extract_change_count(section: str) -> int:
+        m = re.search(r"\*\*Changes:\*\*\s*(\d+)", section)
+        return int(m.group(1)) if m else 0
+
+    @staticmethod
+    def _extract_first_seen(section: str) -> str | None:
+        m = re.search(r"\*\*First seen:\*\*\s*([\d-]+)", section)
+        return m.group(1) if m else None
+
+    @staticmethod
+    def _in_route_section(lines: list[str], line_idx: int, route: str) -> bool:
+        """Check if line_idx is within the section for the given route."""
+        for i in range(line_idx, -1, -1):
+            if lines[i].strip().startswith("## "):
+                return route in lines[i]
+        return False
+
+    @staticmethod
+    def _find_field_in_section(lines: list[str], line_idx: int, field: str) -> str | None:
+        """Find a field value in the same route section as line_idx."""
+        for i in range(line_idx, -1, -1):
+            if lines[i].strip().startswith("## "):
+                break
+            if f"**{field}:**" in lines[i]:
+                m = re.search(r":\*\*\s*([\d-]+)", lines[i])
+                return m.group(1) if m else None
+        return None
+
+    # -------------------------------------------------------------------
+    # Test Stability
+    # -------------------------------------------------------------------
+
+    def record_test_result(
+        self,
+        test_id: str,
+        route: str,
+        passed: bool,
+        failure_class: str | None = None,
+    ) -> None:
+        """Record a test result in TEST_STABILITY.md, updating existing rows in place."""
+        if not self._enabled("planner"):
+            return
+
+        filepath = self.memory_dir / "TEST_STABILITY.md"
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        if not filepath.exists():
+            filepath.write_text(
+                "# Test Stability\n\n"
+                "| Test ID | Route | Runs | Passes | Fails | Flakiness | Last run | Last failure |\n"
+                "|---------|-------|------|--------|-------|-----------|----------|-------------|\n"
+            )
+
+        content = filepath.read_text()
+
+        # Check if test_id already exists
+        if f"| {test_id} |" in content:
+            # Update existing row
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if line.startswith(f"| {test_id} |"):
+                    row = self._parse_stability_row(line)
+                    row["runs"] += 1
+                    if passed:
+                        row["passes"] += 1
+                    else:
+                        row["fails"] += 1
+                        row["last_failure"] = failure_class or "unknown"
+                    row["flakiness"] = round(row["fails"] / row["runs"], 2) if row["runs"] > 0 else 0.0
+                    row["last_run"] = now
+                    lines[i] = self._format_stability_row(row)
+                    break
+            filepath.write_text("\n".join(lines))
+        else:
+            # Append new row
+            runs = 1
+            passes = 1 if passed else 0
+            fails = 0 if passed else 1
+            flakiness = 0.0 if passed else 1.0
+            last_failure = "—" if passed else (failure_class or "unknown")
+            row = f"| {test_id} | {route} | {runs} | {passes} | {fails} | {flakiness:.2f} | {now} | {last_failure} |\n"
+            with open(filepath, "a") as f:
+                f.write(row)
+
+        logger.debug("Memory: recorded test result for %s (passed=%s)", test_id, passed)
+
+    def get_flaky_tests(self, threshold: float = 0.2) -> list[dict[str, Any]]:
+        """Return tests with flakiness score above the threshold."""
+        if not self._enabled("planner"):
+            return []
+
+        filepath = self.memory_dir / "TEST_STABILITY.md"
+        if not filepath.exists():
+            return []
+
+        content = filepath.read_text()
+        flaky = []
+
+        for line in content.split("\n"):
+            if line.startswith("| ") and not line.startswith("| Test ID") and not line.startswith("|---"):
+                row = self._parse_stability_row(line)
+                if row and row.get("flakiness", 0) >= threshold:
+                    flaky.append(row)
+
+        return sorted(flaky, key=lambda r: r.get("flakiness", 0), reverse=True)
+
+    def get_test_history(self, test_id: str) -> dict[str, Any] | None:
+        """Get stability data for a specific test."""
+        if not self._enabled("planner"):
+            return None
+
+        filepath = self.memory_dir / "TEST_STABILITY.md"
+        if not filepath.exists():
+            return None
+
+        content = filepath.read_text()
+        for line in content.split("\n"):
+            if line.startswith(f"| {test_id} |"):
+                return self._parse_stability_row(line)
+        return None
+
+    @staticmethod
+    def _parse_stability_row(line: str) -> dict[str, Any]:
+        """Parse a TEST_STABILITY.md table row into a dict."""
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) >= 2:
+            parts = parts[1:-1]
+        if len(parts) < 8:
+            return {}
+        try:
+            return {
+                "test_id": parts[0],
+                "route": parts[1],
+                "runs": int(parts[2]),
+                "passes": int(parts[3]),
+                "fails": int(parts[4]),
+                "flakiness": float(parts[5]),
+                "last_run": parts[6],
+                "last_failure": parts[7],
+            }
+        except (ValueError, IndexError):
+            return {}
+
+    @staticmethod
+    def _format_stability_row(row: dict[str, Any]) -> str:
+        """Format a stability dict back into a markdown table row."""
+        return (
+            f"| {row['test_id']} | {row['route']} | {row['runs']} | {row['passes']} "
+            f"| {row['fails']} | {row['flakiness']:.2f} | {row['last_run']} | {row['last_failure']} |"
+        )
+
+    # -------------------------------------------------------------------
+    # Prompt context builders
+    # -------------------------------------------------------------------
+
+    def build_planner_memory_context(self, max_tokens: int = 500) -> str:
+        """Build memory context for the Planner: volatile routes + flaky tests."""
+        if not self._enabled("planner"):
+            return ""
+
+        parts = []
+
+        volatile = self.get_volatile_routes(threshold=1.0)
+        if volatile:
+            parts.append("## Memory: Volatile Routes (change >1x/week)")
+            for r in volatile[:5]:
+                parts.append(f"- **{r['route']}** — {r.get('change_frequency', 0)}/week, {r.get('changes', 0)} changes")
+            parts.append("Prioritize these routes with @smoke tags.\n")
+
+        flaky = self.get_flaky_tests(threshold=0.2)
+        if flaky:
+            parts.append("## Memory: Flaky Tests (>20% failure rate)")
+            for t in flaky[:5]:
+                parts.append(f"- **{t['test_id']}** ({t['route']}) — {t['flakiness']:.0%} flaky, last failure: {t['last_failure']}")
+            parts.append("Flag these tests in the plan.\n")
+
+        if not parts:
+            return ""
+
+        result = "\n".join(parts)
+        char_limit = max_tokens * 4
+        if len(result) > char_limit:
+            result = result[:char_limit].rsplit("\n", 1)[0]
+        return result
+
+    def build_generator_memory_context(self, route: str, max_tokens: int = 500) -> str:
+        """Build memory context for the Generator: known testids + locator history for a route."""
+        if not self._enabled("generator"):
+            return ""
+
+        parts = []
+
+        route_info = self.get_route_info(route)
+        if route_info:
+            testids = route_info.get("testids", [])
+            if testids:
+                parts.append(f"## Memory: Known testids for {route}")
+                parts.append(f"Previously discovered: {', '.join(testids)}")
+                parts.append("Prefer these testids when generating locators.\n")
+
+        history = self.get_locator_history(route)
+        if history:
+            drifted_locators = [e for e in history if e["success"]]
+            if drifted_locators:
+                parts.append(f"## Memory: Locator drift history for {route}")
+                parts.append("These locators have drifted before — avoid using the old form:")
+                for e in drifted_locators[-5:]:
+                    parts.append(f"- `{e['old_locator']}` drifted → prefer `{e['new_locator']}`")
+                parts.append("")
+
+        if not parts:
+            return ""
+
+        result = "\n".join(parts)
+        char_limit = max_tokens * 4
+        if len(result) > char_limit:
+            result = result[:char_limit].rsplit("\n", 1)[0]
+        return result
+
+    # -------------------------------------------------------------------
+    # Legacy prompt context (Healer — from M1)
     # -------------------------------------------------------------------
 
     def build_healer_memory_context(self, route: str, element: str | None = None, max_tokens: int = 500) -> str:

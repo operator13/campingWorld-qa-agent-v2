@@ -15,6 +15,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from qa_agent.config import FIGMA_ROUTE_MAP, get_model
+from qa_agent.memory import MemoryStore
 from qa_agent.prompts.generator import SYSTEM_PROMPT
 from qa_agent.state import QAState
 
@@ -25,6 +26,15 @@ async def generator(state: QAState) -> dict:
     """Generate page objects and test specs from the test plan."""
     logger.info("Generator: building tests for %d case(s)", len(state.plan))
 
+    # Gather memory context per route
+    memory = MemoryStore()
+    routes = {tc.route for tc in state.plan}
+    memory_context = ""
+    for route in routes:
+        ctx = memory.build_generator_memory_context(route)
+        if ctx:
+            memory_context += ctx + "\n"
+
     model = ChatAnthropic(
         model=get_model("generator"),
         temperature=0,
@@ -33,7 +43,7 @@ async def generator(state: QAState) -> dict:
 
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=_build_prompt(state)),
+        HumanMessage(content=_build_prompt(state, memory_context=memory_context)),
     ]
 
     response = await model.ainvoke(messages)
@@ -54,7 +64,7 @@ async def generator(state: QAState) -> dict:
     }
 
 
-def _build_prompt(state: QAState) -> str:
+def _build_prompt(state: QAState, memory_context: str = "") -> str:
     """Build the human message prompt for the Generator."""
     parts = [f"Generate Playwright TypeScript page objects and tests for: {state.goal}\n"]
 
@@ -87,6 +97,9 @@ def _build_prompt(state: QAState) -> str:
 
     if state.app_url:
         parts.append(f"\nBase URL: {state.app_url}")
+
+    if memory_context:
+        parts.append(f"\n{memory_context}")
 
     return "\n".join(parts)
 
