@@ -135,13 +135,13 @@ class TestLocatorHistory:
         store.record_locator_change("/checkout", "btn", "a", "b", "r")
         store.record_locator_change("/login", "btn", "c", "d", "r")
 
-        assert (tmp_path / "locators" / "checkout.md").exists()
-        assert (tmp_path / "locators" / "login.md").exists()
+        assert (tmp_path / "locators" / "CHECKOUT.md").exists()
+        assert (tmp_path / "locators" / "LOGIN.md").exists()
 
     def test_root_route(self, tmp_path):
         store = MemoryStore(memory_dir=tmp_path)
         store.record_locator_change("/", "btn", "a", "b", "r")
-        assert (tmp_path / "locators" / "root.md").exists()
+        assert (tmp_path / "locators" / "ROOT.md").exists()
 
 
 class TestKnownFix:
@@ -226,7 +226,7 @@ class TestFailurePatterns:
         store.record_failure("TimeoutError on button", "locator_drift", "healed", "/checkout")
 
         # Read the file and check occurrences
-        content = (tmp_path / "failures.md").read_text()
+        content = (tmp_path / "FAILURES.md").read_text()
         assert "2" in content  # occurrences incremented
 
     def test_generates_unique_ids(self, tmp_path):
@@ -234,7 +234,7 @@ class TestFailurePatterns:
         store.record_failure("Error A unique", "locator_drift", "healed", "/a")
         store.record_failure("Error B unique", "app_defect", "defect:QA-1", "/b")
 
-        content = (tmp_path / "failures.md").read_text()
+        content = (tmp_path / "FAILURES.md").read_text()
         assert "FP-001" in content
         assert "FP-002" in content
 
@@ -459,7 +459,7 @@ class TestHumanDecisions:
         store = MemoryStore(memory_dir=tmp_path)
         store.record_human_decision("locator_drift", 0.5, "heal", "err")
 
-        filepath = tmp_path / "human_decisions.md"
+        filepath = tmp_path / "HUMAN_DECISIONS.md"
         assert filepath.exists()
         content = filepath.read_text()
         assert "| Date" in content

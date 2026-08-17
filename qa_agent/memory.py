@@ -94,7 +94,7 @@ class MemoryStore:
 
     def _locator_file(self, route: str) -> Path:
         """Get the markdown file path for a route's locator history."""
-        safe_name = route.strip("/").replace("/", "_") or "root"
+        safe_name = (route.strip("/").replace("/", "_") or "root").upper()
         return self.locators_dir / f"{safe_name}.md"
 
     def record_locator_change(
@@ -243,7 +243,7 @@ class MemoryStore:
         if not self._enabled():
             return
 
-        filepath = self.memory_dir / "failures.md"
+        filepath = self.memory_dir / "FAILURES.md"
         normalized = normalize_error(error_signature)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
@@ -283,7 +283,7 @@ class MemoryStore:
         if not self._enabled():
             return None
 
-        filepath = self.memory_dir / "failures.md"
+        filepath = self.memory_dir / "FAILURES.md"
         if not filepath.exists():
             return None
 
@@ -300,7 +300,7 @@ class MemoryStore:
         return None
 
     def _parse_failure_patterns(self, content: str) -> list[dict[str, Any]]:
-        """Parse all failure patterns from the failures.md file."""
+        """Parse all failure patterns from the FAILURES.md file."""
         patterns = []
         current: dict[str, Any] = {}
 
@@ -367,11 +367,11 @@ class MemoryStore:
         reasoning: str = "",
         route: str = "",
     ) -> None:
-        """Record a Human Review verdict to human_decisions.md."""
+        """Record a Human Review verdict to HUMAN_DECISIONS.md."""
         if not self._enabled("triage"):
             return
 
-        filepath = self.memory_dir / "human_decisions.md"
+        filepath = self.memory_dir / "HUMAN_DECISIONS.md"
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         if not filepath.exists():
@@ -399,7 +399,7 @@ class MemoryStore:
         if not self._enabled("triage"):
             return []
 
-        filepath = self.memory_dir / "human_decisions.md"
+        filepath = self.memory_dir / "HUMAN_DECISIONS.md"
         if not filepath.exists():
             return []
 
