@@ -1,0 +1,4 @@
+# Locator History: /
+
+## unknown
+- 2026-08-17: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: yes

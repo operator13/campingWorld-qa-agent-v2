@@ -2,6 +2,8 @@
 
 Selectors & waits only — NEVER assertions. A guardrail validator enforces this.
 After MAX_ATTEMPTS, escalates to Defect Report.
+
+Memory-enhanced: checks for known fixes before calling the LLM.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from qa_agent.config import get_model
+from qa_agent.memory import MemoryStore, extract_locator_from_error
 from qa_agent.prompts.healer import SYSTEM_PROMPT
 from qa_agent.state import QAState
 
@@ -75,9 +78,55 @@ def _extract_assertion_lines(source: str) -> list[str]:
     return lines
 
 
+def _apply_known_fix(
+    old_locator: str,
+    new_locator: str,
+    page_objects: dict[str, str],
+) -> dict[str, str]:
+    """Apply a known locator fix by replacing old_locator with new_locator in page objects."""
+    patched = {}
+    for route, source in page_objects.items():
+        patched[route] = source.replace(old_locator, new_locator)
+    return patched
+
+
 async def healer(state: QAState) -> dict:
-    """Fix a drifted locator in the page object and return patched source."""
+    """Fix a drifted locator in the page object and return patched source.
+
+    Memory-enhanced flow:
+    1. Extract broken locator from error
+    2. Check memory for a known fix → apply instantly (no LLM)
+    3. If no known fix → ask LLM with locator history context
+    4. Record the fix in memory for next time
+    """
     logger.info("Healer: attempt %d — fixing locator drift", state.attempts + 1)
+
+    memory = MemoryStore()
+    route = state.plan[0].route if state.plan else "/"
+    old_locator = extract_locator_from_error(state.error or "")
+    element = _identify_element(old_locator)
+
+    # --- Fast path: known fix from memory ---
+    if old_locator:
+        known_new = memory.get_known_fix(route, element, old_locator)
+        if known_new:
+            patched = _apply_known_fix(old_locator, known_new, state.page_objects)
+
+            # MUST validate through guardrail
+            try:
+                for r, new_src in patched.items():
+                    validate_healer_diff(state.page_objects.get(r, ""), new_src)
+                logger.info("Healer: applying known fix from memory (%s → %s)", old_locator, known_new)
+                return {
+                    "page_objects": {**state.page_objects, **patched},
+                    "attempts": 1,
+                }
+            except AssertionGuardError:
+                logger.warning("Healer: known fix touches assertions — marking failed, falling through to LLM")
+                memory.mark_fix_failed(route, element, old_locator)
+
+    # --- Slow path: ask LLM, with memory context ---
+    memory_context = memory.build_healer_memory_context(route, element)
 
     model = ChatAnthropic(
         model=get_model("healer"),
@@ -87,26 +136,43 @@ async def healer(state: QAState) -> dict:
 
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=_build_prompt(state)),
+        HumanMessage(content=_build_prompt(state, memory_context=memory_context)),
     ]
 
     response = await model.ainvoke(messages)
     result = _parse_response(response)
 
     patched_page_objects = result.get("page_objects", {})
+    changes = result.get("changes", [])
 
     # Validate each patched page object against the guardrail
     validated_page_objects: dict[str, str] = {}
-    for route, new_source in patched_page_objects.items():
-        old_source = state.page_objects.get(route, "")
+    for r, new_source in patched_page_objects.items():
+        old_source = state.page_objects.get(r, "")
         try:
             validate_healer_diff(old_source, new_source)
-            validated_page_objects[route] = new_source
-            logger.info("Healer: patched page object for %s — guardrail passed", route)
+            validated_page_objects[r] = new_source
+            logger.info("Healer: patched page object for %s — guardrail passed", r)
         except AssertionGuardError as e:
-            logger.error("Healer: guardrail REJECTED diff for %s: %s", route, e)
-            # Keep the old source — don't apply the bad diff
-            validated_page_objects[route] = old_source
+            logger.error("Healer: guardrail REJECTED diff for %s: %s", r, e)
+            validated_page_objects[r] = old_source
+
+    # Record successful fixes in memory
+    for change in changes:
+        old_loc = change.get("old_locator", "")
+        new_loc = change.get("new_locator", "")
+        reason = change.get("reason", "")
+        if old_loc and new_loc:
+            memory.record_locator_change(route, element, old_loc, new_loc, reason, success=True)
+
+    # Record failure pattern
+    if state.error:
+        memory.record_failure(
+            error_signature=state.error,
+            failure_class="locator_drift",
+            resolution="healed:locator_update",
+            route=route,
+        )
 
     return {
         "page_objects": {**state.page_objects, **validated_page_objects},
@@ -114,13 +180,38 @@ async def healer(state: QAState) -> dict:
     }
 
 
-def _build_prompt(state: QAState) -> str:
+def _identify_element(locator: str | None) -> str:
+    """Derive an element identifier from a locator string."""
+    if not locator:
+        return "unknown"
+
+    # Try to extract the name or testid
+    name_match = re.search(r"name:\s*['\"]([^'\"]+)['\"]", locator)
+    if name_match:
+        return name_match.group(1)
+
+    testid_match = re.search(r"getByTestId\(['\"]([^'\"]+)['\"]\)", locator)
+    if testid_match:
+        return testid_match.group(1)
+
+    text_match = re.search(r"getByText\(['\"]([^'\"]+)['\"]\)", locator)
+    if text_match:
+        return text_match.group(1)
+
+    return "unknown"
+
+
+def _build_prompt(state: QAState, memory_context: str = "") -> str:
     """Build the human message prompt for the Healer."""
     parts = ["A test failed due to locator drift. Fix the broken locator(s) in the page object.\n"]
 
     if state.error:
         parts.append("## Error")
         parts.append(f"```\n{state.error}\n```\n")
+
+    if memory_context:
+        parts.append(memory_context)
+        parts.append("")
 
     if state.dom_snapshot:
         snapshot = state.dom_snapshot[:3000]
