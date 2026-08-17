@@ -120,6 +120,40 @@ async def _run(sources: list[str]) -> None:
     print(f"  Test files: {len(result.get('test_code', {}))}")
 
 
+def _memory_stats() -> None:
+    """Print memory statistics."""
+    from qa_agent.memory import MemoryStore
+
+    store = MemoryStore()
+    s = store.stats()
+
+    print("=== QA Agent · Memory Stats ===\n")
+    print(f"Total entries: {s['total_entries']}")
+    print(f"Total size: {s['total_size_kb']} KB\n")
+    print("By file:")
+    for name, count in s["files"].items():
+        print(f"  {name}: {count} entries")
+
+
+def _memory_prune(max_age: int) -> None:
+    """Prune stale memory entries."""
+    from qa_agent.memory import MemoryStore
+
+    store = MemoryStore()
+
+    print(f"=== QA Agent · Memory Prune (>{max_age} days) ===\n")
+
+    before = store.stats()
+    pruned = store.prune_stale(max_age_days=max_age)
+    merged = store.dedup_failure_patterns()
+    after = store.stats()
+
+    print(f"Pruned: {pruned} stale entries")
+    print(f"Merged: {merged} duplicate failure patterns")
+    print(f"Entries: {before['total_entries']} → {after['total_entries']}")
+    print(f"Size: {before['total_size_kb']} KB → {after['total_size_kb']} KB")
+
+
 def main() -> None:
     """CLI entrypoint."""
     parser = argparse.ArgumentParser(
@@ -128,7 +162,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["run"],
+        choices=["run", "memory"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -148,6 +182,18 @@ def main() -> None:
         action="store_true",
         help="Enable debug logging",
     )
+    parser.add_argument(
+        "subcommand",
+        nargs="?",
+        default=None,
+        help="Subcommand: stats, prune (for memory command)",
+    )
+    parser.add_argument(
+        "--max-age",
+        type=int,
+        default=90,
+        help="Max age in days for memory prune (default: 90)",
+    )
 
     args = parser.parse_args()
 
@@ -163,6 +209,14 @@ def main() -> None:
             asyncio.run(_run(args.source))
         else:
             print("Usage: qa-agent run --source jira:QA-123 [--source figma:FILE/NODE]")
+            sys.exit(1)
+    elif args.command == "memory":
+        if args.subcommand == "stats":
+            _memory_stats()
+        elif args.subcommand == "prune":
+            _memory_prune(args.max_age)
+        else:
+            print("Usage: qa-agent memory stats | qa-agent memory prune [--max-age 90]")
             sys.exit(1)
     else:
         parser.print_help()

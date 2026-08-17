@@ -947,6 +947,181 @@ class MemoryStore:
         return result
 
 
+    # -------------------------------------------------------------------
+    # Maintenance
+    # -------------------------------------------------------------------
+
+    def prune_stale(self, max_age_days: int = 90) -> int:
+        """Remove memory entries older than max_age_days. Returns count pruned."""
+        from datetime import timedelta
+
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).strftime("%Y-%m-%d")
+        total_pruned = 0
+
+        # 1. Prune locator history files
+        for filepath in self.locators_dir.glob("*.md"):
+            if filepath.name == ".gitkeep":
+                continue
+            content = filepath.read_text()
+            lines = content.split("\n")
+            new_lines = []
+            pruned = 0
+            for line in lines:
+                date_match = re.match(r"- (\d{4}-\d{2}-\d{2}):", line.strip())
+                if date_match and date_match.group(1) < cutoff:
+                    pruned += 1
+                    continue
+                new_lines.append(line)
+            if pruned:
+                filepath.write_text("\n".join(new_lines))
+                total_pruned += pruned
+
+        # 2. Prune failure patterns
+        filepath = self.memory_dir / "FAILURES.md"
+        if filepath.exists():
+            content = filepath.read_text()
+            sections = re.split(r"(?=\n## FP-)", content)
+            kept = [sections[0]]  # header
+            for section in sections[1:]:
+                stale_match = re.search(r"\*\*Stale after:\*\*\s*([\d-]+)", section)
+                if stale_match and stale_match.group(1) < cutoff:
+                    total_pruned += 1
+                    continue
+                # Also prune by last_seen
+                seen_match = re.search(r"\*\*Last seen:\*\*\s*([\d-]+)", section)
+                if seen_match and seen_match.group(1) < cutoff:
+                    total_pruned += 1
+                    continue
+                kept.append(section)
+            filepath.write_text("".join(kept))
+
+        # 3. Prune human decisions
+        filepath = self.memory_dir / "HUMAN_DECISIONS.md"
+        if filepath.exists():
+            content = filepath.read_text()
+            lines = content.split("\n")
+            new_lines = []
+            for line in lines:
+                # Data rows start with "| 2026-..."
+                date_match = re.match(r"\| (\d{4}-\d{2}-\d{2}) \|", line.strip())
+                if date_match and date_match.group(1) < cutoff:
+                    total_pruned += 1
+                    continue
+                new_lines.append(line)
+            filepath.write_text("\n".join(new_lines))
+
+        if total_pruned:
+            logger.info("Memory: pruned %d stale entries (older than %d days)", total_pruned, max_age_days)
+
+        return total_pruned
+
+    def dedup_failure_patterns(self) -> int:
+        """Merge duplicate failure patterns (same normalized signature). Returns count merged."""
+        filepath = self.memory_dir / "FAILURES.md"
+        if not filepath.exists():
+            return 0
+
+        patterns = self._parse_failure_patterns(filepath.read_text())
+        if not patterns:
+            return 0
+
+        # Group by normalized signature
+        seen: dict[str, dict[str, Any]] = {}
+        merged = 0
+
+        for p in patterns:
+            sig = p.get("signature", "")
+            if sig in seen:
+                # Merge: sum occurrences, keep latest date
+                seen[sig]["occurrences"] = seen[sig].get("occurrences", 1) + p.get("occurrences", 1)
+                if p.get("last_seen", "") > seen[sig].get("last_seen", ""):
+                    seen[sig]["last_seen"] = p["last_seen"]
+                merged += 1
+            else:
+                seen[sig] = p
+
+        if merged == 0:
+            return 0
+
+        # Rewrite the file
+        content = "# Failure Patterns\n"
+        for i, (sig, p) in enumerate(seen.items(), 1):
+            stale_date = _add_days(p.get("last_seen", "2026-01-01"), 90)
+            content += (
+                f"\n## FP-{i:03d}: {sig[:80]}\n"
+                f"- **Signature:** `{sig}`\n"
+                f"- **Class:** {p.get('failure_class', 'unknown')}\n"
+                f"- **Resolution:** {p.get('resolution', 'unknown')}\n"
+                f"- **Routes:** {p.get('routes', 'unknown')}\n"
+                f"- **Occurrences:** {p.get('occurrences', 1)}\n"
+                f"- **Last seen:** {p.get('last_seen', 'unknown')}\n"
+                f"- **Stale after:** {stale_date}\n"
+            )
+        filepath.write_text(content)
+        logger.info("Memory: merged %d duplicate failure patterns", merged)
+        return merged
+
+    def stats(self) -> dict[str, Any]:
+        """Return memory statistics: entry counts per file, total size, oldest/newest."""
+        result: dict[str, Any] = {"files": {}, "total_entries": 0, "total_size_bytes": 0}
+
+        # Locator files
+        locator_entries = 0
+        for filepath in self.locators_dir.glob("*.md"):
+            if filepath.name == ".gitkeep":
+                continue
+            content = filepath.read_text()
+            count = content.count("\n- ")
+            locator_entries += count
+            result["total_size_bytes"] += filepath.stat().st_size
+        result["files"]["locators"] = locator_entries
+
+        # Failures
+        filepath = self.memory_dir / "FAILURES.md"
+        if filepath.exists():
+            content = filepath.read_text()
+            count = len(re.findall(r"## FP-", content))
+            result["files"]["failures"] = count
+            result["total_size_bytes"] += filepath.stat().st_size
+        else:
+            result["files"]["failures"] = 0
+
+        # Human decisions
+        filepath = self.memory_dir / "HUMAN_DECISIONS.md"
+        if filepath.exists():
+            content = filepath.read_text()
+            count = len([l for l in content.split("\n") if re.match(r"\| \d{4}-", l.strip())])
+            result["files"]["human_decisions"] = count
+            result["total_size_bytes"] += filepath.stat().st_size
+        else:
+            result["files"]["human_decisions"] = 0
+
+        # App structure
+        filepath = self.memory_dir / "APP_STRUCTURE.md"
+        if filepath.exists():
+            content = filepath.read_text()
+            count = len(re.findall(r"## /", content))
+            result["files"]["app_routes"] = count
+            result["total_size_bytes"] += filepath.stat().st_size
+        else:
+            result["files"]["app_routes"] = 0
+
+        # Test stability
+        filepath = self.memory_dir / "TEST_STABILITY.md"
+        if filepath.exists():
+            content = filepath.read_text()
+            count = len([l for l in content.split("\n") if re.match(r"\| \S+.*\|.*\|.*\|", l.strip()) and not l.strip().startswith("| Test ID") and not l.strip().startswith("|---")])
+            result["files"]["test_stability"] = count
+            result["total_size_bytes"] += filepath.stat().st_size
+        else:
+            result["files"]["test_stability"] = 0
+
+        result["total_entries"] = sum(result["files"].values())
+        result["total_size_kb"] = round(result["total_size_bytes"] / 1024, 1)
+
+        return result
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

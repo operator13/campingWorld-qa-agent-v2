@@ -849,3 +849,179 @@ class TestGeneratorMemoryContext:
         monkeypatch.setenv("GENERATOR_MEMORY", "false")
         store = MemoryStore(memory_dir=tmp_path)
         assert store.build_generator_memory_context("/checkout") == ""
+
+
+# ---------------------------------------------------------------------------
+# Phase M4: Maintenance
+# ---------------------------------------------------------------------------
+
+class TestPruneStale:
+    def test_prunes_old_locator_entries(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        # Write an entry with an old date
+        filepath = store._locator_file("/checkout")
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.write_text(
+            "# Locator History: /checkout\n\n"
+            "## submitBtn\n"
+            "- 2020-01-01: `old` → `new` | reason: ancient | success: yes\n"
+            "- 2026-08-01: `a` → `b` | reason: recent | success: yes\n"
+        )
+
+        pruned = store.prune_stale(max_age_days=90)
+        assert pruned >= 1
+
+        content = filepath.read_text()
+        assert "2020-01-01" not in content
+        assert "2026-08-01" in content
+
+    def test_prunes_old_failure_patterns(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        filepath = tmp_path / "FAILURES.md"
+        filepath.write_text(
+            "# Failure Patterns\n"
+            "\n## FP-001: old error\n"
+            "- **Signature:** `old error`\n"
+            "- **Class:** locator_drift\n"
+            "- **Resolution:** healed\n"
+            "- **Routes:** /old\n"
+            "- **Occurrences:** 1\n"
+            "- **Last seen:** 2020-01-01\n"
+            "- **Stale after:** 2020-04-01\n"
+            "\n## FP-002: new error\n"
+            "- **Signature:** `new error`\n"
+            "- **Class:** app_defect\n"
+            "- **Resolution:** defect\n"
+            "- **Routes:** /new\n"
+            "- **Occurrences:** 1\n"
+            "- **Last seen:** 2026-08-01\n"
+            "- **Stale after:** 2026-11-01\n"
+        )
+
+        pruned = store.prune_stale(max_age_days=90)
+        assert pruned >= 1
+
+        content = filepath.read_text()
+        assert "old error" not in content
+        assert "new error" in content
+
+    def test_prunes_old_human_decisions(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        filepath = tmp_path / "HUMAN_DECISIONS.md"
+        filepath.write_text(
+            "# Human Review Decisions\n\n"
+            "| Date | Route | Error (summary) | Triage guess | Confidence | Human verdict | Reasoning |\n"
+            "|------|-------|----------------|--------------|------------|---------------|----------|\n"
+            "| 2020-01-01 | /old | old error | drift | 0.50 | heal | ancient |\n"
+            "| 2026-08-01 | /new | new error | drift | 0.60 | heal | recent |\n"
+        )
+
+        pruned = store.prune_stale(max_age_days=90)
+        assert pruned >= 1
+
+        content = filepath.read_text()
+        assert "2020-01-01" not in content
+        assert "2026-08-01" in content
+
+    def test_returns_zero_when_nothing_stale(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_locator_change("/checkout", "btn", "a", "b", "recent")
+
+        pruned = store.prune_stale(max_age_days=90)
+        assert pruned == 0
+
+    def test_returns_zero_on_empty_memory(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        pruned = store.prune_stale()
+        assert pruned == 0
+
+
+class TestDedupFailurePatterns:
+    def test_merges_duplicates(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        filepath = tmp_path / "FAILURES.md"
+        filepath.write_text(
+            "# Failure Patterns\n"
+            "\n## FP-001: timeout on button\n"
+            "- **Signature:** `timeout on button`\n"
+            "- **Class:** locator_drift\n"
+            "- **Resolution:** healed\n"
+            "- **Routes:** /checkout\n"
+            "- **Occurrences:** 3\n"
+            "- **Last seen:** 2026-08-01\n"
+            "- **Stale after:** 2026-11-01\n"
+            "\n## FP-002: timeout on button\n"
+            "- **Signature:** `timeout on button`\n"
+            "- **Class:** locator_drift\n"
+            "- **Resolution:** healed\n"
+            "- **Routes:** /checkout\n"
+            "- **Occurrences:** 2\n"
+            "- **Last seen:** 2026-08-10\n"
+            "- **Stale after:** 2026-11-10\n"
+        )
+
+        merged = store.dedup_failure_patterns()
+        assert merged == 1
+
+        content = filepath.read_text()
+        assert content.count("## FP-") == 1
+        assert "5" in content  # 3 + 2 occurrences
+
+    def test_no_duplicates_returns_zero(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_failure("error A unique", "drift", "healed", "/a")
+        store.record_failure("error B unique", "defect", "filed", "/b")
+
+        merged = store.dedup_failure_patterns()
+        assert merged == 0
+
+    def test_returns_zero_on_empty(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        merged = store.dedup_failure_patterns()
+        assert merged == 0
+
+
+class TestStats:
+    def test_counts_all_entry_types(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        store.record_locator_change("/checkout", "btn", "a", "b", "r")
+        store.record_locator_change("/checkout", "input", "c", "d", "r")
+        store.record_failure("error sig unique", "drift", "healed", "/checkout")
+        store.record_human_decision("drift", 0.5, "heal", "err")
+        store.update_route("/checkout", testids=["a"])
+        store.record_test_result("tc-1", "/checkout", True)
+
+        s = store.stats()
+        assert s["files"]["locators"] >= 2
+        assert s["files"]["failures"] >= 1
+        assert s["files"]["human_decisions"] >= 1
+        assert s["files"]["app_routes"] >= 1
+        assert s["files"]["test_stability"] >= 1
+        assert s["total_entries"] >= 6
+        assert s["total_size_kb"] > 0
+
+    def test_empty_memory(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        s = store.stats()
+        assert s["total_entries"] == 0
+
+    def test_size_is_reasonable(self, tmp_path):
+        store = MemoryStore(memory_dir=tmp_path)
+        for i in range(20):
+            store.record_locator_change("/checkout", f"el-{i}", f"old-{i}", f"new-{i}", "reason")
+
+        s = store.stats()
+        assert s["total_size_kb"] < 100  # should be tiny
+
+
+class TestCLIMemory:
+    def test_memory_stats_runs(self):
+        """CLI memory stats doesn't crash."""
+        from qa_agent.cli import _memory_stats
+        # Just verify it runs without error
+        _memory_stats()
+
+    def test_memory_prune_runs(self, tmp_path):
+        """CLI memory prune doesn't crash."""
+        from qa_agent.cli import _memory_prune
+        _memory_prune(max_age=90)
