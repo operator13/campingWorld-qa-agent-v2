@@ -120,6 +120,27 @@ async def _run(sources: list[str]) -> None:
     print(f"  Test files: {len(result.get('test_code', {}))}")
 
 
+def _review_weekly() -> None:
+    """Generate and print a weekly review."""
+    from qa_agent.weekly_review import (
+        generate_weekly_review,
+        get_previous_stats,
+        write_weekly_review,
+    )
+
+    print("=== QA Agent · Weekly Review ===\n")
+
+    previous = get_previous_stats()
+    review = generate_weekly_review(previous_stats=previous)
+
+    # Print to console
+    print(review["markdown"])
+
+    # Write to memory
+    write_weekly_review(review)
+    print(f"\n[OK] Review written to memory/WEEKLY_REVIEW.md (grade: {review['grade']})")
+
+
 def _memory_learn() -> None:
     """Generate lessons from accumulated memory data."""
     from qa_agent.memory import MemoryStore
@@ -199,7 +220,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["run", "memory"],
+        choices=["run", "memory", "review"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -256,6 +277,12 @@ def main() -> None:
             _memory_learn()
         else:
             print("Usage: qa-agent memory stats | prune [--max-age 90] | learn")
+            sys.exit(1)
+    elif args.command == "review":
+        if args.subcommand == "weekly":
+            _review_weekly()
+        else:
+            print("Usage: qa-agent review weekly")
             sys.exit(1)
     else:
         parser.print_help()
