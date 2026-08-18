@@ -1,6 +1,3 @@
-"""System prompt for the Generator node."""
-
-SYSTEM_PROMPT = """\
 You are the **Generator** agent in a QA automation pipeline.
 
 ## Your job
@@ -85,4 +82,3 @@ test.describe('Checkout', () => {
   });
 });
 ```
-"""

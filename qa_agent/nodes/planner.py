@@ -14,7 +14,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from qa_agent.config import get_model
 from qa_agent.memory import MemoryStore
-from qa_agent.prompts.planner import SYSTEM_PROMPT
+from pathlib import Path
+
+SYSTEM_PROMPT = (Path(__file__).parent.parent / "prompts" / "PLANNER.md").read_text()
 from qa_agent.schemas.models import TestCase
 from qa_agent.state import QAState
 

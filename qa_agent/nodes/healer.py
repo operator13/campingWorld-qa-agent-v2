@@ -19,7 +19,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from qa_agent.config import get_model
 from qa_agent.memory import MemoryStore, extract_locator_from_error
 from qa_agent.sanitizer import sanitize_text
-from qa_agent.prompts.healer import SYSTEM_PROMPT
+from pathlib import Path
+
+_SYSTEM_PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "HEALER.md"
+SYSTEM_PROMPT = _SYSTEM_PROMPT_PATH.read_text()
 from qa_agent.state import QAState
 
 logger = logging.getLogger(__name__)

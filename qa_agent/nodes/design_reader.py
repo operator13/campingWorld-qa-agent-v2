@@ -14,7 +14,9 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from qa_agent.config import get_model
-from qa_agent.prompts.design_reader import SYSTEM_PROMPT
+from pathlib import Path
+
+SYSTEM_PROMPT = (Path(__file__).parent.parent / "prompts" / "DESIGN_READER.md").read_text()
 from qa_agent.schemas.models import ExpectedUI, UIElement, UIFlow
 from qa_agent.state import QAState
 

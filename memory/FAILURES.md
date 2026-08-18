@@ -5,8 +5,8 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 33
-- **Last seen:** 2026-08-17
+- **Occurrences:** 34
+- **Last seen:** 2026-08-18
 - **Stale after:** 2026-11-15
 
 ## FP-002: Locator not found
@@ -14,8 +14,8 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 7
-- **Last seen:** 2026-08-17
+- **Occurrences:** 8
+- **Last seen:** 2026-08-18
 - **Stale after:** 2026-11-15
 
 ## FP-003: Login failed
@@ -23,6 +23,6 @@
 - **Class:** app_defect
 - **Resolution:** defect:QA-999
 - **Routes:** /
-- **Occurrences:** 14
-- **Last seen:** 2026-08-17
+- **Occurrences:** 16
+- **Last seen:** 2026-08-18
 - **Stale after:** 2026-11-15

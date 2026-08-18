@@ -16,7 +16,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from qa_agent.config import FIGMA_ROUTE_MAP, get_model
 from qa_agent.memory import MemoryStore
-from qa_agent.prompts.generator import SYSTEM_PROMPT
+from pathlib import Path
+
+SYSTEM_PROMPT = (Path(__file__).parent.parent / "prompts" / "GENERATOR.md").read_text()
 from qa_agent.state import QAState
 
 logger = logging.getLogger(__name__)

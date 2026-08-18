@@ -19,7 +19,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from qa_agent.confidence import score_confidence
 from qa_agent.config import get_model
 from qa_agent.memory import MemoryStore
-from qa_agent.prompts.triage import SYSTEM_PROMPT
+from pathlib import Path
+
+SYSTEM_PROMPT = (Path(__file__).parent.parent / "prompts" / "TRIAGE.md").read_text()
 from qa_agent.state import QAState
 
 logger = logging.getLogger(__name__)
