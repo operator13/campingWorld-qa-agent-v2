@@ -1,7 +1,8 @@
 # QA Automation AI Agent
 
-[![Tests](https://img.shields.io/badge/tests-219%20passing-brightgreen)](https://github.com)
+[![Tests](https://img.shields.io/badge/tests-355%20passing-brightgreen)](https://github.com)
 [![Graph Nodes](https://img.shields.io/badge/graph%20nodes-10-blue)](https://github.com)
+[![Memory Phases](https://img.shields.io/badge/memory-M1--M7%20complete-purple)](https://github.com)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-4f46e5?logo=python)](https://langchain-ai.github.io/langgraph/)
 [![Playwright](https://img.shields.io/badge/Playwright-1.62+-2EAD33?logo=playwright)](https://playwright.dev/)
 [![Claude](https://img.shields.io/badge/Claude-Opus%20%2B%20Sonnet-d97706?logo=anthropic)](https://anthropic.com/)
@@ -14,9 +15,13 @@ An **AI-powered QA automation framework** that reads Figma designs and Jira tick
 - **3 MCP integrations** — Playwright (browser), Figma (design), Atlassian (Jira)
 - **Assertion guardrail** — Healer can fix locators but provably never touches assertions
 - **Human-in-the-loop** — low-confidence failures pause for human review via LangGraph `interrupt()`
-- **Agent memory** — markdown-backed cross-run learning (known fixes, failure patterns, human decisions)
+- **7-phase agent memory** — markdown-backed cross-run learning with pattern scoreboard, weekly self-grading, and formal confidence rubric
+- **Zero databases** — all storage is git-tracked markdown (memory, metrics, prompts)
+- **Formal confidence rubric** — 5-criteria scoring with anti-inflation guards (not loose "rate 0-1")
+- **Weekly self-grading** — automated performance reviews with letter grades and prescriptions
 - **Eval harness** — scores AC coverage, locator quality, and Triage accuracy against golden fixtures
-- **219 automated tests** covering all nodes, routers, memory, guardrails, and integrations
+- **355 automated tests** covering all nodes, routers, memory, guardrails, and integrations
+- **3 rounds of pre-mortems** — 68 issues identified and fixed across the memory system
 
 ---
 
@@ -105,8 +110,9 @@ An **AI-powered QA automation framework** that reads Figma designs and Jira tick
 | **Design** | Figma MCP | Reads designs for UI spec extraction |
 | **Tickets** | Atlassian MCP | Reads Jira tickets, files deduped bug reports |
 | **Generated Tests** | TypeScript `@playwright/test` | Page Object Model with resilient locators |
-| **Memory** | Git-tracked markdown files | Cross-run learning (locator history, failure patterns) |
-| **Metrics** | SQLite | Run history, escape rate, Triage accuracy |
+| **Memory** | Git-tracked markdown files | Cross-run learning — all 12 memory files |
+| **Metrics** | Git-tracked markdown files | Run history, escape rate, Triage accuracy |
+| **Prompts** | Markdown files | System prompts loaded at runtime — editable without code changes |
 | **Eval** | Custom harness | AC coverage, locator quality, Triage accuracy scoring |
 | **CI** | GitHub Actions | Nightly tests + eval gate + agent run |
 | **Observability** | LangSmith + custom alerts | Token tracing, escape-rate alerts, auto-tuning |
@@ -123,11 +129,11 @@ An **AI-powered QA automation framework** that reads Figma designs and Jira tick
 | **Planner** | AI | Opus | UI spec + acceptance criteria → categorized test cases |
 | **Generator** | AI | Sonnet | Test plan → page objects + Playwright spec files |
 | **Executor** | AI/Runner | — | Writes files, runs `npx playwright test`, captures results |
-| **Triage** | AI | Opus | Classifies failure (locator drift vs app defect) + confidence 0–1 |
-| **Healer** | AI | Sonnet | Patches drifted locators in page objects (never assertions) |
-| **Human Review** | Human | — | LangGraph `interrupt()` for low-confidence cases |
-| **Defect Report** | System | — | Files deduped Jira ticket via Atlassian MCP |
-| **Metrics** | System | — | Records every run + Triage call to SQLite |
+| **Triage** | AI | Opus | Classifies failure (locator drift vs app defect) + 5-criteria confidence rubric |
+| **Healer** | AI | Sonnet | Patches drifted locators in page objects (never assertions) — memory-enhanced |
+| **Human Review** | Human | — | LangGraph `interrupt()` for low-confidence cases — records decisions to memory |
+| **Defect Report** | System | — | Files deduped Jira ticket via Atlassian MCP — records failure patterns |
+| **Metrics** | System | — | Records every run + Triage call to markdown |
 
 ### Routing Logic
 
@@ -149,35 +155,86 @@ def route_after_triage(state):
 | Guardrail | What it prevents |
 |-----------|-----------------|
 | **Assertion guardrail** | Healer can never modify `expect()`, `toBeVisible()`, `toHaveText()`, etc. — any diff touching assertions is rejected |
+| **Confidence rubric** | 5-criteria scoring (C1-C5) with 4 anti-inflation guards — no loose "rate 0-1" |
 | **Confidence gate** | Triage defers to humans when unsure (< 0.75) — no guessing on the fence |
 | **MAX_ATTEMPTS** | Heal loop is bounded (3 attempts) — no infinite retries |
-| **Memory validation** | Known-fix fast path still runs through the assertion guardrail before applying |
-| **Stale fix protection** | Failed fixes are marked `success: no` and excluded from future lookups |
-| **Prompt-injection guards** | 12 regex patterns strip injection attempts from Figma/DOM text |
+| **Memory validation** | Known-fix fast path runs through assertion guardrail before applying |
+| **Stale fix protection** | Fixes recorded as unverified; executor confirms on re-run; failed fixes excluded |
+| **Prompt-injection guards** | 12 regex patterns strip injection attempts from Figma/DOM text + memory content sanitized before prompt injection |
 | **Token budget** | Per-run ceiling (500K tokens) prevents runaway costs |
-| **Kill switches** | `MEMORY_ENABLED`, `HEALER_MEMORY`, `TRIAGE_MEMORY` — disable per-node |
+| **File locking** | `fcntl.flock` on all memory writes with Windows fallback — prevents concurrent corruption |
+| **Kill switches** | `MEMORY_ENABLED`, `HEALER_MEMORY`, `TRIAGE_MEMORY`, `PLANNER_MEMORY`, `GENERATOR_MEMORY`, `LESSONS_MEMORY` |
 
 ---
 
-## Agent Memory
+## Agent Memory (7 Phases Complete)
 
-Git-tracked markdown files in `memory/` that persist across runs — human-readable, editable, PR-reviewable.
+Git-tracked markdown files in `memory/` that persist across runs — human-readable, editable, PR-reviewable. Zero databases.
 
-| File | What it stores | Who writes | Who reads |
-|------|---------------|------------|-----------|
-| `memory/locators/CHECKOUT.md` | Locator drift history per route | Healer | Healer, Generator |
-| `memory/FAILURES.md` | Recurring error signatures + resolutions | Triage, Healer | Triage, Healer |
-| `memory/HUMAN_DECISIONS.md` | Every Human Review verdict + reasoning | Human Review | Triage (calibration) |
+```
+memory/
+├── locators/              # Per-route locator drift history
+│   ├── CHECKOUT.md
+│   └── LOGIN.md
+├── APP_STRUCTURE.md       # Known routes, testids, change frequency
+├── CONFIDENCE_RUBRIC.md   # 5-criteria Triage scoring rubric
+├── ESCAPES.md             # Bugs that slipped past green runs
+├── FAILURES.md            # Recurring error patterns + resolutions
+├── HEALER_STATS.md        # Cache hit vs LLM call counts
+├── HUMAN_DECISIONS.md     # Every Human Review verdict + reasoning
+├── LESSONS.md             # Pattern scoreboard + route insights + reflections
+├── RUN_HISTORY.md         # Every run: passed/failed, outcome
+├── TEST_STABILITY.md      # Per-test pass/fail history, flakiness scores
+├── TRIAGE_CALLS.md        # Every Triage classification for audit
+└── WEEKLY_REVIEW.md       # Periodic self-grading with prescriptions
+```
+
+### Memory Phases
+
+| Phase | What it does | Key capability |
+|-------|-------------|----------------|
+| **M1** | Healer remembers past fixes | Known-fix fast path — instant repair, no LLM call |
+| **M2** | Triage calibration from human corrections | Few-shot calibration context in Triage prompt |
+| **M3** | App structure + Planner intelligence | Volatile route detection, flaky test flagging |
+| **M4** | Memory maintenance | TTL pruning, dedup, stats CLI (`qa-agent memory stats`) |
+| **M5** | Lessons learned | Pattern scoreboard, route insights, decision reflections |
+| **M6** | Weekly self-grading | Letter grades (A-F), trend arrows, prescriptions |
+| **M7** | Formal confidence rubric | 5-criteria scoring with anti-inflation guards |
 
 ### How memory improves each run
 
 - **Healer** checks for known fixes before calling the LLM — instant repair, no API cost
+- **Healer** reads locator history to pick more durable selectors
 - **Triage** receives past human corrections as few-shot calibration context
 - **Triage** matches against similar past failures for classification hints
+- **Triage** uses 5-criteria rubric pre-scored from memory data
+- **Planner** prioritizes volatile routes and flags flaky tests
+- **Generator** uses known testid prefixes and avoids locators that drifted before
+- **All nodes** receive synthesized lessons (pattern scoreboard, route insights)
 
 ---
 
-## 219 Automated Tests
+## Confidence Rubric
+
+Triage confidence is scored with a formal 5-criteria rubric, not a loose "rate 0-1":
+
+| Criterion | Scores | What it measures |
+|-----------|--------|-----------------|
+| **C1** Error type signal | 0.0–0.2 | Is the error clearly drift or clearly defect? |
+| **C2** DOM evidence | 0.0–0.2 | Does the DOM show the element renamed or absent? |
+| **C3** Historical pattern | 0.0–0.2 | Has this error been seen before? |
+| **C4** Human calibration | 0.0–0.2 | Do past human decisions agree? |
+| **C5** Consistency check | 0.0–0.2 | Do multiple signals agree? |
+
+**Anti-inflation guards:**
+- First-seen error → capped at 0.7
+- Humans overridden 2+ times → capped at 0.6
+- No DOM snapshot → capped at 0.5
+- Timeout without DOM → capped at 0.6
+
+---
+
+## 355 Automated Tests
 
 ### Test Summary by Category
 
@@ -194,15 +251,18 @@ Git-tracked markdown files in `memory/` that persist across runs — human-reada
 | **Human Review** | 7 | Routing decisions, defaults, payload |
 | **Jira Defect** | 10 | Fingerprint, dedup, payload structure |
 | **Defect Report** | 4 | Report builder, MCP integration |
-| **Metrics** | 9 | MetricsDB CRUD, escape rate, accuracy |
+| **Metrics** | 11 | Markdown-backed CRUD, escape rate, accuracy, unique IDs |
 | **Eval** | 13 | AC coverage, locator quality, Triage accuracy, golden fixtures |
-| **Memory** | 53 | Locator CRUD, known fix, mark failed, failure patterns, human decisions, calibration, kill switch, integration |
+| **Memory** | 120+ | Locator CRUD, known fix, mark failed, failure patterns, human decisions, calibration, app structure, test stability, lessons, weekly review, confidence rubric, kill switches, integration |
 | **Cache** | 8 | Hash, round-trip, invalidation |
 | **Sanitizer** | 18 | Injection patterns, DOM, Figma elements, false positives |
 | **Observability** | 8 | Alerts, auto-tuning, report |
 | **Budget** | 10 | Token tracking, exhaustion, concurrency |
 | **PR Gate** | 3 | PR body generation |
-| **TOTAL** | **219** | |
+| **Confidence** | 35 | Criteria scoring, guards, full scoring, consistency |
+| **Weekly Review** | 25 | Grading, trends, prescriptions, CLI |
+| **Pre-mortem regressions** | 15 | Targeted tests for each fixed issue |
+| **TOTAL** | **355** | |
 
 ---
 
@@ -265,6 +325,28 @@ qa-agent run --source jira:QA-123 --source figma:FILE_KEY/NODE_ID
 
 ---
 
+## CLI Commands
+
+```bash
+# Run the agent
+qa-agent run --dry                              # Compile graph + test MCP connections
+qa-agent run --source jira:QA-123               # Run from Jira ticket
+qa-agent run --source figma:FILE/NODE           # Run from Figma design
+qa-agent run --source jira:X --source figma:Y   # Both sources
+qa-agent run --dry --verbose                    # Debug logging
+
+# Memory management
+qa-agent memory stats                           # Show memory entry counts + size
+qa-agent memory prune                           # Remove entries older than 90 days
+qa-agent memory prune --max-age 30              # Custom TTL
+qa-agent memory learn                           # Generate lessons from accumulated data
+
+# Weekly review
+qa-agent review weekly                          # Generate weekly self-grading report
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -273,57 +355,47 @@ qa-automation-agent/
 │   ├── state.py                    # QAState shared state schema
 │   ├── config.py                   # Env, thresholds, model map
 │   ├── graph.py                    # StateGraph wiring (10 nodes, 2 routers)
-│   ├── cli.py                      # CLI entrypoint
-│   ├── memory.py                   # MemoryStore (markdown-backed)
+│   ├── cli.py                      # CLI entrypoint (run, memory, review)
+│   ├── memory.py                   # MemoryStore (markdown-backed, file-locked)
+│   ├── confidence.py               # 5-criteria rubric scorer + anti-inflation guards
+│   ├── weekly_review.py            # Periodic self-grading with grades + prescriptions
 │   ├── cache.py                    # Determinism cache
 │   ├── sanitizer.py                # Prompt-injection guards
 │   ├── observability.py            # Escape-rate alerts, auto-tuning
 │   ├── budget.py                   # Token budget + concurrency limiter
 │   ├── intake/                     # Jira MCP + Figma intake adapters
-│   │   ├── base.py                 # Intake protocol + IntakeResult
-│   │   ├── jira.py                 # Jira MCP adapter
-│   │   └── figma.py                # Figma REST adapter
-│   ├── nodes/                      # One file per graph node
+│   ├── nodes/                      # One file per graph node (the agents)
 │   │   ├── design_reader.py        # Figma → ExpectedUI
-│   │   ├── planner.py              # UI spec + AC → test cases
-│   │   ├── generator.py            # Test plan → page objects + specs
-│   │   ├── executor.py             # Runs Playwright tests
-│   │   ├── triage.py               # Failure classification + confidence
-│   │   ├── healer.py               # Locator repair (memory-enhanced)
-│   │   ├── defect_report.py        # Jira ticket filing
-│   │   └── metrics.py              # Run + Triage call recording
+│   │   ├── planner.py              # UI spec + AC → test cases (memory-enhanced)
+│   │   ├── generator.py            # Test plan → page objects + specs (memory-enhanced)
+│   │   ├── executor.py             # Runs Playwright tests, verifies fixes
+│   │   ├── triage.py               # Failure classification + rubric scoring (memory-enhanced)
+│   │   ├── healer.py               # Locator repair with known-fix cache (memory-enhanced)
+│   │   ├── defect_report.py        # Jira ticket filing + failure pattern recording
+│   │   └── metrics.py              # Run + Triage call recording (markdown-backed)
 │   ├── mcp/                        # MCP client configs
 │   │   ├── figma_client.py         # Figma MCP (HTTP)
 │   │   ├── playwright_client.py    # Playwright MCP (stdio)
 │   │   └── atlassian_client.py     # Atlassian MCP (stdio)
-│   ├── prompts/                    # System prompt per AI node
+│   ├── prompts/                    # System prompts (markdown files)
+│   │   ├── DESIGN_READER.md
+│   │   ├── PLANNER.md
+│   │   ├── GENERATOR.md
+│   │   ├── EXECUTOR.md
+│   │   ├── TRIAGE.md
+│   │   └── HEALER.md
 │   ├── schemas/                    # Pydantic I/O models
 │   ├── surfaces/                   # Human review, Jira defect, PR gate
 │   └── eval/                       # Eval harness + golden fixtures
-├── memory/                         # Git-tracked agent memory (markdown)
-│   ├── locators/                   # Per-route locator history
-│   ├── FAILURES.md                 # Recurring failure patterns
-│   └── HUMAN_DECISIONS.md          # Human Review verdicts
+├── memory/                         # Git-tracked agent memory (12 markdown files)
 ├── page_objects/                    # Generated page objects (one per route)
 ├── tests_generated/                # Generated Playwright specs
-├── tests/                          # 219 automated tests
-├── features/                       # Feature build specs (backlog)
+├── tests/                          # 355 automated tests
+├── features/                       # Feature build specs (10 specs)
 ├── .github/workflows/              # Nightly CI workflow
-├── PROJECT_STATUS.md               # Phase tracking (100% complete)
+├── PROJECT_STATUS.md               # Phase tracking
 ├── CHANGELOG.md                    # Commit-level change history
 └── pyproject.toml                  # Python project config
-```
-
----
-
-## CLI Commands
-
-```bash
-qa-agent run --dry                        # Compile graph + test MCP connections
-qa-agent run --source jira:QA-123         # Run from Jira ticket
-qa-agent run --source figma:FILE/NODE     # Run from Figma design
-qa-agent run --source jira:X --source figma:Y  # Both sources
-qa-agent run --dry --verbose              # Debug logging
 ```
 
 ---
@@ -334,7 +406,7 @@ Build specs for all planned features are in `features/`:
 
 | Feature | Status | Spec |
 |---------|--------|------|
-| Agent Memory (M1-M2) | DONE | [MEMORY.md](features/MEMORY.md) |
+| Agent Memory (M1-M7) | **COMPLETE** | [MEMORY.md](features/MEMORY.md) |
 | TPM Agent | PLANNED | [TPM_AGENT.md](features/TPM_AGENT.md) |
 | Auto-Threshold Tuning | PLANNED | [AUTO_THRESHOLD_TUNING.md](features/AUTO_THRESHOLD_TUNING.md) |
 | Red-Team Negative Path | PLANNED | [RED_TEAM_NEGATIVE_PATH.md](features/RED_TEAM_NEGATIVE_PATH.md) |
@@ -347,25 +419,41 @@ Build specs for all planned features are in `features/`:
 
 ---
 
+## Pre-mortem Process
+
+The memory system underwent **3 rounds of pre-mortems** with 68 total issues identified and fixed:
+
+| Pass | Issues found | Fixed | Key findings |
+|------|-------------|-------|-------------|
+| 1 | 12 | 11 | Naive matching, assertion guardrail bypass, stale fix poisoning |
+| 2 | 35 | 35 | TOCTOU races, prompt injection via memory, premature success recording |
+| 3 | 21 | 19 | Windows crash in file locking, duplicate IDs, scoreboard never persisted |
+
+15 regression tests were written specifically for the pre-mortem fixes.
+
+---
+
 ## Skills Demonstrated
 
 | Category | Skills |
 |----------|--------|
-| **AI Engineering** | LangGraph agent orchestration, structured LLM output, prompt engineering, confidence calibration |
+| **AI Engineering** | LangGraph agent orchestration, structured LLM output, prompt engineering, confidence calibration, 5-criteria rubric design |
 | **QA Automation** | Playwright test generation, Page Object Model, self-healing tests, assertion guardrails |
 | **MCP Integration** | Multi-server MCP clients (Figma, Playwright, Atlassian), tool binding |
 | **Software Architecture** | Graph-based state machines, conditional routing, human-in-the-loop patterns |
-| **Testing** | 219 automated tests, table-driven parametrized tests, mocked LLM integration tests |
-| **Observability** | Metrics DB, escape-rate tracking, Triage accuracy auditing, auto-threshold tuning |
-| **Security** | Prompt-injection guards, assertion guardrails, token budget controls |
+| **Memory Systems** | Markdown-backed cross-run learning, pattern recognition, weekly self-grading |
+| **Testing** | 355 automated tests, table-driven parametrized tests, mocked LLM integration tests, regression tests from pre-mortems |
+| **Observability** | Markdown metrics, escape-rate tracking, Triage accuracy auditing, auto-threshold tuning |
+| **Security** | Prompt-injection guards, assertion guardrails, token budget controls, file locking, memory content sanitization |
 | **DevOps** | GitHub Actions CI, nightly workflows, PR gate automation |
+| **Process** | Pre-mortem analysis (3 rounds, 68 issues), feature build specs, phased implementation |
 
 ---
 
 ## Author
 
 **QA Automation Portfolio Project**
-Demonstrating AI-powered test automation with self-healing capabilities, confidence-gated triage, and human-in-the-loop safety for QA Lead / Staff QA Engineer roles.
+Demonstrating AI-powered test automation with self-healing capabilities, confidence-gated triage, cross-run learning, and human-in-the-loop safety for QA Lead / Staff QA Engineer roles.
 
 ---
 
