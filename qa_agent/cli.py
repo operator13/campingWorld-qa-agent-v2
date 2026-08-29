@@ -215,6 +215,52 @@ def _memory_prune(max_age: int) -> None:
     print(f"Size: {before['total_size_kb']} KB → {after['total_size_kb']} KB")
 
 
+async def _crawl(
+    pages: list[str] | None,
+    include_auth: bool,
+    resume: bool,
+    dry: bool,
+    overwrite: bool,
+) -> None:
+    """Crawl campingworld.com and generate POM + test files."""
+    from qa_agent.mcp.playwright_client import create_playwright_client
+    from qa_agent.orchestrator.orchestrator import Orchestrator
+
+    print("=== QA Agent · DOM Orchestrator ===\n")
+
+    if pages:
+        print(f"Pages: {', '.join(pages)}")
+    else:
+        print("Pages: all" + (" (including auth)" if include_auth else " (excluding auth)"))
+    if dry:
+        print("Mode: DRY RUN (snapshot only, no generation)")
+    if resume:
+        print("Mode: RESUME (skipping completed pages)")
+    print()
+
+    async with await create_playwright_client() as mcp_client:
+        tools = await mcp_client.get_tools()
+        print(f"[OK] Playwright MCP connected ({len(tools)} tools)\n")
+
+        async def call_tool(tool_name: str, args: dict) -> object:
+            """Invoke a Playwright MCP tool by name."""
+            for tool in tools:
+                if tool.name == tool_name:
+                    return await tool.ainvoke(args)
+            raise ValueError(f"MCP tool not found: {tool_name}")
+
+        orchestrator = Orchestrator(call_tool, overwrite=overwrite)
+        result = await orchestrator.crawl_site(
+            pages=pages,
+            include_auth=include_auth,
+            resume=resume,
+            dry_run=dry,
+        )
+
+    if result.pages_failed > 0:
+        sys.exit(1)
+
+
 def main() -> None:
     """CLI entrypoint."""
     parser = argparse.ArgumentParser(
@@ -223,7 +269,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["run", "memory", "review"],
+        choices=["run", "memory", "review", "crawl"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -255,6 +301,28 @@ def main() -> None:
         default=90,
         help="Max age in days for memory prune (default: 90)",
     )
+    # Crawl-specific arguments
+    parser.add_argument(
+        "--page",
+        type=str,
+        default=None,
+        help="Comma-separated page keys to crawl (e.g. homepage,cart,pdp). Default: all.",
+    )
+    parser.add_argument(
+        "--auth",
+        action="store_true",
+        help="Include auth-gated pages in crawl",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from last progress checkpoint",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing POM/test files",
+    )
 
     args = parser.parse_args()
 
@@ -281,6 +349,15 @@ def main() -> None:
         else:
             print("Usage: qa-agent memory stats | prune [--max-age 90] | learn")
             sys.exit(1)
+    elif args.command == "crawl":
+        pages = args.page.split(",") if args.page else None
+        asyncio.run(_crawl(
+            pages=pages,
+            include_auth=args.auth,
+            resume=args.resume,
+            dry=args.dry,
+            overwrite=args.overwrite,
+        ))
     elif args.command == "review":
         if args.subcommand == "weekly":
             _review_weekly()

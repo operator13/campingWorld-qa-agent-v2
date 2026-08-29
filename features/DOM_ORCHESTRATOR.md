@@ -2,7 +2,7 @@
 
 > A standalone agent that uses Playwright MCP to crawl campingworld.com, snapshot page DOMs, and auto-generate TypeScript Page Object Model files and Playwright test specs — covering the full site without Figma or Jira input.
 
-**Status:** IN PROGRESS (Phase O4 complete — 75%)
+**Status:** IN PROGRESS (Phase O5 complete — 90%)
 **Priority:** High
 **Depends on:** Core framework (Phases 0-4), existing Playwright MCP client (`qa_agent/mcp/playwright_client.py`)
 
@@ -25,7 +25,7 @@ The orchestrator is organized as a **site map** of page types, each processed in
 
 ---
 
-## Overall Progress: 75%
+## Overall Progress: 90%
 
 | Phase | Description | Status | % |
 |-------|-------------|--------|---|
@@ -33,7 +33,7 @@ The orchestrator is organized as a **site map** of page types, each processed in
 | O2 | POM Generation — DOM→TypeScript page objects | **DONE** | 35% |
 | O3 | Test Generation — POM→Playwright test specs | **DONE** | 55% |
 | O4 | Full Site Coverage — all 16 page types | **DONE** | 75% |
-| O5 | CLI + Orchestration Loop — wire it all together | PENDING | 75→90% |
+| O5 | CLI + Orchestration Loop — wire it all together | **DONE** | 90% |
 | O6 | Hardening — edge cases, memory, responsive | PENDING | 90→100% |
 
 ---
