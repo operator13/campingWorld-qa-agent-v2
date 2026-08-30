@@ -773,7 +773,6 @@ body::before {
    ============================================ */
 .section-runner {
   margin-top: 24px;
-  max-width: calc(50% - 16px);
 }
 
 .runner-header {
