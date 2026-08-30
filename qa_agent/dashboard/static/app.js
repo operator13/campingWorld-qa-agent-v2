@@ -371,6 +371,9 @@
           case 'runner:healed':
             appendRunnerLog('[HEAL] Done: ' + data.healed + ' healed, ' + data.skipped + ' skipped');
             break;
+          case 'runner:clear':
+            doClearRunner();
+            break;
           default:
             break;
         }
@@ -527,6 +530,11 @@
   }
 
   function clearTestRunner() {
+    // Broadcast clear to all connected devices
+    fetch('/api/tests/clear', { method: 'POST' });
+  }
+
+  function doClearRunner() {
     document.getElementById('runner-log').innerHTML = '';
     document.getElementById('runner-log-container').style.display = 'none';
     document.getElementById('btn-run-selected').style.display = 'inline-block';
