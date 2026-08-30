@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "product.spec.ts",
+      "test_title": "product page loads with main content",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-30T17:48:54.454671+00:00"
+}
