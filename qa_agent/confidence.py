@@ -86,7 +86,11 @@ _TIMEOUT_PATTERN = re.compile(r"TimeoutError|Timeout.*exceeded", re.I)
 
 
 def score_c1_error_type(error: str) -> float:
-    """C1: Error type signal (0.0-0.2)."""
+    """C1: Error type signal (0.0-0.3).
+
+    Strong unambiguous signals get 0.3 (raised from 0.2) to ensure
+    clear-cut drift/defect patterns reach the CONF_SURE threshold.
+    """
     if not error:
         return 0.0
 
@@ -94,9 +98,9 @@ def score_c1_error_type(error: str) -> float:
     defect_match = any(p.search(error) for p in _DEFECT_ERROR_PATTERNS)
 
     if drift_match and not defect_match:
-        return 0.2
+        return 0.3  # strong unambiguous drift signal
     if defect_match and not drift_match:
-        return 0.2
+        return 0.3  # strong unambiguous defect signal
     if _TIMEOUT_PATTERN.search(error):
         return 0.1  # ambiguous
     return 0.0
@@ -189,11 +193,18 @@ def score_c5_consistency(
 ) -> float:
     """C5: Consistency check (0.0-0.2).
 
-    How many independent signals agree?
+    How many independent signals agree? A very strong C1 (≥0.25)
+    counts as 2 strong signals because the error pattern alone is
+    highly diagnostic.
     """
-    strong_signals = sum(1 for c in [c1, c2, c3, c4] if c >= 0.15)
-    weak_signals = sum(1 for c in [c1, c2, c3, c4] if 0.05 < c < 0.15)
-    no_signals = sum(1 for c in [c1, c2, c3, c4] if c <= 0.05)
+    # A strong C1 (unambiguous error pattern) counts double
+    effective_signals = [c1, c2, c3, c4]
+    strong_signals = sum(1 for c in effective_signals if c >= 0.15)
+    if c1 >= 0.25:
+        strong_signals += 1  # bonus for very clear error pattern
+
+    weak_signals = sum(1 for c in effective_signals if 0.05 < c < 0.15)
+    no_signals = sum(1 for c in effective_signals if c <= 0.05)
 
     if strong_signals >= 3:
         return 0.2
@@ -220,12 +231,14 @@ def apply_guards(
     score = raw_score
     guards: list[str] = []
 
-    # Guard 1: First time seeing this error → cap at 0.7
+    # Guard 1: First time seeing this error → cap at 0.8
+    # Raised from 0.7 to allow clear-cut patterns (strong C1) to pass
+    # CONF_SURE threshold (0.75) even on first encounter.
     similar = memory.find_similar_failure(error)
     if not similar:
-        if score > 0.7:
-            score = 0.7
-            guards.append("G1: first-seen pattern → capped at 0.7")
+        if score > 0.8:
+            score = 0.8
+            guards.append("G1: first-seen pattern → capped at 0.8")
 
     # Guard 2: Humans have overridden 2+ times → cap at 0.6
     decisions = memory.get_triage_calibration(n=20)
@@ -253,7 +266,10 @@ def apply_guards(
             guards.append(f"G2: {override_count} human overrides → capped at 0.6")
 
     # Guard 3: No DOM snapshot → cap at 0.5
-    if not dom_snapshot:
+    # Relaxed: skip G3 when C1 is strong (≥0.25) because the error pattern
+    # alone is sufficient evidence (e.g., assertion errors don't need DOM)
+    c1_score = score_c1_error_type(error)
+    if not dom_snapshot and c1_score < 0.25:
         if score > 0.5:
             score = 0.5
             guards.append("G3: no DOM snapshot → capped at 0.5")

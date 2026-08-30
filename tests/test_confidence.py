@@ -23,13 +23,13 @@ from qa_agent.memory import MemoryStore
 
 class TestC1ErrorType:
     def test_clear_drift_signal(self):
-        assert score_c1_error_type("selector-not-found: button 'Submit'") == 0.2
+        assert score_c1_error_type("selector-not-found: button 'Submit'") == 0.3
 
     def test_clear_defect_signal(self):
-        assert score_c1_error_type("AssertionError: expected 'OK' got 'Error'") == 0.2
+        assert score_c1_error_type("AssertionError: expected 'OK' got 'Error'") == 0.3
 
     def test_http_500_defect(self):
-        assert score_c1_error_type("net::ERR_FAILED 500 Internal Server Error") == 0.2
+        assert score_c1_error_type("net::ERR_FAILED 500 Internal Server Error") == 0.3
 
     def test_timeout_ambiguous(self):
         assert score_c1_error_type("TimeoutError: Timeout 30000ms exceeded") == 0.1
@@ -41,10 +41,10 @@ class TestC1ErrorType:
         assert score_c1_error_type("") == 0.0
 
     def test_stale_element(self):
-        assert score_c1_error_type("stale element reference") == 0.2
+        assert score_c1_error_type("stale element reference") == 0.3
 
     def test_waiting_for_locator(self):
-        assert score_c1_error_type("waiting for getByRole('button')") == 0.2
+        assert score_c1_error_type("waiting for getByRole('button')") == 0.3
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +148,7 @@ class TestGuards:
     def test_guard1_first_seen(self, tmp_path):
         store = MemoryStore(memory_dir=tmp_path)
         score, guards = apply_guards(0.9, "brand new error", None, store)
-        assert score <= 0.7
+        assert score <= 0.8
         assert any("G1" in g for g in guards)
 
     def test_guard1_not_applied_for_known(self, tmp_path):
@@ -204,7 +204,7 @@ class TestScoreConfidence:
             memory=store,
         )
         assert breakdown.final_score >= 0.5
-        assert breakdown.c1_error_type == 0.2
+        assert breakdown.c1_error_type == 0.3
         assert breakdown.c2_dom_evidence == 0.2
 
     def test_ambiguous_timeout(self, tmp_path):

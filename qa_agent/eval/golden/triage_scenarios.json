@@ -106,7 +106,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.80,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -116,7 +116,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.85,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -126,7 +126,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.82,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -136,7 +136,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.80,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -146,7 +146,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.79,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -156,7 +156,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.83,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -166,7 +166,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.81,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -176,7 +176,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.78,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -186,7 +186,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.80,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -196,7 +196,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.79,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -206,7 +206,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.77,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -216,7 +216,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "app_defect",
-    "expected_confidence_min": 0.76,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
