@@ -260,11 +260,29 @@
 
     tbody.innerHTML = sorted.map(run => {
       const ts = formatTimestamp(run.timestamp);
+      const status = (run.overall_status || 'UNKNOWN').toLowerCase();
+      const isTriage = run.is_triage;
+
+      if (isTriage) {
+        const triaged = run.total_tests ?? 0;
+        const healed = run.total_passed ?? 0;
+        const unhealed = run.total_failed ?? 0;
+        return `
+          <tr title="Self-healing run">
+            <td>${ts}</td>
+            <td>${triaged} triaged</td>
+            <td class="status-healthy">${healed} healed</td>
+            <td class="status-critical">${unhealed} unhealed</td>
+            <td>--</td>
+            <td><span class="domain-status-badge badge-healing">SELF-HEAL</span></td>
+          </tr>
+        `;
+      }
+
       const total = run.total_tests ?? '--';
       const passed = run.total_passed ?? '--';
       const failed = run.total_failed ?? '--';
       const health = run.overall_score != null ? (run.overall_score * 100).toFixed(1) + '%' : '--';
-      const status = (run.overall_status || 'UNKNOWN').toLowerCase();
 
       const badgeClass = status === 'healthy' ? 'badge-healthy'
         : status === 'degraded' ? 'badge-degraded'

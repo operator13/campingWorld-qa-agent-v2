@@ -187,20 +187,40 @@ async def health_history() -> JSONResponse:
         data = _read_json(f)
         if not data or not isinstance(data, dict):
             continue
-        run_id = data.get("run_id") or f.stem
-        has_report = (TEST_RESULTS_DIR / run_id / "html-report" / "index.html").exists()
-        results.append(
-            {
-                "run_id": run_id,
-                "timestamp": data.get("timestamp"),
-                "overall_score": data.get("overall_score"),
-                "overall_status": data.get("overall_status"),
-                "total_passed": data.get("total_passed"),
-                "total_failed": data.get("total_failed"),
-                "total_tests": data.get("total_tests"),
-                "has_report": has_report,
-            }
-        )
+
+        if "-triage" in f.stem:
+            # Triage/self-healing report
+            triaged = data.get("triaged", 0)
+            healed = data.get("healed", 0)
+            results.append(
+                {
+                    "run_id": f.stem,
+                    "timestamp": data.get("timestamp"),
+                    "overall_score": None,
+                    "overall_status": "SELF-HEAL",
+                    "total_passed": healed,
+                    "total_failed": triaged - healed,
+                    "total_tests": triaged,
+                    "has_report": False,
+                    "is_triage": True,
+                }
+            )
+        else:
+            run_id = data.get("run_id") or f.stem
+            has_report = (TEST_RESULTS_DIR / run_id / "html-report" / "index.html").exists()
+            results.append(
+                {
+                    "run_id": run_id,
+                    "timestamp": data.get("timestamp"),
+                    "overall_score": data.get("overall_score"),
+                    "overall_status": data.get("overall_status"),
+                    "total_passed": data.get("total_passed"),
+                    "total_failed": data.get("total_failed"),
+                    "total_tests": data.get("total_tests"),
+                    "has_report": has_report,
+                    "is_triage": False,
+                }
+            )
     return JSONResponse(content=results)
 
 

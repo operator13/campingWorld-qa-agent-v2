@@ -397,6 +397,12 @@ body::before {
   border: 1px solid rgba(255, 0, 60, 0.2);
 }
 
+.domain-status-badge.badge-healing {
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.1);
+  border: 1px solid rgba(192, 132, 252, 0.2);
+}
+
 /* ============================================
    Section 2: Agent Eval Cards
    ============================================ */
