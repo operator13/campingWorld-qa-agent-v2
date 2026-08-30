@@ -62,9 +62,9 @@ def score_ac_coverage(
                 " ".join(tc.get("expected", [])),
             ]).lower()
 
-            # AC is covered if at least half of its keywords appear in the test
+            # AC is covered if at least 60% of its keywords appear in the test
             matches = sum(1 for kw in keywords if kw in tc_text)
-            if keywords and matches / len(keywords) >= 0.4:
+            if keywords and matches / len(keywords) >= 0.6:
                 found = True
                 break
 
@@ -228,6 +228,116 @@ def score_test_validity(test_code: dict[str, str]) -> dict[str, Any]:
         "valid": valid,
         "total": total,
         "invalid": invalid,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Import Correctness
+# ---------------------------------------------------------------------------
+
+_IMPORT_RE = re.compile(r"import\s*\{([^}]+)\}\s*from\s*['\"]([^'\"]+)['\"]")
+
+
+def score_import_correctness(
+    page_objects: dict[str, str],
+    test_code: dict[str, str],
+) -> dict[str, Any]:
+    """Score: what fraction of test-file import statements are semantically correct?
+
+    For each ``import { X } from '../page_objects/Y'`` (or ``../page-objects/Y``)
+    in a test file:
+
+    - Flags imports that use a hyphen path (``page-objects``) instead of
+      underscore (``page_objects``).
+    - Flags imports with an empty filename, e.g. ``'../page_objects/'``.
+    - Flags imports whose class name ``X`` does not appear as a class
+      declaration in any POM source provided in ``page_objects``.
+
+    Imports that do not reference ``page_objects`` or ``page-objects`` are
+    ignored (e.g. ``@playwright/test`` imports).
+
+    Returns::
+
+        {
+            "score": float,       # correct / total (1.0 when total == 0)
+            "correct": int,
+            "total": int,
+            "errors": [{"file": str, "import": str, "issue": str}, ...]
+        }
+    """
+    if not test_code:
+        return {"score": 1.0, "correct": 0, "total": 0, "errors": []}
+
+    # Build a set of class names declared in the provided page objects
+    _class_name_re = re.compile(r"\bclass\s+(\w+)")
+    pom_class_names: set[str] = set()
+    for source in page_objects.values():
+        for match in _class_name_re.finditer(source):
+            pom_class_names.add(match.group(1))
+
+    total = 0
+    correct = 0
+    errors: list[dict[str, Any]] = []
+
+    for filename, source in test_code.items():
+        for m in _IMPORT_RE.finditer(source):
+            imported_names_raw = m.group(1)
+            import_path = m.group(2)
+
+            # Only evaluate imports that reference page_objects or page-objects
+            if "page_objects" not in import_path and "page-objects" not in import_path:
+                continue
+
+            # Normalise the imported class names (strip whitespace, type keyword)
+            imported_names = [
+                n.strip().lstrip("type").strip()
+                for n in imported_names_raw.split(",")
+                if n.strip()
+            ]
+
+            for class_name in imported_names:
+                if not class_name:
+                    continue
+
+                import_repr = f"import {{ {class_name} }} from '{import_path}'"
+                total += 1
+
+                # Check 1: hyphen path
+                if "page-objects" in import_path:
+                    errors.append({
+                        "file": filename,
+                        "import": import_repr,
+                        "issue": "hyphen path 'page-objects' should be 'page_objects'",
+                    })
+                    continue
+
+                # Check 2: empty filename (path ends with '/')
+                path_after_prefix = import_path.split("page_objects")[-1]
+                if not path_after_prefix.lstrip("/"):
+                    errors.append({
+                        "file": filename,
+                        "import": import_repr,
+                        "issue": "empty filename in import path",
+                    })
+                    continue
+
+                # Check 3: class name not found in any POM
+                if class_name not in pom_class_names:
+                    errors.append({
+                        "file": filename,
+                        "import": import_repr,
+                        "issue": f"class '{class_name}' not found in provided page_objects",
+                    })
+                    continue
+
+                correct += 1
+
+    score = correct / total if total > 0 else 1.0
+    return {
+        "score": round(score, 4),
+        "correct": correct,
+        "total": total,
+        "errors": errors,
     }
 
 
@@ -418,6 +528,238 @@ def score_diff_minimality(
         "locator_changes": locator_changed,
         "non_locator_changes": total_changed - locator_changed,
         "total_changes": total_changed,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Plan Quality
+# ---------------------------------------------------------------------------
+
+def score_plan_quality(
+    test_cases: list[dict],
+    acceptance_criteria: list[str],
+) -> dict[str, Any]:
+    """Score overall quality of a generated test plan across three dimensions.
+
+    Dimensions:
+      - Step completeness: each test case should have >=2 steps and >=1 expected.
+      - Deduplication: no two test cases should have >80% word overlap in titles.
+      - Edge case coverage: at least 20% of test cases should mention error/negative scenarios.
+
+    Returns a dict with an overall score (average of 3 sub-scores) and per-dimension details.
+    """
+    if not test_cases:
+        return {
+            "score": 0.0,
+            "step_completeness": {"score": 0.0, "incomplete": []},
+            "deduplication": {"score": 1.0, "duplicates": []},
+            "edge_case_coverage": {"score": 0.0, "edge_case_count": 0, "total": 0},
+        }
+
+    total = len(test_cases)
+
+    # --- Step completeness ---
+    incomplete_ids: list[str] = []
+    for tc in test_cases:
+        steps = tc.get("steps", [])
+        expected = tc.get("expected", [])
+        if len(steps) < 2 or len(expected) < 1:
+            incomplete_ids.append(tc.get("id", "unknown"))
+    complete_count = total - len(incomplete_ids)
+    step_completeness_score = complete_count / total
+
+    # --- Deduplication ---
+    _EDGE_KEYWORDS = {"invalid", "empty", "wrong", "error", "fail", "denied", "unauthorized"}
+    _EDGE_TAGS = {"@error", "@negative", "@edge"}
+
+    titles = [tc.get("title", "") for tc in test_cases]
+    title_word_sets = [set(t.lower().split()) for t in titles]
+
+    duplicate_pairs: list[list[str]] = []
+    seen_duplicates: set[tuple[int, int]] = set()
+
+    for i in range(total):
+        for j in range(i + 1, total):
+            set_i = title_word_sets[i]
+            set_j = title_word_sets[j]
+            union = set_i | set_j
+            if not union:
+                continue
+            intersection = set_i & set_j
+            jaccard = len(intersection) / len(union)
+            if jaccard > 0.80:
+                pair_key = (i, j)
+                if pair_key not in seen_duplicates:
+                    seen_duplicates.add(pair_key)
+                    duplicate_pairs.append([titles[i], titles[j]])
+
+    # Count unique titles (first occurrence of each duplicate cluster counts)
+    duplicate_title_indices: set[int] = set()
+    for i in range(total):
+        for j in range(i + 1, total):
+            set_i = title_word_sets[i]
+            set_j = title_word_sets[j]
+            union = set_i | set_j
+            if not union:
+                continue
+            if len(set_i & set_j) / len(union) > 0.80:
+                duplicate_title_indices.add(j)  # mark later duplicate
+
+    unique_count = total - len(duplicate_title_indices)
+    deduplication_score = unique_count / total
+
+    # --- Edge case coverage ---
+    edge_case_count = 0
+    for tc in test_cases:
+        steps_text = " ".join(tc.get("steps", [])).lower()
+        expected_text = " ".join(tc.get("expected", [])).lower()
+        combined_text = steps_text + " " + expected_text
+        tags = {t.lower() for t in tc.get("tags", [])}
+
+        has_edge_keyword = any(kw in combined_text for kw in _EDGE_KEYWORDS)
+        has_edge_tag = bool(tags & _EDGE_TAGS)
+
+        if has_edge_keyword or has_edge_tag:
+            edge_case_count += 1
+
+    edge_case_score = min(edge_case_count / (total * 0.20), 1.0)
+
+    overall_score = round((step_completeness_score + deduplication_score + edge_case_score) / 3, 4)
+
+    return {
+        "score": overall_score,
+        "step_completeness": {
+            "score": round(step_completeness_score, 4),
+            "incomplete": incomplete_ids,
+        },
+        "deduplication": {
+            "score": round(deduplication_score, 4),
+            "duplicates": duplicate_pairs,
+        },
+        "edge_case_coverage": {
+            "score": round(edge_case_score, 4),
+            "edge_case_count": edge_case_count,
+            "total": total,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Healer: Fix Correctness
+# ---------------------------------------------------------------------------
+
+def score_fix_correctness(
+    scenarios: list[dict],
+    healed_sources: dict[str, str],
+) -> dict[str, Any]:
+    """Score: what fraction of scenarios have the expected fix in the healed source?
+
+    For each scenario that has ``expected_fix_contains``, check that the healed
+    source for that scenario's route contains the expected string.
+
+    Returns:
+        {
+            "score": float,
+            "correct": int,
+            "total": int,
+            "misses": [{"scenario": str, "expected": str, "found": bool}],
+        }
+    """
+    eligible = [s for s in scenarios if s.get("expected_fix_contains")]
+    if not eligible:
+        return {"score": 1.0, "correct": 0, "total": 0, "misses": []}
+
+    misses: list[dict[str, Any]] = []
+    correct = 0
+
+    for s in eligible:
+        route = s["route"]
+        expected = s["expected_fix_contains"]
+        healed = healed_sources.get(route, "")
+        found = expected in healed
+        if found:
+            correct += 1
+        else:
+            misses.append({"scenario": s["scenario"], "expected": expected, "found": False})
+
+    score = correct / len(eligible)
+    return {
+        "score": round(score, 4),
+        "correct": correct,
+        "total": len(eligible),
+        "misses": misses,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Healer: Old Locator Removed
+# ---------------------------------------------------------------------------
+
+# Patterns for extracting the broken locator from an error message.
+# Matches expressions like:
+#   getByRole('button', { name: 'Submit' })
+#   getByTestId('add-to-cart-btn')
+#   getByLabel('Email address')
+#   getByPlaceholder('Search products...')
+#   getByAltText('Product thumbnail')
+#   getByText('some text')
+_BROKEN_LOCATOR_RE = re.compile(
+    r"(getBy(?:Role|TestId|Label|Text|Placeholder|AltText)\s*\([^)]*\))"
+)
+
+
+def score_old_locator_removed(
+    scenarios: list[dict],
+    healed_sources: dict[str, str],
+) -> dict[str, Any]:
+    """Score: what fraction of scenarios no longer contain the old broken locator?
+
+    Extracts the broken locator expression from each scenario's ``error`` field
+    and checks that it does NOT appear verbatim in the healed source.
+
+    Returns:
+        {
+            "score": float,
+            "removed": int,
+            "still_present": int,
+            "total": int,
+            "failures": [{"scenario": str, "old_locator": str}],
+        }
+    """
+    if not scenarios:
+        return {"score": 1.0, "removed": 0, "still_present": 0, "total": 0, "failures": []}
+
+    failures: list[dict[str, Any]] = []
+    removed = 0
+    scored = 0
+
+    for s in scenarios:
+        error_text = s.get("error", "")
+        match = _BROKEN_LOCATOR_RE.search(error_text)
+        if not match:
+            # Cannot determine old locator — skip this scenario
+            continue
+
+        old_locator = match.group(1)
+        route = s["route"]
+        healed = healed_sources.get(route, "")
+        scored += 1
+
+        if old_locator not in healed:
+            removed += 1
+        else:
+            failures.append({"scenario": s["scenario"], "old_locator": old_locator})
+
+    if scored == 0:
+        return {"score": 1.0, "removed": 0, "still_present": 0, "total": 0, "failures": []}
+
+    score = removed / scored
+    return {
+        "score": round(score, 4),
+        "removed": removed,
+        "still_present": scored - removed,
+        "total": scored,
+        "failures": failures,
     }
 
 

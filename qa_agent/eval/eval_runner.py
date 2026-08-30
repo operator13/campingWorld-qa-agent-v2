@@ -19,7 +19,11 @@ from qa_agent.eval.run_eval import (
     score_ac_coverage,
     score_assertion_integrity,
     score_diff_minimality,
+    score_fix_correctness,
+    score_import_correctness,
     score_locator_quality,
+    score_old_locator_removed,
+    score_plan_quality,
     score_pom_validity,
     score_test_validity,
     score_triage_accuracy,
@@ -291,10 +295,11 @@ async def run_planner_eval(
         total, effective_threshold, baseline_mode,
     )
 
-    # Run each scenario through planner and score AC coverage
+    # Run each scenario through planner and score AC coverage + plan quality
     all_ac_covered = 0
     all_ac_total = 0
     all_misses: list[dict[str, Any]] = []
+    all_quality_scores: list[float] = []
 
     for i, scenario in enumerate(scenarios, 1):
         state = QAState(
@@ -320,6 +325,9 @@ async def run_planner_eval(
             test_count = len(tc_dicts)
             expected_count_min = scenario.get("expected_test_count_min", 1)
 
+            quality = score_plan_quality(tc_dicts, scenario["acceptance_criteria"])
+            all_quality_scores.append(quality["score"])
+
             all_ac_covered += coverage["covered"]
             all_ac_total += coverage["total"]
 
@@ -331,6 +339,7 @@ async def run_planner_eval(
                     "test_count": test_count,
                     "expected_test_count_min": expected_count_min,
                     "uncovered_acs": coverage.get("uncovered", []),
+                    "plan_quality": quality,
                 }
                 if not passed_scenario:
                     miss_entry["root_cause"] = "ac_coverage_below_threshold"
@@ -351,13 +360,18 @@ async def run_planner_eval(
                 "error": str(e),
             })
             all_ac_total += len(scenario["acceptance_criteria"])
+            all_quality_scores.append(0.0)
 
-    # Aggregate score: fraction of ACs covered across all scenarios
-    overall_score = round(all_ac_covered / all_ac_total, 4) if all_ac_total > 0 else 1.0
+    # Aggregate score: combine AC coverage and plan quality equally
+    ac_coverage_score = round(all_ac_covered / all_ac_total, 4) if all_ac_total > 0 else 1.0
+    avg_quality_score = round(sum(all_quality_scores) / len(all_quality_scores), 4) if all_quality_scores else 1.0
+    overall_score = round((ac_coverage_score + avg_quality_score) / 2, 4)
     correct_scenarios = total - len(all_misses)
 
     planner_accuracy = {
         "score": overall_score,
+        "ac_coverage_score": ac_coverage_score,
+        "plan_quality_score": avg_quality_score,
         "correct": correct_scenarios,
         "total": total,
         "misses": all_misses,
@@ -560,14 +574,27 @@ async def run_healer_eval(
     # Score
     assertion_integrity = score_assertion_integrity(old_sources, new_sources)
     diff_minimality = score_diff_minimality(old_sources, new_sources)
+    fix_correctness = score_fix_correctness(scenarios, new_sources)
+    old_locator_removed = score_old_locator_removed(scenarios, new_sources)
 
     # Fix presence rate (how many scenarios had the expected fix in output)
     fix_present_count = sum(1 for r in healer_results if r.get("fix_present"))
     fix_rate = fix_present_count / total if total > 0 else 1.0
 
-    # Primary metric for scorecard pass/fail is assertion_integrity
+    # Combined healer score: average of assertion_integrity, fix_correctness, old_locator_removed
+    combined_score = round(
+        (
+            assertion_integrity["score"]
+            + fix_correctness["score"]
+            + old_locator_removed["score"]
+        )
+        / 3,
+        4,
+    )
+
+    # Primary metric for scorecard pass/fail uses the combined healer score
     primary_accuracy = {
-        "score": assertion_integrity["score"],
+        "score": combined_score,
         "correct": assertion_integrity["clean"],
         "total": assertion_integrity["total"],
         "misses": [
@@ -580,6 +607,8 @@ async def run_healer_eval(
         "healer_accuracy": primary_accuracy,
         "assertion_integrity": assertion_integrity,
         "diff_minimality": diff_minimality,
+        "fix_correctness": fix_correctness,
+        "old_locator_removed": old_locator_removed,
         "fix_rate": {"score": round(fix_rate, 4), "correct": fix_present_count, "total": total},
         "scenarios": [
             {"scenario": s["scenario"], "category": "locator_drift"}
@@ -615,6 +644,8 @@ async def run_healer_eval(
     # Attach extra healer-specific metrics to scorecard
     scorecard["assertion_integrity"] = assertion_integrity
     scorecard["diff_minimality"] = diff_minimality
+    scorecard["fix_correctness"] = fix_correctness
+    scorecard["old_locator_removed"] = old_locator_removed
     scorecard["fix_rate"] = eval_result["fix_rate"]
 
     # Generate recommendations — alias healer_accuracy to triage_accuracy for engine compatibility
@@ -716,7 +747,7 @@ async def run_generator_eval(
     Args:
         scenarios: Generator golden scenarios. If None, loads from default path.
         baseline_mode: If True, record metrics without pass/fail.
-        locator_threshold: Override locator quality threshold (default 0.70).
+        locator_threshold: Override locator quality threshold (default 0.85).
         pom_threshold: Override POM validity threshold (default 0.80).
         test_threshold: Override test validity threshold (default 0.80).
         reports_dir: Override reports output directory.
@@ -728,7 +759,7 @@ async def run_generator_eval(
     if scenarios is None:
         scenarios, skipped = load_generator_scenarios()
 
-    effective_locator_threshold = locator_threshold if locator_threshold is not None else 0.70
+    effective_locator_threshold = locator_threshold if locator_threshold is not None else 0.85
     effective_pom_threshold = pom_threshold if pom_threshold is not None else 0.80
     effective_test_threshold = test_threshold if test_threshold is not None else 0.80
 
@@ -772,11 +803,15 @@ async def run_generator_eval(
     locator_result = score_locator_quality(all_page_objects)
     pom_result = score_pom_validity(all_page_objects)
     test_result = score_test_validity(all_test_code)
+    import_result = score_import_correctness(all_page_objects, all_test_code)
+
+    effective_import_threshold = 0.90
 
     thresholds = {
         "locator_quality": effective_locator_threshold,
         "pom_validity": effective_pom_threshold,
         "test_validity": effective_test_threshold,
+        "import_correctness": effective_import_threshold,
     }
 
     # Determine overall pass/fail
@@ -786,6 +821,7 @@ async def run_generator_eval(
             locator_result["score"] >= effective_locator_threshold
             and pom_result["score"] >= effective_pom_threshold
             and test_result["score"] >= effective_test_threshold
+            and import_result["score"] >= effective_import_threshold
         )
 
     run_id = f"eval-generator-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}"
@@ -799,6 +835,7 @@ async def run_generator_eval(
         "locator_quality": locator_result,
         "pom_validity": pom_result,
         "test_validity": test_result,
+        "import_correctness": import_result,
         "thresholds": thresholds,
         "passed": passed,
         "scenario_results": scenario_results,
@@ -828,14 +865,17 @@ def _generate_generator_recommendations(scorecard: dict[str, Any]) -> list[dict[
     locator = scorecard.get("locator_quality", {})
     pom = scorecard.get("pom_validity", {})
     test = scorecard.get("test_validity", {})
+    import_corr = scorecard.get("import_correctness", {})
 
     locator_score = locator.get("score", 0.0)
     pom_score = pom.get("score", 0.0)
     test_score = test.get("score", 0.0)
+    import_score = import_corr.get("score", 1.0)
 
-    locator_threshold = thresholds.get("locator_quality", 0.70)
+    locator_threshold = thresholds.get("locator_quality", 0.85)
     pom_threshold = thresholds.get("pom_validity", 0.80)
     test_threshold = thresholds.get("test_validity", 0.80)
+    import_threshold = thresholds.get("import_correctness", 0.90)
 
     if locator_score < locator_threshold:
         brittle = locator.get("brittle", 0)
@@ -883,10 +923,26 @@ def _generate_generator_recommendations(scorecard: dict[str, Any]) -> list[dict[
             ),
         })
 
+    if import_score < import_threshold:
+        import_errors = import_corr.get("errors", [])
+        recs.append({
+            "priority": "high",
+            "category": "import_correctness",
+            "finding": (
+                f"Import correctness {import_score:.1%} is below threshold {import_threshold:.1%}. "
+                f"{len(import_errors)} import(s) have issues (wrong path, missing POM class, etc.)."
+            ),
+            "action": (
+                "Ensure test files import from '../page_objects/<ClassName>' (underscores, not "
+                "hyphens) and that every imported class exists as a named export in the POMs."
+            ),
+        })
+
     if (
         locator_score >= locator_threshold
         and pom_score >= pom_threshold
         and test_score >= test_threshold
+        and import_score >= import_threshold
     ):
         recs.append({
             "priority": "low",
@@ -918,6 +974,7 @@ def _format_generator_report_markdown(scorecard: dict[str, Any]) -> str:
         ("locator_quality", "Locator Quality"),
         ("pom_validity", "POM Validity"),
         ("test_validity", "Test Validity"),
+        ("import_correctness", "Import Correctness"),
     ]:
         metric = scorecard.get(key, {})
         score = metric.get("score", 0.0)
@@ -930,6 +987,13 @@ def _format_generator_report_markdown(scorecard: dict[str, Any]) -> str:
         if key == "locator_quality":
             lines.append(f"- Good locators: {metric.get('good', 0)}")
             lines.append(f"- Brittle locators: {metric.get('brittle', 0)}")
+        elif key == "import_correctness":
+            lines.append(f"- Correct: {metric.get('correct', 0)}/{metric.get('total', 0)}")
+            import_errors = metric.get("errors", [])
+            if import_errors:
+                lines.append(f"- Import errors: {len(import_errors)}")
+                for err in import_errors[:5]:  # show at most 5
+                    lines.append(f"  - [{err['file']}] {err['import']}: {err['issue']}")
         else:
             lines.append(f"- Valid: {metric.get('valid', 0)}/{metric.get('total', 0)}")
             invalid_items = metric.get("invalid", [])

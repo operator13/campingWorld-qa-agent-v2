@@ -14,6 +14,8 @@ from qa_agent.eval.eval_runner import (
 from qa_agent.eval.run_eval import (
     score_assertion_integrity,
     score_diff_minimality,
+    score_import_correctness,
+    score_plan_quality,
 )
 from qa_agent.schemas.models import TestCase
 from qa_agent.eval.recommendations import (
@@ -537,9 +539,9 @@ class TestFormatReportMarkdown:
 
 class TestPlannerScenarios:
 
-    def test_loads_5_scenarios(self):
+    def test_loads_8_scenarios(self):
         scenarios, skipped = load_planner_scenarios()
-        assert len(scenarios) == 5
+        assert len(scenarios) == 8
         assert skipped == 0
 
     def test_categories_present(self):
@@ -550,6 +552,9 @@ class TestPlannerScenarios:
         assert "auth_login" in scenario_names
         assert "product_browsing" in scenario_names
         assert "cart_management" in scenario_names
+        assert "payment_error_handling" in scenario_names
+        assert "coupon_checkout_multistep" in scenario_names
+        assert "email_validation_and_access_control" in scenario_names
 
     def test_all_scenarios_have_required_fields(self):
         scenarios, _ = load_planner_scenarios()
@@ -1120,7 +1125,7 @@ class TestExecutorParsing:
 # Generator scorer unit tests
 # ---------------------------------------------------------------------------
 
-from qa_agent.eval.run_eval import score_pom_validity, score_test_validity
+from qa_agent.eval.run_eval import score_fix_correctness, score_old_locator_removed, score_pom_validity, score_test_validity
 
 
 class TestPomValidity:
@@ -1393,6 +1398,366 @@ class TestGeneratorEvalIntegration:
                 reports_dir=tmp_path,
             )
 
-        assert scorecard["passed"] is None
-        assert scorecard["baseline_mode"] is True
-        assert scorecard["agent"] == "generator"
+
+# ---------------------------------------------------------------------------
+# Plan Quality scorer unit tests
+# ---------------------------------------------------------------------------
+
+class TestPlanQuality:
+
+    def _make_test_case(
+        self,
+        tc_id: str,
+        title: str,
+        steps: list[str] | None = None,
+        expected: list[str] | None = None,
+        tags: list[str] | None = None,
+    ) -> dict:
+        return {
+            "id": tc_id,
+            "title": title,
+            "steps": steps if steps is not None else ["Navigate to page", "Perform action"],
+            "expected": expected if expected is not None else ["Expected outcome is visible"],
+            "tags": tags if tags is not None else [],
+        }
+
+    def test_perfect_plan_scores_high(self):
+        """A plan with >=2 steps, unique titles, and edge cases should score >=0.8."""
+        test_cases = [
+            self._make_test_case(
+                "tc-1",
+                "User can add item to cart and view cart summary",
+                steps=["Navigate to product page", "Click Add to Cart", "Open cart drawer"],
+                expected=["Cart shows added item with correct quantity"],
+            ),
+            self._make_test_case(
+                "tc-2",
+                "User can apply valid coupon and see discount applied",
+                steps=["Navigate to cart page", "Enter valid coupon code", "Click Apply"],
+                expected=["Discount is reflected in the order total"],
+            ),
+            self._make_test_case(
+                "tc-3",
+                "Invalid coupon code shows error message to user",
+                steps=["Navigate to cart page", "Enter invalid coupon code", "Click Apply"],
+                expected=["Error message is displayed for invalid coupon"],
+                tags=["@negative"],
+            ),
+            self._make_test_case(
+                "tc-4",
+                "Empty cart shows helpful message when no items present",
+                steps=["Navigate to empty cart page", "Verify cart state"],
+                expected=["Empty cart message is shown to the user"],
+            ),
+            self._make_test_case(
+                "tc-5",
+                "Payment fails with insufficient funds and shows error",
+                steps=["Proceed to payment page", "Enter card with insufficient funds", "Submit"],
+                expected=["Payment error message is displayed"],
+            ),
+        ]
+        acs = ["User can add items to the cart", "Invalid coupon shows error"]
+        result = score_plan_quality(test_cases, acs)
+        assert result["score"] >= 0.8, f"Expected score >= 0.8, got {result['score']}"
+
+    def test_single_step_penalized(self):
+        """Plan with 1-step test cases should have step_completeness < 1.0."""
+        test_cases = [
+            self._make_test_case(
+                "tc-1",
+                "User can log in",
+                steps=["Click login"],  # only 1 step
+                expected=["User is logged in"],
+            ),
+            self._make_test_case(
+                "tc-2",
+                "User sees dashboard",
+                steps=["View dashboard"],  # only 1 step
+                expected=["Dashboard is visible"],
+            ),
+        ]
+        acs = ["User can log in"]
+        result = score_plan_quality(test_cases, acs)
+        assert result["step_completeness"]["score"] < 1.0, (
+            f"Expected step_completeness < 1.0, got {result['step_completeness']['score']}"
+        )
+        assert len(result["step_completeness"]["incomplete"]) == 2
+
+    def test_duplicate_titles_penalized(self):
+        """Plan with near-duplicate titles should have deduplication < 1.0."""
+        test_cases = [
+            self._make_test_case(
+                "tc-1",
+                "User can add item to cart",
+                steps=["Navigate to product", "Click add to cart"],
+                expected=["Item added to cart"],
+            ),
+            self._make_test_case(
+                "tc-2",
+                "User can add item to cart",  # exact duplicate title
+                steps=["Navigate to product page", "Click add to cart button"],
+                expected=["Cart item count increases"],
+            ),
+            self._make_test_case(
+                "tc-3",
+                "User can remove item from cart",
+                steps=["Navigate to cart", "Click remove item"],
+                expected=["Item is removed from cart"],
+            ),
+        ]
+        acs = ["User can add item to cart", "User can remove item from cart"]
+        result = score_plan_quality(test_cases, acs)
+        assert result["deduplication"]["score"] < 1.0, (
+            f"Expected deduplication < 1.0, got {result['deduplication']['score']}"
+        )
+        assert len(result["deduplication"]["duplicates"]) >= 1
+
+    def test_no_edge_cases_penalized(self):
+        """Plan with zero negative/error test cases should have edge_case_coverage = 0.0."""
+        test_cases = [
+            self._make_test_case(
+                "tc-1",
+                "User can view product details",
+                steps=["Navigate to product page", "Read product description"],
+                expected=["Product name and description are shown"],
+            ),
+            self._make_test_case(
+                "tc-2",
+                "User can add product to wishlist",
+                steps=["Navigate to product page", "Click Add to Wishlist"],
+                expected=["Product appears in wishlist"],
+            ),
+            self._make_test_case(
+                "tc-3",
+                "User can share product link",
+                steps=["Navigate to product page", "Click Share button"],
+                expected=["Share dialog opens with product URL"],
+            ),
+        ]
+        acs = ["Product details are visible", "User can manage wishlist"]
+        result = score_plan_quality(test_cases, acs)
+        assert result["edge_case_coverage"]["score"] == 0.0, (
+            f"Expected edge_case_coverage = 0.0, got {result['edge_case_coverage']['score']}"
+        )
+        assert result["edge_case_coverage"]["edge_case_count"] == 0
+
+    def test_empty_test_cases_returns_zero_score(self):
+        """Empty plan should return overall score of 0.0."""
+        result = score_plan_quality([], ["Some AC"])
+        assert result["score"] == 0.0
+
+    def test_edge_case_detected_via_tag(self):
+        """Test cases tagged @error, @negative, or @edge should count as edge cases."""
+        test_cases = [
+            self._make_test_case(
+                "tc-1",
+                "User sees validation message on bad input",
+                steps=["Navigate to form", "Submit empty form"],
+                expected=["Validation message is shown"],
+                tags=["@error"],
+            ),
+            self._make_test_case(
+                "tc-2",
+                "User successfully submits form",
+                steps=["Navigate to form", "Fill all fields", "Submit"],
+                expected=["Success message is shown"],
+            ),
+        ]
+        acs = ["Form validates input"]
+        result = score_plan_quality(test_cases, acs)
+        assert result["edge_case_coverage"]["edge_case_count"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Fix Correctness scorer tests
+# ---------------------------------------------------------------------------
+
+class TestFixCorrectness:
+
+    def test_fix_present_scores_1_0(self):
+        """Healed source contains expected fix → score 1.0."""
+        scenarios = [
+            {
+                "scenario": "button_renamed",
+                "route": "/checkout",
+                "expected_fix_contains": "Place Order",
+            }
+        ]
+        healed_sources = {"/checkout": "page.getByRole('button', { name: 'Place Order' });"}
+        result = score_fix_correctness(scenarios, healed_sources)
+        assert result["score"] == 1.0
+        assert result["correct"] == 1
+        assert result["total"] == 1
+        assert result["misses"] == []
+
+    def test_fix_missing_scores_0_0(self):
+        """Healed source doesn't contain expected fix → score 0.0."""
+        scenarios = [
+            {
+                "scenario": "button_renamed",
+                "route": "/checkout",
+                "expected_fix_contains": "Place Order",
+            }
+        ]
+        healed_sources = {"/checkout": "page.getByRole('button', { name: 'Submit' });"}
+        result = score_fix_correctness(scenarios, healed_sources)
+        assert result["score"] == 0.0
+        assert result["correct"] == 0
+        assert result["total"] == 1
+        assert len(result["misses"]) == 1
+        assert result["misses"][0]["scenario"] == "button_renamed"
+        assert result["misses"][0]["expected"] == "Place Order"
+        assert result["misses"][0]["found"] is False
+
+    def test_empty_scenarios_score_1_0(self):
+        """No scenarios → score 1.0 (nothing to fail)."""
+        result = score_fix_correctness([], {})
+        assert result["score"] == 1.0
+        assert result["correct"] == 0
+        assert result["total"] == 0
+        assert result["misses"] == []
+
+
+# ---------------------------------------------------------------------------
+# Old Locator Removed scorer tests
+# ---------------------------------------------------------------------------
+
+class TestOldLocatorRemoved:
+
+    def test_old_locator_removed_scores_1_0(self):
+        """Old locator not in healed source → score 1.0."""
+        scenarios = [
+            {
+                "scenario": "button_submit_renamed",
+                "route": "/checkout",
+                "error": (
+                    "TimeoutError: locator.click: Timeout 30000ms exceeded.\n"
+                    "  - waiting for getByRole('button', { name: 'Submit' })"
+                ),
+            }
+        ]
+        # Healed source uses the new locator, not the old one
+        healed_sources = {
+            "/checkout": "this.btn = page.getByRole('button', { name: 'Place Order' });"
+        }
+        result = score_old_locator_removed(scenarios, healed_sources)
+        assert result["score"] == 1.0
+        assert result["removed"] == 1
+        assert result["still_present"] == 0
+        assert result["failures"] == []
+
+    def test_old_locator_still_present_scores_0_0(self):
+        """Old locator still in healed source → score 0.0."""
+        scenarios = [
+            {
+                "scenario": "testid_unchanged",
+                "route": "/checkout",
+                "error": (
+                    "TimeoutError: locator.fill: Timeout 30000ms exceeded.\n"
+                    "  - waiting for getByTestId('checkout-email')"
+                ),
+            }
+        ]
+        # Healed source still has the old broken locator
+        healed_sources = {
+            "/checkout": "this.emailInput = page.getByTestId('checkout-email');"
+        }
+        result = score_old_locator_removed(scenarios, healed_sources)
+        assert result["score"] == 0.0
+        assert result["removed"] == 0
+        assert result["still_present"] == 1
+        assert len(result["failures"]) == 1
+        assert result["failures"][0]["scenario"] == "testid_unchanged"
+
+
+# ---------------------------------------------------------------------------
+# Import Correctness scorer unit tests
+# ---------------------------------------------------------------------------
+
+class TestImportCorrectness:
+
+    _VALID_POM = (
+        "import { type Page, type Locator } from '@playwright/test';\n"
+        "export class CheckoutPage {\n"
+        "  private emailInput: Locator;\n"
+        "  constructor(page: Page) {\n"
+        "    this.emailInput = page.getByTestId('checkout-email');\n"
+        "  }\n"
+        "  async navigate() { await this.page.goto('/checkout'); }\n"
+        "}\n"
+    )
+
+    def test_correct_imports_score_1_0(self):
+        """A test file with a valid import matching a POM class should score 1.0."""
+        page_objects = {"/checkout": self._VALID_POM}
+        test_code = {
+            "checkout.spec.ts": (
+                "import { CheckoutPage } from '../page_objects/CheckoutPage';\n"
+                "import { test, expect } from '@playwright/test';\n"
+            )
+        }
+        result = score_import_correctness(page_objects, test_code)
+        assert result["score"] == 1.0
+        assert result["correct"] == 1
+        assert result["total"] == 1
+        assert result["errors"] == []
+
+    def test_hyphen_path_flagged(self):
+        """An import using '../page-objects/' (hyphen) should be flagged as an error."""
+        page_objects = {"/checkout": self._VALID_POM}
+        test_code = {
+            "checkout.spec.ts": (
+                "import { CheckoutPage } from '../page-objects/CheckoutPage';\n"
+            )
+        }
+        result = score_import_correctness(page_objects, test_code)
+        assert result["score"] == 0.0
+        assert result["total"] == 1
+        assert result["correct"] == 0
+        assert len(result["errors"]) == 1
+        assert "hyphen" in result["errors"][0]["issue"]
+
+    def test_empty_path_flagged(self):
+        """An import with an empty filename (path ending in '/') should be flagged."""
+        page_objects = {"/checkout": self._VALID_POM}
+        test_code = {
+            "checkout.spec.ts": (
+                "import { CheckoutPage } from '../page_objects/';\n"
+            )
+        }
+        result = score_import_correctness(page_objects, test_code)
+        assert result["score"] == 0.0
+        assert result["total"] == 1
+        assert result["correct"] == 0
+        assert len(result["errors"]) == 1
+        assert "empty filename" in result["errors"][0]["issue"]
+
+    def test_missing_pom_flagged(self):
+        """An import referencing a class not present in page_objects should be flagged."""
+        page_objects = {"/checkout": self._VALID_POM}  # only CheckoutPage exists
+        test_code = {
+            "login.spec.ts": (
+                "import { LoginPage } from '../page_objects/LoginPage';\n"
+            )
+        }
+        result = score_import_correctness(page_objects, test_code)
+        assert result["score"] == 0.0
+        assert result["total"] == 1
+        assert result["correct"] == 0
+        assert len(result["errors"]) == 1
+        assert "LoginPage" in result["errors"][0]["issue"]
+
+    def test_no_imports_score_1_0(self):
+        """A test file with no page_objects import statements should score 1.0."""
+        page_objects = {"/checkout": self._VALID_POM}
+        test_code = {
+            "checkout.spec.ts": (
+                "import { test, expect } from '@playwright/test';\n"
+                "test('does something', async () => {});\n"
+            )
+        }
+        result = score_import_correctness(page_objects, test_code)
+        assert result["score"] == 1.0
+        assert result["total"] == 0
+        assert result["correct"] == 0
+        assert result["errors"] == []

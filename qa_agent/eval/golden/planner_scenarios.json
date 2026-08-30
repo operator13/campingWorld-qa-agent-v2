@@ -68,5 +68,47 @@
     "expected_test_count_min": 4,
     "expected_ac_coverage_min": 0.80,
     "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "payment_error_handling",
+    "goal": "Test payment processing error conditions and validation",
+    "acceptance_criteria": [
+      "System shows error when payment fails due to insufficient funds",
+      "Invalid card number shows inline validation message",
+      "Expired card shows specific expiry error message",
+      "User can retry payment after a failed transaction",
+      "Successful payment clears the cart and redirects to confirmation"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "coupon_checkout_multistep",
+    "goal": "Test the full coupon application and checkout multi-step flow",
+    "acceptance_criteria": [
+      "User adds item to cart, views cart summary, applies a valid coupon code, and proceeds to checkout",
+      "Applying an invalid coupon code shows a descriptive error message",
+      "Discount amount is correctly reflected in the order total after coupon is applied",
+      "Removing an applied coupon restores the original order total",
+      "Checkout cannot be completed when coupon field is left with an unsubmitted invalid code"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "email_validation_and_access_control",
+    "goal": "Test email format validation and unauthorized access prevention",
+    "acceptance_criteria": [
+      "Invalid email format shows a validation message on the registration form",
+      "Empty email field prevents form submission and shows required field error",
+      "Unauthorized users are denied access to protected account pages",
+      "Valid email with correct password grants access to the user dashboard",
+      "Account lockout occurs after repeated failed login attempts with wrong credentials"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
   }
 ]
