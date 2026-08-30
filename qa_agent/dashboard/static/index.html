@@ -96,21 +96,17 @@
 
   <!-- Section 4: Test Runner -->
   <section class="section section-runner">
-    <h2 class="section-title">TEST RUNNER <span class="runner-status-dot" id="runner-dot"></span> <span class="runner-status-text" id="runner-status">IDLE</span></h2>
+    <div class="runner-header">
+      <h2 class="section-title">TEST RUNNER</h2>
+      <div class="runner-header-right">
+        <span class="runner-status-dot" id="runner-dot"></span>
+        <span class="runner-status-text" id="runner-status">IDLE</span>
+      </div>
+    </div>
 
     <div class="runner-card">
-      <div class="runner-controls">
-        <!-- Domain checkboxes -->
-        <div class="runner-domains">
-          <label class="runner-checkbox select-all">
-            <input type="checkbox" id="select-all" checked> Select All
-          </label>
-          <div class="runner-domain-grid" id="domain-checkboxes">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
-        <!-- Options row -->
+      <!-- Top bar: options + actions -->
+      <div class="runner-top-bar">
         <div class="runner-options">
           <div class="runner-option-group">
             <span class="runner-option-label">Workers</span>
@@ -129,17 +125,26 @@
             </div>
           </div>
           <div class="runner-option-group">
-            <label class="runner-checkbox">
-              <input type="checkbox" id="heal-toggle"> Self-Heal
-            </label>
+            <span class="runner-option-label">Self-Heal</span>
+            <div class="pill-group">
+              <button class="pill" id="heal-off" data-heal="false">OFF</button>
+              <button class="pill active" id="heal-on" data-heal="true">ON</button>
+            </div>
+            <input type="checkbox" id="heal-toggle" checked style="display:none;">
           </div>
         </div>
-
-        <!-- Run buttons -->
-        <div class="runner-buttons">
+        <div class="runner-actions">
           <button class="runner-btn runner-btn-run" id="btn-run-selected">&#9654; RUN SELECTED</button>
-          <button class="runner-btn runner-btn-run" id="btn-run-all">&#9654; RUN ALL</button>
+          <button class="runner-btn runner-btn-run runner-btn-primary" id="btn-run-all">&#9654; RUN ALL</button>
           <button class="runner-btn runner-btn-stop" id="btn-stop" style="display:none;">&#9632; STOP</button>
+        </div>
+      </div>
+
+      <!-- Domain selector tiles -->
+      <div class="runner-tile-bar">
+        <button class="runner-select-all active" id="select-all-tile">ALL</button>
+        <div class="runner-tiles" id="domain-tiles">
+          <!-- Populated by JS as clickable tiles -->
         </div>
       </div>
 
@@ -147,10 +152,7 @@
       <div class="runner-progress" id="runner-progress" style="display:none;">
         <div class="progress-bar-container">
           <div class="progress-bar" id="progress-bar"></div>
-          <span class="progress-text" id="progress-text">0/0 (0%)</span>
-        </div>
-        <div class="runner-domain-status" id="runner-domain-status">
-          <!-- Per-domain mini status populated by JS -->
+          <span class="progress-text" id="progress-text">0 passed, 0 failed</span>
         </div>
       </div>
 

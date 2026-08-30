@@ -440,33 +440,42 @@
   ];
 
   function initRunnerControls() {
-    // Populate domain checkboxes
-    const grid = document.getElementById('domain-checkboxes');
-    if (grid) {
-      grid.innerHTML = DOMAINS.map(d => `
-        <label class="runner-checkbox">
-          <input type="checkbox" value="${d.spec}" checked>
-          ${d.critical ? '<span style="color:var(--neon-red)">&#9733;</span> ' : ''}${escapeHtml(d.label)}
-        </label>
+    // Populate domain tiles
+    const tilesContainer = document.getElementById('domain-tiles');
+    if (tilesContainer) {
+      tilesContainer.innerHTML = DOMAINS.map(d => `
+        <button class="runner-tile active" data-spec="${d.spec}">
+          ${d.critical ? '<span class="tile-star">&#9733;</span>' : ''}${escapeHtml(d.label)}
+        </button>
       `).join('');
+
+      // Toggle individual tiles
+      tilesContainer.addEventListener('click', (e) => {
+        const tile = e.target.closest('.runner-tile');
+        if (!tile) return;
+        tile.classList.toggle('active');
+        syncSelectAll();
+      });
     }
 
-    // Select All toggle
-    const selectAll = document.getElementById('select-all');
-    if (selectAll) {
-      selectAll.addEventListener('change', () => {
-        document.querySelectorAll('#domain-checkboxes input[type="checkbox"]').forEach(cb => {
-          cb.checked = selectAll.checked;
-        });
+    // Select All tile
+    const selectAllTile = document.getElementById('select-all-tile');
+    if (selectAllTile) {
+      selectAllTile.addEventListener('click', () => {
+        const tiles = document.querySelectorAll('.runner-tile');
+        const allActive = [...tiles].every(t => t.classList.contains('active'));
+        tiles.forEach(t => allActive ? t.classList.remove('active') : t.classList.add('active'));
+        selectAllTile.classList.toggle('active', !allActive);
       });
+    }
 
-      // Keep Select All in sync when individual boxes change
-      document.getElementById('domain-checkboxes').addEventListener('change', () => {
-        const all = document.querySelectorAll('#domain-checkboxes input[type="checkbox"]');
-        const checked = document.querySelectorAll('#domain-checkboxes input[type="checkbox"]:checked');
-        selectAll.checked = all.length === checked.length;
-        selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
-      });
+    // Heal toggle pills
+    const healOn = document.getElementById('heal-on');
+    const healOff = document.getElementById('heal-off');
+    const healCheckbox = document.getElementById('heal-toggle');
+    if (healOn && healOff) {
+      healOn.addEventListener('click', () => { healOn.classList.add('active'); healOff.classList.remove('active'); if (healCheckbox) healCheckbox.checked = true; });
+      healOff.addEventListener('click', () => { healOff.classList.add('active'); healOn.classList.remove('active'); if (healCheckbox) healCheckbox.checked = false; });
     }
 
     // Pill group click handlers
@@ -552,7 +561,14 @@
   }
 
   function getSelectedSpecs() {
-    return [...document.querySelectorAll('#domain-checkboxes input:checked')].map(cb => cb.value);
+    return [...document.querySelectorAll('.runner-tile.active')].map(t => t.dataset.spec);
+  }
+
+  function syncSelectAll() {
+    const tiles = document.querySelectorAll('.runner-tile');
+    const allActive = [...tiles].every(t => t.classList.contains('active'));
+    const selectAllTile = document.getElementById('select-all-tile');
+    if (selectAllTile) selectAllTile.classList.toggle('active', allActive);
   }
 
   function updateProgress() {
