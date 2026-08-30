@@ -16,5 +16,6 @@ checkpoints.db
 .qa_cache/
 .playwright-mcp/
 test-results-tmp/
+memory/audit_runs/
 orchestrator_progress.json
 screenshots/

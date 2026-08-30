@@ -96,11 +96,19 @@ async def _run(sources: list[str]) -> None:
         print(f"[OK] Figma ref: {initial_state['figma_ref']}")
 
     # Compile and run the graph
-    compiled = compile_graph()
-    config = {"configurable": {"thread_id": "qa-agent-run-1"}}
+    from qa_agent.audit import AuditStore
+    import time as _time
 
-    print("\n[..] Running graph...\n")
+    run_id = f"run-{int(_time.time())}"
+    AuditStore.start_run(run_id)
+
+    compiled = compile_graph()
+    config = {"configurable": {"thread_id": run_id}}
+
+    print(f"\n[..] Running graph (run_id={run_id})...\n")
     result = await compiled.ainvoke(initial_state, config=config)
+
+    AuditStore.end_run()
 
     # Report results
     run_results = result.get("run_results")

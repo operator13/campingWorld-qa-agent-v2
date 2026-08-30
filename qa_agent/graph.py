@@ -20,6 +20,7 @@ import logging
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
+from qa_agent.audit import AuditStore, audit_node
 from qa_agent.config import CONF_SURE, MAX_ATTEMPTS, setup_langsmith
 from qa_agent.nodes.defect_report import defect_report
 from qa_agent.nodes.design_reader import design_reader
@@ -82,16 +83,16 @@ def build_graph() -> StateGraph:
     """Build the QA agent StateGraph with the full Phase 3 flow."""
     graph = StateGraph(QAState)
 
-    # --- Nodes ---
-    graph.add_node("design_reader", design_reader)
-    graph.add_node("planner", planner)
-    graph.add_node("generator", generator)
-    graph.add_node("executor", executor)
-    graph.add_node("triage", triage)
-    graph.add_node("healer", healer)
-    graph.add_node("human_review", human_review)
-    graph.add_node("defect_report", defect_report)
-    graph.add_node("metrics", metrics)
+    # --- Nodes (wrapped with audit trail) ---
+    graph.add_node("design_reader", audit_node("design_reader")(design_reader))
+    graph.add_node("planner", audit_node("planner")(planner))
+    graph.add_node("generator", audit_node("generator")(generator))
+    graph.add_node("executor", audit_node("executor")(executor))
+    graph.add_node("triage", audit_node("triage")(triage))
+    graph.add_node("healer", audit_node("healer")(healer))
+    graph.add_node("human_review", audit_node("human_review")(human_review))
+    graph.add_node("defect_report", audit_node("defect_report")(defect_report))
+    graph.add_node("metrics", audit_node("metrics")(metrics))
 
     # --- Edges: happy path ---
     graph.set_entry_point("design_reader")
