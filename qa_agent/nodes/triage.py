@@ -49,6 +49,9 @@ async def triage(state: QAState) -> dict:
                 similar.get("id"), similar.get("failure_class"), similar.get("resolution"),
             )
 
+    # Build test stability context — has this test passed before?
+    stability_context = _build_stability_context(state, memory)
+
     # Build calibration context from human decisions + lessons
     calibration_context = memory.build_triage_calibration_context()
     lessons_context = memory.build_lessons_context(max_tokens=250)
@@ -80,6 +83,7 @@ async def triage(state: QAState) -> dict:
             similar=similar,
             calibration=calibration_context,
             rubric_breakdown=rubric_breakdown.to_prompt_string(),
+            stability_context=stability_context,
         )),
     ]
 
@@ -134,6 +138,7 @@ def _build_prompt(
     similar: dict[str, Any] | None = None,
     calibration: str = "",
     rubric_breakdown: str = "",
+    stability_context: str = "",
 ) -> str:
     """Build the human message prompt for Triage."""
     parts = ["A test just failed. Analyze the failure and classify it.\n"]
@@ -149,6 +154,11 @@ def _build_prompt(
         parts.append(f"Previous classification: **{similar.get('failure_class', 'unknown')}**")
         parts.append(f"Previous resolution: {similar.get('resolution', 'unknown')}")
         parts.append("Use this as a hint, but verify against the current evidence.\n")
+
+    # Memory: test stability history
+    if stability_context:
+        parts.append(stability_context)
+        parts.append("")
 
     # Memory: human calibration
     if calibration:
@@ -220,3 +230,89 @@ def _parse_response(response: Any) -> dict:
         "confidence": conf,
         "reasoning": data.get("reasoning", ""),
     }
+
+
+def _build_stability_context(state: QAState, memory: MemoryStore) -> str:
+    """Build test stability context from historical data.
+
+    Checks TEST_STABILITY.md for past pass/fail records and health reports
+    for recent domain-level results. If a test has passed before, this is
+    strong evidence that a current failure may be a flake, not a real defect.
+    """
+    parts = []
+
+    # 1. Check TEST_STABILITY.md for this specific test
+    if state.run_results and state.run_results.failed_cases:
+        for failed_id in state.run_results.failed_cases:
+            history = memory.get_test_history(failed_id)
+            if history and history.get("runs", 0) > 0:
+                parts.append("## Memory: Test execution history")
+                parts.append(f"Test **{history['test_id']}** has been run **{history['runs']}** time(s):")
+                parts.append(f"  - Passed: {history['passes']}, Failed: {history['fails']}")
+                parts.append(f"  - Flakiness score: {history['flakiness']:.0%}")
+                parts.append(f"  - Last run: {history['last_run']}, Last failure: {history['last_failure']}")
+                if history['passes'] > 0 and history['fails'] > 0:
+                    parts.append("  - **This test has PASSED before and FAILED before — intermittent failure pattern.**")
+                    parts.append("  - Consider classifying as `test_flake` if the error is timing-related.")
+                elif history['passes'] > 0 and history['fails'] == 0:
+                    parts.append("  - This test has always passed before — first-time failure.")
+
+    # 2. Check health reports for recent domain pass/fail history
+    goal = state.goal or ""
+    spec_file = ""
+    if ":" in goal:
+        for p in goal.split(":"):
+            if p.endswith(".spec.ts"):
+                spec_file = p
+                break
+
+    if spec_file:
+        domain_history = _get_domain_history_from_health_reports(spec_file)
+        if domain_history:
+            parts.append("## Memory: Recent domain health history")
+            parts.append(f"Spec file **{spec_file}** recent results:")
+            for entry in domain_history[-5:]:
+                parts.append(f"  - {entry['run_id']}: {entry['passed']}/{entry['total']} passed ({entry['status']})")
+            total_runs = len(domain_history)
+            full_passes = sum(1 for e in domain_history if e['failed'] == 0)
+            if full_passes > 0 and any(e['failed'] > 0 for e in domain_history):
+                parts.append(f"  - **Passed fully in {full_passes}/{total_runs} recent runs — intermittent pattern.**")
+                parts.append("  - If the failure is not a clear app defect, consider `test_flake`.")
+
+    return "\n".join(parts) if parts else ""
+
+
+def _get_domain_history_from_health_reports(spec_file: str, lookback: int = 10) -> list[dict]:
+    """Get recent health report results for the domain corresponding to a spec file."""
+    import json as _json
+
+    health_dir = Path(__file__).resolve().parent.parent.parent / "health-reports"
+    if not health_dir.exists():
+        return []
+
+    # Derive domain name from spec file name
+    # e.g., "cart.spec.ts" → "Cart", "rvs-for-sale.spec.ts" → "Rvs For Sale"
+    base = spec_file.replace(".spec.ts", "")
+    # Convert kebab-case to title case: "rvs-for-sale" → "Rvs For Sale"
+    domain_name = " ".join(word.capitalize() for word in base.split("-"))
+
+    files = sorted(health_dir.glob("*.json"))
+    recent = [f for f in files if "-triage" not in f.stem][-lookback:]
+
+    results = []
+    for f in recent:
+        try:
+            data = _json.load(open(f))
+            for dom in data.get("domains", []):
+                if dom.get("name") == domain_name:
+                    results.append({
+                        "run_id": data.get("run_id", f.stem),
+                        "passed": dom.get("passed", 0),
+                        "failed": dom.get("failed", 0),
+                        "total": dom.get("total", 0),
+                        "status": dom.get("status", "UNKNOWN"),
+                    })
+                    break
+        except Exception:
+            continue
+    return results
