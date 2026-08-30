@@ -54,13 +54,14 @@ def build_scorecard(
 
 
 def save_scorecard(scorecard: dict[str, Any], reports_dir: Path | None = None) -> Path:
-    """Write scorecard to a timestamped JSON file. Returns the path."""
-    dest = reports_dir or _REPORTS_DIR
+    """Write scorecard to a timestamped JSON file inside an agent subfolder."""
+    base = reports_dir or _REPORTS_DIR
+    agent = scorecard.get("agent", "unknown")
+    dest = base / agent
     dest.mkdir(parents=True, exist_ok=True)
 
-    agent = scorecard.get("agent", "unknown")
     ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
-    filename = f"{agent}-{ts}.json"
+    filename = f"{ts}.json"
     filepath = dest / filename
 
     filepath.write_text(json.dumps(scorecard, indent=2, default=str))
@@ -70,11 +71,12 @@ def save_scorecard(scorecard: dict[str, Any], reports_dir: Path | None = None) -
 
 def load_latest_scorecard(agent: str, reports_dir: Path | None = None) -> dict[str, Any] | None:
     """Load the most recent previous scorecard for a given agent."""
-    dest = reports_dir or _REPORTS_DIR
+    base = reports_dir or _REPORTS_DIR
+    dest = base / agent
     if not dest.exists():
         return None
 
-    files = sorted(dest.glob(f"{agent}-*.json"), reverse=True)
+    files = sorted(dest.glob("*.json"), reverse=True)
     if not files:
         return None
 

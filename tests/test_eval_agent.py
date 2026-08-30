@@ -229,7 +229,7 @@ class TestSaveLoadScorecard:
         }
         path = save_scorecard(sc, tmp_path)
         assert path.exists()
-        assert "triage-" in path.name
+        assert path.parent.name == "triage"
 
         loaded = load_latest_scorecard("triage", tmp_path)
         assert loaded is not None
