@@ -912,21 +912,14 @@ body::before {
   }
 
   .runner-top-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
   }
 
   .runner-options {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .runner-option-group {
-    justify-content: space-between;
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    display: contents;
   }
 
   .runner-option-label {
@@ -934,15 +927,13 @@ body::before {
   }
 
   .runner-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    display: contents;
   }
 
   .runner-btn {
     text-align: center;
-    font-size: 0.55rem;
-    padding: 10px 8px;
+    font-size: 0.5rem;
+    padding: 7px 10px;
   }
 
   .domain-row {
