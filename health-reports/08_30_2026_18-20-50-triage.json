@@ -1,0 +1,39 @@
+{
+  "triaged": 4,
+  "healed": 0,
+  "app_defects": 1,
+  "unknown": 3,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "product.spec.ts",
+      "test_title": "primary product image is visible",
+      "failure_class": "locator_drift",
+      "confidence": 0.55,
+      "healed": false
+    },
+    {
+      "spec_file": "sign-in.spec.ts",
+      "test_title": "password input accepts text",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "sign-in.spec.ts",
+      "test_title": "logo is visible",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "store-locator.spec.ts",
+      "test_title": "page redirects to rv.campingworld.com/locations",
+      "failure_class": "app_defect",
+      "confidence": 0.2,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-30T18:20:50.834672+00:00"
+}
