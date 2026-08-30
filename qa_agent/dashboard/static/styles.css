@@ -817,9 +817,25 @@ body::before {
     font-size: 0.65rem;
   }
 
-  .runner-options {
+  .runner-top-bar {
+    display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px 12px;
+    align-items: center;
+  }
+
+  .runner-options {
+    display: contents;
+  }
+
+  .runner-actions {
+    display: contents;
+  }
+
+  .runner-btn {
+    font-size: 0.5rem;
+    padding: 5px 10px;
+    letter-spacing: 0;
   }
 
   .domain-row-right {
