@@ -319,14 +319,23 @@ async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None
         if reg.get("recovered"):
             print(f"  Recovered: {', '.join(reg['recovered'])}")
 
-    # Misses
+    # Misses (summary only — details in report)
     if accuracy.get("misses"):
-        print(f"\nMisses ({len(accuracy['misses'])}):")
-        for m in accuracy["misses"]:
-            print(f"  - {m}")
+        print(f"\nMisses: {len(accuracy['misses'])} scenario(s)")
 
-    print(f"\nScorecard written: {scorecard.get('eval_run_id', 'unknown')}")
-    print(f"Overall: {status}")
+    # Recommendations
+    recs = scorecard.get("recommendations", [])
+    if recs:
+        print(f"\nRecommendations ({len(recs)}):")
+        for r in recs:
+            priority = r["priority"].upper()
+            print(f"\n  [{priority}] {r.get('category', 'general')}")
+            print(f"    Finding: {r['finding']}")
+            print(f"    Action:  {r['action']}")
+
+    print(f"\nScorecard: {scorecard.get('eval_run_id', 'unknown')}")
+    print(f"Report:    qa_agent/eval/reports/ (JSON + Markdown)")
+    print(f"Overall:   {status}")
 
     # Exit code
     if scorecard["passed"] is False:

@@ -1,4 +1,4 @@
-"""Tests for the Eval Agent — scorecard, regression, eval runner."""
+"""Tests for the Eval Agent — scorecard, regression, recommendations, eval runner."""
 
 import json
 import pytest
@@ -8,6 +8,10 @@ from unittest.mock import AsyncMock, patch
 from qa_agent.eval.eval_runner import (
     build_synthetic_state,
     load_triage_scenarios,
+)
+from qa_agent.eval.recommendations import (
+    generate_recommendations,
+    format_report_markdown,
 )
 from qa_agent.eval.regression import detect_regression
 from qa_agent.eval.scorecard import (
@@ -381,3 +385,140 @@ class TestEvalRunnerIntegration:
 
         assert scorecard["passed"] is None
         assert scorecard["baseline_mode"] is True
+
+
+# ---------------------------------------------------------------------------
+# Recommendations tests
+# ---------------------------------------------------------------------------
+
+class TestRecommendations:
+
+    def test_confidence_underrun_detected(self):
+        scorecard = {
+            "triage_accuracy": {
+                "score": 0.0,
+                "correct": 0,
+                "total": 5,
+                "misses": [
+                    {"scenario": f"s{i}", "expected_class": "locator_drift",
+                     "got_class": "locator_drift", "expected_conf_min": 0.75, "got_conf": 0.65}
+                    for i in range(5)
+                ],
+            },
+            "by_category": {"locator_drift": {"score": 0.0, "correct": 0, "total": 5}},
+            "thresholds": {"triage_accuracy": 0.75},
+        }
+        recs = generate_recommendations(scorecard)
+        confidence_recs = [r for r in recs if "confidence" in r["finding"].lower() or "rubric" in r["finding"].lower()]
+        assert len(confidence_recs) >= 1
+        assert confidence_recs[0]["priority"] == "high"
+
+    def test_misclassification_detected(self):
+        scorecard = {
+            "triage_accuracy": {
+                "score": 0.5,
+                "correct": 1,
+                "total": 2,
+                "misses": [
+                    {"scenario": "bad_one", "expected_class": "unknown",
+                     "got_class": "app_defect", "expected_conf_min": 0.0, "got_conf": 0.05}
+                ],
+            },
+            "by_category": {"unknown": {"score": 0.5, "correct": 1, "total": 2}},
+            "thresholds": {"triage_accuracy": 0.75},
+        }
+        recs = generate_recommendations(scorecard)
+        misclass_recs = [r for r in recs if "expected" in r["finding"] and "returned" in r["finding"]]
+        assert len(misclass_recs) >= 1
+
+    def test_below_threshold_recommendation(self):
+        scorecard = {
+            "triage_accuracy": {"score": 0.50, "correct": 5, "total": 10, "misses": [{}] * 5},
+            "by_category": {},
+            "thresholds": {"triage_accuracy": 0.75},
+        }
+        recs = generate_recommendations(scorecard)
+        threshold_recs = [r for r in recs if "below threshold" in r["finding"]]
+        assert len(threshold_recs) == 1
+
+    def test_major_regression_recommendation(self):
+        scorecard = {
+            "triage_accuracy": {"score": 0.60, "correct": 6, "total": 10, "misses": []},
+            "by_category": {},
+            "thresholds": {"triage_accuracy": 0.75},
+            "regression_vs_previous": {"severity": "major", "delta": -0.15,
+                                        "previous_score": 0.75, "current_score": 0.60},
+        }
+        recs = generate_recommendations(scorecard)
+        reg_recs = [r for r in recs if r["category"] == "regression" and r["priority"] == "high"]
+        assert len(reg_recs) >= 1
+
+    def test_all_passing_recommendation(self):
+        scorecard = {
+            "triage_accuracy": {"score": 0.90, "correct": 9, "total": 10, "misses": []},
+            "by_category": {},
+            "thresholds": {"triage_accuracy": 0.75},
+        }
+        recs = generate_recommendations(scorecard)
+        assert any("pass" in r["finding"].lower() for r in recs)
+
+    def test_recommendations_sorted_by_priority(self):
+        scorecard = {
+            "triage_accuracy": {"score": 0.50, "correct": 5, "total": 10, "misses": [
+                {"scenario": "s1", "expected_class": "unknown", "got_class": "app_defect",
+                 "expected_conf_min": 0.0, "got_conf": 0.05},
+            ]},
+            "by_category": {},
+            "thresholds": {"triage_accuracy": 0.75},
+            "regression_vs_previous": {"recovered": ["old_one"], "new_failures": [],
+                                        "severity": None, "status": "stable"},
+        }
+        recs = generate_recommendations(scorecard)
+        priorities = [r["priority"] for r in recs]
+        assert priorities == sorted(priorities, key=lambda p: {"high": 0, "medium": 1, "low": 2}[p])
+
+
+class TestFormatReportMarkdown:
+
+    def test_report_contains_sections(self):
+        scorecard = {
+            "agent": "triage",
+            "eval_run_id": "test-report",
+            "timestamp": "2026-08-30T00:00:00Z",
+            "baseline_mode": False,
+            "passed": False,
+            "triage_accuracy": {"score": 0.80, "correct": 8, "total": 10, "misses": [
+                {"scenario": "s1", "expected_class": "locator_drift",
+                 "got_class": "locator_drift", "expected_conf_min": 0.75, "got_conf": 0.65},
+            ]},
+            "by_category": {"locator_drift": {"score": 0.80, "correct": 8, "total": 10}},
+            "thresholds": {"triage_accuracy": 0.75},
+            "regression_vs_previous": {"status": "stable", "delta": 0.0},
+            "recommendations": [
+                {"priority": "high", "category": "locator_drift",
+                 "finding": "Test finding", "action": "Test action"},
+            ],
+        }
+        md = format_report_markdown(scorecard)
+        assert "# Eval Report" in md
+        assert "## Accuracy" in md
+        assert "## By Category" in md
+        assert "## Recommendations" in md
+        assert "[HIGH]" in md
+        assert "Test finding" in md
+        assert "## Misses Detail" in md
+
+    def test_report_no_recommendations_when_empty(self):
+        scorecard = {
+            "agent": "triage",
+            "eval_run_id": "test",
+            "timestamp": "2026-08-30",
+            "baseline_mode": False,
+            "passed": True,
+            "triage_accuracy": {"score": 1.0, "correct": 10, "total": 10, "misses": []},
+            "by_category": {},
+            "thresholds": {"triage_accuracy": 0.75},
+            "recommendations": [],
+        }
+        md = format_report_markdown(scorecard)
+        assert "## Recommendations" not in md

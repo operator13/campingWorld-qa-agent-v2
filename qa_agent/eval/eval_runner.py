@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from qa_agent.eval.recommendations import generate_recommendations, format_report_markdown
 from qa_agent.eval.regression import detect_regression
 from qa_agent.eval.run_eval import score_triage_accuracy
 from qa_agent.eval.scorecard import build_scorecard, load_latest_scorecard, save_scorecard
@@ -172,6 +173,17 @@ async def run_triage_eval(
         regression_report=regression_report,
     )
 
-    save_scorecard(scorecard, reports_dir)
+    # Generate recommendations
+    recommendations = generate_recommendations(scorecard)
+    scorecard["recommendations"] = recommendations
+
+    # Save scorecard JSON
+    scorecard_path = save_scorecard(scorecard, reports_dir)
+
+    # Save markdown report alongside the JSON
+    report_md = format_report_markdown(scorecard)
+    report_path = scorecard_path.with_suffix(".md")
+    report_path.write_text(report_md)
+    logger.info("Report written to %s", report_path)
 
     return scorecard
