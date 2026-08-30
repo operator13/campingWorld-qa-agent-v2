@@ -295,28 +295,23 @@ async def eval_summary() -> JSONResponse:
         score = score_obj.get("score") if isinstance(score_obj, dict) else None
         passed = data.get("passed")
 
-        # Token/cost from latest eval — use highest value seen across all runs
-        # (odometer: never decreases between eval runs)
-        max_tokens = 0
-        max_cost = 0.0
+        # Cumulative token/cost across all eval runs (odometer — only goes up)
+        total_tokens = 0
+        total_cost = 0.0
         for f in files:
             report = _read_json(f)
             if not report or not isinstance(report, dict):
                 continue
             tu = report.get("token_usage", {})
             if isinstance(tu, dict):
-                t = tu.get("total_tokens", 0) or 0
-                c = tu.get("cost_usd", 0.0) or 0.0
-                if t > max_tokens:
-                    max_tokens = t
-                if c > max_cost:
-                    max_cost = c
+                total_tokens += tu.get("total_tokens", 0) or 0
+                total_cost += tu.get("cost_usd", 0.0) or 0.0
 
         summary[agent] = {
             "score": score,
             "passed": passed,
-            "tokens": max_tokens if max_tokens > 0 else None,
-            "cost": round(max_cost, 4) if max_cost > 0 else None,
+            "tokens": total_tokens if total_tokens > 0 else None,
+            "cost": round(total_cost, 4) if total_cost > 0 else None,
         }
 
     return JSONResponse(content=summary)
