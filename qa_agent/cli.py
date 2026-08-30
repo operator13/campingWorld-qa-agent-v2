@@ -269,6 +269,43 @@ async def _crawl(
         sys.exit(1)
 
 
+def _print_generator_results(scorecard: dict) -> None:
+    """Print generator eval results (multi-metric format)."""
+    if scorecard["passed"] is None:
+        status = "BASELINE (no judgment)"
+    elif scorecard["passed"]:
+        status = "PASS"
+    else:
+        status = "FAIL"
+
+    print(f"Scenarios: {scorecard['scenarios_total']} loaded, "
+          f"{scorecard['scenarios_skipped_expired']} skipped (expired)")
+    print()
+
+    for key, label in [("locator_quality", "Locator Quality"), ("pom_validity", "POM Validity"), ("test_validity", "Test Validity")]:
+        data = scorecard.get(key, {})
+        threshold_val = scorecard.get("thresholds", {}).get(key, 0.70)
+        score = data.get("score", 0)
+        print(f"  {label}:  {score * 100:.1f}%  (threshold: {threshold_val * 100:.1f}%)")
+
+    print(f"\nOverall: {status}")
+
+    recs = scorecard.get("recommendations", [])
+    if recs:
+        print(f"\nRecommendations ({len(recs)}):")
+        for r in recs:
+            priority = r["priority"].upper()
+            print(f"\n  [{priority}] {r.get('category', 'general')}")
+            print(f"    Finding: {r['finding']}")
+            print(f"    Action:  {r['action']}")
+
+    print(f"\nScorecard: {scorecard.get('eval_run_id', 'unknown')}")
+    print(f"Report:    qa_agent/eval/reports/ (JSON + Markdown)")
+
+    if scorecard["passed"] is False:
+        sys.exit(1)
+
+
 async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None:
     """Run eval for the specified agent."""
     from qa_agent.eval.eval_runner import (
@@ -300,9 +337,17 @@ async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None
         sys.exit(1)
 
     run_fn, accuracy_key, label_name = agent_config[agent]
-    scorecard = await run_fn(baseline_mode=baseline, threshold=threshold)
+    if agent == "generator":
+        scorecard = await run_fn(baseline_mode=baseline)
+    else:
+        scorecard = await run_fn(baseline_mode=baseline, threshold=threshold)
 
-    # Print results
+    # Generator has a custom multi-metric format
+    if agent == "generator":
+        _print_generator_results(scorecard)
+        return
+
+    # Print results for standard single-metric agents
     accuracy = scorecard[accuracy_key]
     thresholds = scorecard["thresholds"]
     threshold_val = thresholds.get(accuracy_key, 0.75)
