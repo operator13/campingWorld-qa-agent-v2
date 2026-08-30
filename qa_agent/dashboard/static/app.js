@@ -380,6 +380,10 @@
             document.getElementById('btn-run-all').style.display = 'none';
             document.getElementById('btn-stop').style.display = 'inline-block';
             document.getElementById('btn-clear').disabled = true;
+            // If run-all, highlight all domains on all devices
+            if (data.specs && data.specs[0] === 'all') {
+              document.querySelectorAll('.domain-row').forEach(r => r.classList.add('selected'));
+            }
             resetDomainProgress();
             runnerPassCount = 0;
             runnerFailCount = 0;
@@ -589,6 +593,10 @@
   }
 
   async function startTestRun(runAll) {
+    if (runAll) {
+      // Select all domain rows visually
+      document.querySelectorAll('.domain-row').forEach(r => r.classList.add('selected'));
+    }
     const specs = runAll ? [] : getSelectedSpecs();
     if (!runAll && specs.length === 0) { alert('Select at least one domain'); return; }
 
