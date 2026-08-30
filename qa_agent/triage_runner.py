@@ -366,8 +366,27 @@ def _save_triage_report(summary: dict[str, Any], timestamp: str) -> None:
     except Exception as e:
         logger.warning("Triage report git push failed: %s", e)
 
+    # Notify dashboard
+    _notify_dashboard_health(timestamp)
+
     print(f"\n  Triage report saved: health-reports/{timestamp}-triage.json")
     print(f"  Triage report saved: health-reports/{timestamp}-triage.md")
+
+
+def _notify_dashboard_health(run_id: str) -> None:
+    """Notify the dashboard server that a health/triage report was saved."""
+    import urllib.request
+    try:
+        data = json.dumps({"run_id": run_id}).encode()
+        req = urllib.request.Request(
+            "http://localhost:8080/api/health/notify",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=3)
+    except Exception:
+        pass  # Dashboard may not be running
 
 
 def _format_triage_markdown(summary: dict[str, Any]) -> str:

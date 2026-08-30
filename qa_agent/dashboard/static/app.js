@@ -6,7 +6,6 @@
   'use strict';
 
   let wsConnected = false;
-  let pollInterval = null;
   let costChart = null;
   let runnerTestCount = 0, runnerPassCount = 0, runnerFailCount = 0;
 
@@ -364,11 +363,10 @@
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
     let ws;
-    try { ws = new WebSocket(wsUrl); } catch (err) { startPolling(); return; }
+    try { ws = new WebSocket(wsUrl); } catch (err) { setTimeout(connectWebSocket, 3000); return; }
 
     ws.onopen = () => {
       wsConnected = true;
-      stopPolling();
       // Sync runner state on connect (in case we joined mid-run)
       fetch('/api/tests/status').then(r => r.json()).then(status => {
         if (status.state === 'running' || status.state === 'healing') {
@@ -460,16 +458,20 @@
             fetchEvalSummary();
             fetchAuditSummary();
             break;
+          case 'health:updated':
+            fetchHealth();
+            fetchRunHistory();
+            break;
           default:
             break;
         }
       } catch (err) { console.warn('WS parse error:', err); }
     };
-    ws.onclose = () => { wsConnected = false; startPolling(); setTimeout(connectWebSocket, 3000); };
+    ws.onclose = () => {
+      wsConnected = false;
+      setTimeout(() => { connectWebSocket(); refreshAllData(); }, 3000);
+    };
   }
-
-  function startPolling() { if (!pollInterval) pollInterval = setInterval(refreshAllData, 5000); }
-  function stopPolling() { if (pollInterval) { clearInterval(pollInterval); pollInterval = null; } }
 
 
   function updateDomainCard(name, passed) {

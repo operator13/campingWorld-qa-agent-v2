@@ -332,7 +332,24 @@ def compute_health_from_json(json_path: Path, output_dir: Path | None = None) ->
     if output_dir:
         save_health_report(report, output_dir)
 
+    _notify_dashboard(report.get("run_id", "unknown"))
     return report
+
+
+def _notify_dashboard(run_id: str) -> None:
+    """Notify the dashboard server that a health report was computed."""
+    import urllib.request
+    try:
+        data = json.dumps({"run_id": run_id}).encode()
+        req = urllib.request.Request(
+            "http://localhost:8080/api/health/notify",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=3)
+    except Exception:
+        pass  # Dashboard may not be running
 
 
 if __name__ == "__main__":

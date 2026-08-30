@@ -251,6 +251,14 @@ async def eval_notify(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "notified"})
 
 
+@app.post("/api/health/notify")
+async def health_notify(body: dict = {}) -> JSONResponse:
+    """Called after a health report is computed. Broadcasts to all dashboards."""
+    run_id = body.get("run_id", "unknown")
+    await broadcast_to_dashboard(json.dumps({"event": "health:updated", "run_id": run_id}))
+    return JSONResponse({"status": "notified"})
+
+
 @app.get("/api/eval/{agent}/latest")
 async def eval_agent_latest(agent: str) -> JSONResponse:
     agent_dir = EVAL_DIR / agent
