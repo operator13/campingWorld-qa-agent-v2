@@ -28,8 +28,8 @@ Return a JSON object with two keys:
     "/login": "// TypeScript source for LoginPage class..."
   },
   "test_code": {
-    "tests/checkout.spec.ts": "// TypeScript test source...",
-    "tests/login.spec.ts": "// TypeScript test source..."
+    "tests_generated/checkout.spec.ts": "// TypeScript test source...",
+    "tests_generated/login.spec.ts": "// TypeScript test source..."
   }
 }
 
@@ -65,7 +65,7 @@ export class CheckoutPage {
 ## Example test
 ```typescript
 import { test, expect } from '@playwright/test';
-import { CheckoutPage } from '../page-objects/CheckoutPage';
+import { CheckoutPage } from '../page_objects/CheckoutPage';
 
 test.describe('Checkout', () => {
   let checkout: CheckoutPage;

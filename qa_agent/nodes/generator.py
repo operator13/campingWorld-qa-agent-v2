@@ -71,7 +71,11 @@ async def generator(state: QAState) -> dict:
 
 def _build_prompt(state: QAState, memory_context: str = "") -> str:
     """Build the human message prompt for the Generator."""
-    parts = [f"Generate Playwright TypeScript page objects and tests for: {state.goal}\n"]
+    parts = [
+        f"Generate Playwright TypeScript page objects and tests for: {state.goal}\n",
+        "IMPORTANT: In test files, import page objects from '../page_objects/' (underscore, not hyphen).",
+        "IMPORTANT: Use 'tests_generated/' as the test file path prefix.\n",
+    ]
 
     # Test plan
     parts.append("## Test Plan")
