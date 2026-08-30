@@ -595,10 +595,6 @@
   }
 
   async function startTestRun(runAll) {
-    if (runAll) {
-      // Select all domain rows visually
-      document.querySelectorAll('.domain-row').forEach(r => r.classList.add('selected'));
-    }
     const specs = runAll ? [] : getSelectedSpecs();
     if (!runAll && specs.length === 0) { alert('Select at least one domain'); return; }
 
@@ -610,10 +606,15 @@
     document.getElementById('runner-log').innerHTML = '';
     document.getElementById('runner-log-container').style.display = 'block';
     document.getElementById('btn-run-selected').style.display = 'none';
-    resetDomainProgress();
     document.getElementById('btn-run-all').style.display = 'none';
     document.getElementById('btn-stop').style.display = 'inline-block';
+    resetDomainProgress();
     setRunnerState('running');
+
+    // Select all AFTER reset so selection is visible
+    if (runAll) {
+      document.querySelectorAll('.domain-row').forEach(r => r.classList.add('selected'));
+    }
     runnerTestCount = 0;
     runnerPassCount = 0;
     runnerFailCount = 0;
