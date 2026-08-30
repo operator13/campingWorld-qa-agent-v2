@@ -1,6 +1,6 @@
-# Feature: QA Agent Eval & Health Dashboard
+# Feature: QA Command Center Dashboard
 
-> A real-time, interactive dashboard that visualizes agent eval scores, site health trends, triage activity, and cost metrics — giving instant visibility into the entire QA automation pipeline.
+> A single-pane-of-glass dashboard showing site quality health scores per domain, overall site health, agent accuracy percentages, token costs per agent, triage activity, and trend history — everything needed to understand the state of campingworld.com QA at a glance.
 
 **Status:** PLANNED
 **Priority:** High
@@ -25,49 +25,87 @@ A web-based dashboard served locally that pulls from existing data sources (heal
 
 ---
 
+## The Three Core Metrics
+
+Everything on the dashboard is organized around three questions:
+
+1. **How healthy is the site?** → Domain health scores + overall score
+2. **How accurate are the agents?** → Per-agent accuracy % with trend
+3. **What does it cost?** → Token usage + USD cost per agent per run
+
+---
+
 ## Dashboard Sections
 
-### 1. Site Health Overview (Hero Section)
+### 1. Site Quality Health (Hero Section)
 
-**Large radial gauge** showing overall site health score with color coding:
-- Green (≥95%): HEALTHY
-- Yellow (≥80%): DEGRADED
-- Red (<80%): CRITICAL
+**Overall site health gauge** — large radial gauge, front and center:
+- Score: weighted average across all 14 domains
+- Color: Green (≥95% HEALTHY), Yellow (≥80% DEGRADED), Red (<80% CRITICAL)
+- Number: "98.7% HEALTHY" in large text
 
-**Domain health grid** — 14 cards, one per domain:
-- Each card shows: domain name, pass/fail count, health %, status badge
-- Critical path domains (Cart, Checkout, Sign In) have a star indicator
-- Cards pulse/glow red when CRITICAL
-- Click a card → drill down to individual test results
+**Domain quality grid** — 14 cards arranged in a responsive grid:
 
-**Trend sparkline** — last 10 runs inline, showing health trajectory
+Each card shows:
+- Domain name (e.g., "Cart", "Search", "Product Detail")
+- Quality score: `9/9 = 100%`
+- Health bar (filled proportionally, color-coded green/yellow/red)
+- Status badge: HEALTHY / DEGRADED / CRITICAL
+- Weight indicator: ★ for critical purchase path (Cart 2x, Checkout 2x, Sign In 1.5x)
+- Cards glow red when CRITICAL, pulse amber when DEGRADED
+- Click → drill down to individual test pass/fail list
 
-### 2. Agent Eval Scorecard (4-Panel Grid)
+**Trend line** — sparkline of overall health across last 10 runs, showing trajectory
+
+### 2. Agent Accuracy Scores (4-Panel Grid)
 
 Four cards, one per agent (Triage, Planner, Generator, Healer):
 
 Each card shows:
-- Agent name + current score (large number)
-- Pass/fail badge
-- Mini bar chart showing score history (last 10 runs)
-- Trend arrow (↑ improving, → stable, ↓ declining)
-- Last run timestamp
-- Click → drill down to recommendations and miss details
+- Agent name
+- **Accuracy %** in large bold text (e.g., "90.0%")
+- Pass/fail badge (green checkmark or red X)
+- **What it measures** — subtitle text:
+  - Triage: "Classification accuracy (30 scenarios)"
+  - Planner: "AC coverage (8 scenarios)"
+  - Generator: "Locator quality + POM/test validity (3 scenarios)"
+  - Healer: "Fix correctness + assertion integrity (10 scenarios)"
+- Mini bar chart: accuracy history over last 10 eval runs
+- Trend arrow: ↑ improving, → stable, ↓ declining
+- Last eval timestamp
+- Click → drill down to: miss details, recommendations, confidence breakdown
 
-### 3. Cost & Token Tracking (from Audit Trail)
+### 3. Token Cost per Agent (Cost Panel)
 
-**Stacked bar chart** — tokens per agent per run:
-- X-axis: run timestamps
+**Stacked bar chart** — tokens consumed per agent per pipeline run:
+- X-axis: run timestamps (last 20 runs)
 - Y-axis: token count
-- Stacked by agent (triage=blue, planner=green, generator=purple, healer=orange)
+- Stacked bars by agent:
+  - Triage = blue
+  - Planner = green
+  - Generator = purple
+  - Healer = orange
+  - Executor/other = gray
+- Hover: shows exact token count + estimated cost
 
-**Cost timeline** — line chart of estimated USD cost per run
+**Cost timeline** — line chart overlay showing $ cost per run
 
-**KPI strip:**
-- Total tokens this session
-- Total cost this session
-- Average cost per run
-- Most expensive agent
+**KPI strip across the top:**
+| Metric | Example |
+|--------|---------|
+| Total tokens (all time) | 142,350 |
+| Total cost (all time) | $2.84 |
+| Avg cost per run | $0.11 |
+| Most expensive agent | Generator ($0.06/run) |
+| Cheapest agent | Executor ($0.00) |
+
+**Per-agent cost table:**
+| Agent | Avg Tokens In | Avg Tokens Out | Avg Cost/Run |
+|-------|--------------|----------------|-------------|
+| Triage | 3,857 | 312 | $0.016 |
+| Planner | 561 | 1,807 | $0.029 |
+| Generator | 2,684 | 3,180 | $0.056 |
+| Healer | 1,200 | 800 | $0.016 |
 
 Data source: `memory/audit_runs/*.json`
 
