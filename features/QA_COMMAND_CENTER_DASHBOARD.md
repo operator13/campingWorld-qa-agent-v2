@@ -155,29 +155,119 @@ Three.js is a **3D rendering engine** designed for WebGL scenes, 3D models, and 
 | **Framework** | Vanilla HTML + Tailwind CSS | Simple, no build step, served as static files |
 | **Charts** | Chart.js (lightweight) or D3.js (powerful) | Purpose-built for data visualization |
 | **Gauges** | Custom SVG (radial gauge) | Clean, lightweight, accessible |
-| **Server** | Python `http.server` or FastAPI | Serves static files + JSON API |
+| **Server** | FastAPI (Python) | Serves static files + JSON API, async-native |
 | **Data** | Read JSON files from disk | No database needed — files already exist |
 | **Interactivity** | Alpine.js (3KB) | Minimal reactive framework for drill-downs |
+| **Container** | Docker + Docker Compose | Isolated, reproducible, one-command deploy |
 
 ### Why This Stack
 
-1. **No build step** — `python -m http.server` serves it immediately
-2. **Data already exists** — health reports, eval scorecards, audit JSON are all on disk
+1. **Containerized** — `docker compose up` and the dashboard is running
+2. **Data already exists** — health reports, eval scorecards, audit JSON are all on disk, mounted into the container
 3. **Lightweight** — Chart.js is 60KB (vs Three.js 600KB+)
 4. **Accessible** — real DOM elements, not canvas blobs
 5. **Maintainable** — HTML/CSS that any developer can modify
+6. **Portable** — runs the same on any machine with Docker
 
 ---
 
-## Architecture
+## Docker Architecture
+
+### Container Layout
+
+```
+┌─────────────────────────────────────────────────┐
+│              Docker Compose Stack                 │
+│                                                   │
+│  ┌─────────────────────────────────────────────┐ │
+│  │  qa-dashboard (FastAPI + static files)       │ │
+│  │  Port: 8080                                  │ │
+│  │  Image: python:3.11-slim                     │ │
+│  │                                              │ │
+│  │  Volumes (read-only mounts):                 │ │
+│  │    ./health-reports    → /data/health        │ │
+│  │    ./qa_agent/eval/reports → /data/eval      │ │
+│  │    ./memory/audit_runs → /data/audit         │ │
+│  │    ./test-results      → /data/test-results  │ │
+│  └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+```
+
+### Dockerfile
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY qa_agent/dashboard/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy dashboard code
+COPY qa_agent/dashboard/ ./dashboard/
+
+# Data directories mounted at runtime via docker-compose
+# /data/health, /data/eval, /data/audit, /data/test-results
+
+EXPOSE 8080
+
+CMD ["uvicorn", "dashboard.server:app", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+### docker-compose.yml
+
+```yaml
+version: '3.8'
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: qa_agent/dashboard/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount data directories read-only — dashboard never writes
+      - ./health-reports:/data/health:ro
+      - ./qa_agent/eval/reports:/data/eval:ro
+      - ./memory/audit_runs:/data/audit:ro
+      - ./test-results:/data/test-results:ro
+    environment:
+      - DATA_DIR=/data
+    restart: unless-stopped
+```
+
+### Key Design Decisions
+
+1. **Read-only volume mounts** — the dashboard container never writes to your project. It only reads JSON files produced by test runs and eval runs.
+
+2. **No database** — the container doesn't run Postgres, Redis, or any data store. It reads files on every API request. When tests run on the host and produce new reports, the dashboard sees them immediately (volume mount).
+
+3. **Single container** — no multi-service orchestration needed. One container serves both the API and the static frontend.
+
+4. **Hot reload in dev** — mount the dashboard source code as a volume for live editing:
+   ```yaml
+   volumes:
+     - ./qa_agent/dashboard:/app/dashboard  # dev mode
+   ```
+
+5. **Lightweight image** — `python:3.11-slim` (~150MB) with FastAPI + uvicorn (~20MB of pip deps). Total image size < 200MB.
+
+---
+
+## File Structure
 
 ```
 qa_agent/dashboard/
-├── server.py           # Python HTTP server + JSON API endpoints
+├── Dockerfile              # Container image definition
+├── docker-compose.yml      # One-command deployment
+├── requirements.txt        # FastAPI, uvicorn, jinja2
+├── server.py               # FastAPI app + JSON API endpoints
 ├── static/
-│   ├── index.html      # Main dashboard page
-│   ├── styles.css      # Tailwind-based styles
-│   ├── app.js          # Dashboard logic + Chart.js rendering
+│   ├── index.html          # Main dashboard page
+│   ├── styles.css          # Tailwind-based styles
+│   ├── app.js              # Dashboard logic + Chart.js rendering
 │   └── components/
 │       ├── health-gauge.js    # Radial SVG gauge
 │       ├── domain-grid.js     # Domain health cards
@@ -258,22 +348,31 @@ Each endpoint reads directly from disk — no database:
 ## CLI Integration
 
 ```bash
-qa-agent dashboard                    # launch dashboard at http://localhost:8080
+# Docker (recommended)
+docker compose -f qa_agent/dashboard/docker-compose.yml up        # start dashboard
+docker compose -f qa_agent/dashboard/docker-compose.yml up -d     # start in background
+docker compose -f qa_agent/dashboard/docker-compose.yml down      # stop
+
+# Shortcut via qa-agent CLI
+qa-agent dashboard                    # docker compose up + open browser
 qa-agent dashboard --port 9090        # custom port
-qa-agent dashboard --no-browser       # don't auto-open browser
+qa-agent dashboard --no-docker        # run without Docker (python directly)
+qa-agent dashboard --stop             # docker compose down
 ```
 
 ---
 
 ## Build Phases
 
-### Phase D1 — API Server + Data Layer (~2 days)
+### Phase D1 — Docker + API Server + Data Layer (~2 days)
 | # | Task |
 |---|------|
-| 1 | `server.py` — FastAPI or `http.server` with JSON endpoints |
-| 2 | Data readers for health reports, eval scorecards, audit trail, triage reports |
-| 3 | Aggregation logic for cost/token summaries |
-| 4 | CLI command `qa-agent dashboard` |
+| 1 | `Dockerfile` + `docker-compose.yml` + `requirements.txt` |
+| 2 | `server.py` — FastAPI with JSON API endpoints |
+| 3 | Data readers for health reports, eval scorecards, audit trail, triage reports |
+| 4 | Aggregation logic for cost/token summaries |
+| 5 | CLI command `qa-agent dashboard` (wraps docker compose) |
+| 6 | Verify: `docker compose up` serves API at localhost:8080 |
 
 ### Phase D2 — Core Dashboard UI (~3 days)
 | # | Task |
