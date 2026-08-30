@@ -269,6 +269,72 @@ async def _crawl(
         sys.exit(1)
 
 
+async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None:
+    """Run eval for the specified agent."""
+    from qa_agent.eval.eval_runner import run_triage_eval
+
+    mode = "BASELINE" if baseline else "EVAL"
+    print(f"=== QA Agent · {mode} ({agent}) ===\n")
+
+    if agent != "triage":
+        print(f"[ERROR] Agent '{agent}' eval not yet implemented. Only 'triage' is supported.")
+        sys.exit(1)
+
+    scorecard = await run_triage_eval(
+        baseline_mode=baseline,
+        threshold=threshold,
+    )
+
+    # Print results
+    accuracy = scorecard["triage_accuracy"]
+    thresholds = scorecard["thresholds"]
+    threshold_val = thresholds.get("triage_accuracy", 0.75)
+
+    print(f"Scenarios: {scorecard['scenarios_total']} loaded, "
+          f"{scorecard['scenarios_skipped_expired']} skipped (expired)")
+    print()
+
+    # Pass/fail display
+    if scorecard["passed"] is None:
+        status = "BASELINE (no judgment)"
+    elif scorecard["passed"]:
+        status = "PASS"
+    else:
+        status = "FAIL"
+
+    print(f"Triage Accuracy:  {accuracy['score'] * 100:.1f}%  "
+          f"(threshold: {threshold_val * 100:.1f}%)  {status}")
+
+    # Category breakdown
+    for cat, data in scorecard.get("by_category", {}).items():
+        print(f"  {cat}:  {data['score'] * 100:.1f}%  ({data['correct']}/{data['total']})")
+
+    # Regression
+    reg = scorecard.get("regression_vs_previous")
+    if reg:
+        delta_str = f"{reg['delta']:+.1%}" if reg["delta"] else "+0.0%"
+        print(f"\nRegression: {reg['status'].upper()} (Δ {delta_str})")
+        if reg.get("new_failures"):
+            print(f"  New failures: {', '.join(reg['new_failures'])}")
+        if reg.get("recovered"):
+            print(f"  Recovered: {', '.join(reg['recovered'])}")
+
+    # Misses
+    if accuracy.get("misses"):
+        print(f"\nMisses ({len(accuracy['misses'])}):")
+        for m in accuracy["misses"]:
+            print(f"  - {m}")
+
+    print(f"\nScorecard written: {scorecard.get('eval_run_id', 'unknown')}")
+    print(f"Overall: {status}")
+
+    # Exit code
+    if scorecard["passed"] is False:
+        sys.exit(1)
+    if reg and reg.get("severity") == "major":
+        sys.exit(1)
+
+
 def main() -> None:
     """CLI entrypoint."""
     parser = argparse.ArgumentParser(
@@ -277,7 +343,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["run", "memory", "review", "crawl"],
+        choices=["run", "memory", "review", "crawl", "eval"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -331,6 +397,19 @@ def main() -> None:
         action="store_true",
         help="Overwrite existing POM/test files",
     )
+    # Eval-specific arguments
+    parser.add_argument(
+        "--agent",
+        type=str,
+        default="triage",
+        help="Agent to evaluate (default: triage)",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Override accuracy threshold for eval",
+    )
 
     args = parser.parse_args()
 
@@ -366,6 +445,17 @@ def main() -> None:
             dry=args.dry,
             overwrite=args.overwrite,
         ))
+    elif args.command == "eval":
+        if args.subcommand in ("run", "baseline"):
+            baseline = args.subcommand == "baseline"
+            asyncio.run(_eval_run(
+                agent=args.agent,
+                baseline=baseline,
+                threshold=args.threshold,
+            ))
+        else:
+            print("Usage: qa-agent eval run [--agent triage] [--threshold 0.80] | baseline")
+            sys.exit(1)
     elif args.command == "review":
         if args.subcommand == "weekly":
             _review_weekly()

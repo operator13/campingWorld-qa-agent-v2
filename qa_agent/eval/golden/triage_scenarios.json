@@ -1,0 +1,302 @@
+[
+  {
+    "scenario": "locator_drift_button_renamed",
+    "category": "locator_drift",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Submit' })\n  - no element matching getByRole('button', { name: 'Submit' })",
+    "dom_has_element": true,
+    "dom_element_renamed": "Place Order",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_testid_changed",
+    "category": "locator_drift",
+    "error": "TimeoutError: page.locator: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('add-to-cart-btn')\n  - no element matching getByTestId('add-to-cart-btn')",
+    "dom_has_element": true,
+    "dom_element_renamed": "add-to-cart-button",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_label_text_change",
+    "category": "locator_drift",
+    "error": "TimeoutError: page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByLabel('Email Address')\n  - no element matching getByLabel('Email Address')",
+    "dom_has_element": true,
+    "dom_element_renamed": "Email",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_link_renamed",
+    "category": "locator_drift",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('link', { name: 'Sign In' })\n  - no element matching getByRole('link', { name: 'Sign In' })",
+    "dom_has_element": true,
+    "dom_element_renamed": "Log In",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_placeholder_changed",
+    "category": "locator_drift",
+    "error": "TimeoutError: page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder('Enter your email')\n  - no element matching getByPlaceholder('Enter your email')",
+    "dom_has_element": true,
+    "dom_element_renamed": "Your email address",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.74,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_heading_renamed",
+    "category": "locator_drift",
+    "error": "TimeoutError: page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('heading', { name: 'Order Summary' })\n  - no element matching getByRole('heading', { name: 'Order Summary' })",
+    "dom_has_element": true,
+    "dom_element_renamed": "Your Order",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_tab_renamed",
+    "category": "locator_drift",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('tab', { name: 'Shipping' })\n  - no element matching getByRole('tab', { name: 'Shipping' })",
+    "dom_has_element": true,
+    "dom_element_renamed": "Delivery",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_img_alt_changed",
+    "category": "locator_drift",
+    "error": "TimeoutError: page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByAltText('Product thumbnail')\n  - no element matching getByAltText('Product thumbnail')",
+    "dom_has_element": true,
+    "dom_element_renamed": "Product image",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.73,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_checkbox_renamed",
+    "category": "locator_drift",
+    "error": "TimeoutError: locator.check: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('checkbox', { name: 'Accept terms' })\n  - no element matching getByRole('checkbox', { name: 'Accept terms' })",
+    "dom_has_element": true,
+    "dom_element_renamed": "I agree to the terms",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "locator_drift_select_option_removed",
+    "category": "locator_drift",
+    "error": "TimeoutError: locator.selectOption: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('combobox', { name: 'State' })\n  - no element matching getByRole('combobox', { name: 'State' })",
+    "dom_has_element": true,
+    "dom_element_renamed": "Province",
+    "expected_class": "locator_drift",
+    "expected_confidence_min": 0.74,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_assertion_mismatch",
+    "category": "app_defect",
+    "error": "AssertionError: expect(locator).toHaveText(expected)\n\nExpected: 'Order Confirmed'\nReceived: 'Error: Payment Failed'\n\nCall log:\n  - expect.toHaveText with timeout 10000ms",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_http_500",
+    "category": "app_defect",
+    "error": "net::ERR_FAILED 500 (Internal Server Error)\n\nFailed to load resource: the server responded with a status of 500\nURL: /api/checkout",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.85,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_http_503",
+    "category": "app_defect",
+    "error": "net::ERR_FAILED 503 (Service Unavailable)\n\nFailed to load resource: the server responded with a status of 503\nURL: /api/products",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.82,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_assertion_wrong_price",
+    "category": "app_defect",
+    "error": "AssertionError: expect(locator).toHaveText(expected)\n\nExpected pattern: /\\$49\\.99/\nReceived string: '$0.00'\n\nCall log:\n  - expect.toHaveText with timeout 10000ms",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_text_content_wrong",
+    "category": "app_defect",
+    "error": "AssertionError: expect(locator).toContainText(expected)\n\nExpected string: 'Welcome, John'\nReceived string: 'Welcome, Guest'\n\nCall log:\n  - expect.toContainText with timeout 10000ms",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.79,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_nav_wrong_page",
+    "category": "app_defect",
+    "error": "AssertionError: expect(page).toHaveURL(expected)\n\nExpected pattern: /\\/confirmation/\nReceived string: 'https://example.com/error?code=payment_failed'\n\nCall log:\n  - expect.toHaveURL with timeout 10000ms",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.83,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_form_not_submitted",
+    "category": "app_defect",
+    "error": "AssertionError: Expected form submission to succeed.\nReceived HTTP 422 Unprocessable Entity from POST /api/orders\nResponse: {\"error\": \"Invalid card number\"}",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.81,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_api_null_response",
+    "category": "app_defect",
+    "error": "TypeError: Cannot read properties of null (reading 'orderId')\n    at confirmOrder (checkout.js:42:18)\n    at async CheckoutPage.placeOrder",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.78,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_http_403",
+    "category": "app_defect",
+    "error": "net::ERR_FAILED 403 (Forbidden)\n\nFailed to load resource: the server responded with a status of 403\nURL: /api/user/profile",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_missing_cart_items",
+    "category": "app_defect",
+    "error": "AssertionError: expect(received).toBeGreaterThan(expected)\n\nExpected: > 0\nReceived: 0\n\nCall log:\n  - Expected cart item count to be greater than 0",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.79,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_toast_message_wrong",
+    "category": "app_defect",
+    "error": "AssertionError: expect(locator).toBeVisible()\n\nLocator: getByText('Item added to cart')\nExpected: visible\nReceived: hidden\nTimeout: 10000ms\n\nNo toast or notification appeared after clicking Add to Cart",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.77,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "app_defect_redirect_loop",
+    "category": "app_defect",
+    "error": "Error: page.goto: net::ERR_TOO_MANY_REDIRECTS\n\nURL: /checkout/payment\nThe page redirected too many times.",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.76,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_generic_timeout_no_dom",
+    "category": "unknown",
+    "error": "TimeoutError: page.waitForNavigation: Timeout 30000ms exceeded.",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_network_flake",
+    "category": "unknown",
+    "error": "net::ERR_CONNECTION_RESET\n\nFailed to establish connection to /api/inventory",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_ci_env_timeout",
+    "category": "unknown",
+    "error": "TimeoutError: page.waitForSelector: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator('[data-loaded=\"true\"]')",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_missing_element_no_context",
+    "category": "unknown",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Continue' })",
+    "dom_has_element": false,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_js_error_ambiguous",
+    "category": "unknown",
+    "error": "Error: page.evaluate: Evaluation failed: ReferenceError: trackEvent is not defined\n    at analytics.js:15:3",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_slow_network_timeout",
+    "category": "unknown",
+    "error": "TimeoutError: page.waitForResponse: Timeout 60000ms exceeded.\nCall log:\n  - waiting for response matching /api/search",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_hydration_error",
+    "category": "unknown",
+    "error": "Error: Hydration failed because the initial UI does not match what was rendered on the server.\nWarning: Expected server HTML to contain a matching <div> in <div>.",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "unknown_element_detached",
+    "category": "unknown",
+    "error": "Error: locator.click: Element is not attached to the DOM\n    at ProductPage.addToCart\nNote: Element was found but detached before click could be performed",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "unknown",
+    "expected_confidence_min": 0.0,
+    "valid_until": "2027-06-01"
+  }
+]
