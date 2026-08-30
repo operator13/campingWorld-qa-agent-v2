@@ -581,8 +581,25 @@ body::before {
 
 .table-wrapper {
   overflow-x: auto;
-  max-height: 400px;
-  overflow-y: auto;
+  max-height: 500px;
+  overflow-y: scroll;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 200, 0.3);
+  border-radius: 3px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 200, 0.5);
 }
 
 .run-table {
