@@ -280,6 +280,8 @@ async def test_status():
 
 @app.post("/api/tests/clear")
 async def clear_tests():
+    global _test_run_status
+    _test_run_status = {"state": "cleared", "run_id": None, "started_at": None}
     await broadcast_to_dashboard(json.dumps({"event": "runner:clear"}))
     return JSONResponse({"status": "cleared"})
 

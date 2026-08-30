@@ -45,6 +45,8 @@
         document.getElementById('btn-run-all').style.display = 'none';
         document.getElementById('btn-stop').style.display = 'inline-block';
         document.getElementById('btn-clear').disabled = true;
+      } else if (state === 'cleared') {
+        doClearRunner();
       } else if (state === 'idle' || state === 'complete') {
         // Always sync to idle/complete state and enable controls
         setRunnerState(state === 'complete' ? 'complete' : 'idle');
