@@ -265,8 +265,8 @@
     "error": "Error: page.evaluate: Evaluation failed: ReferenceError: trackEvent is not defined\n    at analytics.js:15:3",
     "dom_has_element": null,
     "dom_element_renamed": null,
-    "expected_class": "unknown",
-    "expected_confidence_min": 0.0,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -285,8 +285,8 @@
     "error": "Error: Hydration failed because the initial UI does not match what was rendered on the server.\nWarning: Expected server HTML to contain a matching <div> in <div>.",
     "dom_has_element": null,
     "dom_element_renamed": null,
-    "expected_class": "unknown",
-    "expected_confidence_min": 0.0,
+    "expected_class": "app_defect",
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {

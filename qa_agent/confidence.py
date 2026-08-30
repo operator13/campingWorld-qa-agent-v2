@@ -75,11 +75,18 @@ _DRIFT_ERROR_PATTERNS = [
 _DEFECT_ERROR_PATTERNS = [
     re.compile(r"AssertionError", re.I),
     re.compile(r"assert.*expected.*got", re.I),
-    re.compile(r"ERR_FAILED\s*5\d\d", re.I),
-    re.compile(r"HTTP\s*5\d\d", re.I),
+    re.compile(r"ERR_FAILED\s*[345]\d\d", re.I),       # 3xx/4xx/5xx HTTP errors
+    re.compile(r"HTTP\s*[345]\d\d", re.I),
     re.compile(r"Internal Server Error", re.I),
     re.compile(r"console\.error", re.I),
     re.compile(r"Unhandled.*Exception", re.I),
+    re.compile(r"TypeError:", re.I),                    # JS runtime errors
+    re.compile(r"ReferenceError:", re.I),               # undefined variable errors
+    re.compile(r"Cannot read properties of null", re.I),
+    re.compile(r"ERR_TOO_MANY_REDIRECTS", re.I),        # redirect loops
+    re.compile(r"Forbidden", re.I),                      # 403
+    re.compile(r"Service Unavailable", re.I),            # 503
+    re.compile(r"Hydration failed", re.I),               # SSR mismatch
 ]
 
 _TIMEOUT_PATTERN = re.compile(r"TimeoutError|Timeout.*exceeded", re.I)
@@ -96,13 +103,23 @@ def score_c1_error_type(error: str) -> float:
 
     drift_match = any(p.search(error) for p in _DRIFT_ERROR_PATTERNS)
     defect_match = any(p.search(error) for p in _DEFECT_ERROR_PATTERNS)
+    is_timeout = bool(_TIMEOUT_PATTERN.search(error))
 
+    if drift_match and defect_match:
+        return 0.1  # conflicting signals — ambiguous
     if drift_match and not defect_match:
-        return 0.3  # strong unambiguous drift signal
+        # Drift requires confirmation — "no element matching" is strong,
+        # but a bare timeout on a locator without that confirmation is weaker
+        has_confirmation = bool(re.search(r"no element matching|0 elements", error, re.I))
+        if has_confirmation:
+            return 0.3  # strong confirmed drift
+        if is_timeout:
+            return 0.15  # timeout on a locator — likely drift but not certain
+        return 0.3  # non-timeout drift signal (stale element, selector-not-found)
     if defect_match and not drift_match:
         return 0.3  # strong unambiguous defect signal
-    if _TIMEOUT_PATTERN.search(error):
-        return 0.1  # ambiguous
+    if is_timeout:
+        return 0.1  # generic timeout — ambiguous
     return 0.0
 
 
