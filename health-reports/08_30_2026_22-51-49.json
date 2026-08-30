@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-08-30T22:52:09.398037+00:00",
+  "run_id": "08_30_2026_22-51-49",
+  "overall_score": 0.875,
+  "overall_status": "DEGRADED",
+  "total_passed": 7,
+  "total_failed": 1,
+  "total_skipped": 0,
+  "total_tests": 8,
+  "trend": {
+    "delta": -0.1115,
+    "status": "declining",
+    "previous_score": 0.9865
+  },
+  "domains": [
+    {
+      "name": "Cart",
+      "passed": 7,
+      "failed": 1,
+      "skipped": 0,
+      "total": 8,
+      "duration_ms": 49677,
+      "score": 0.875,
+      "status": "DEGRADED",
+      "weight": 2.0,
+      "is_critical": true
+    }
+  ],
+  "critical_domains": [
+    "Cart"
+  ]
+}
