@@ -16,6 +16,7 @@ from typing import Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from qa_agent.audit import AuditStore
 from qa_agent.confidence import score_confidence
 from qa_agent.config import get_model
 from qa_agent.memory import MemoryStore
@@ -83,6 +84,7 @@ async def triage(state: QAState) -> dict:
     ]
 
     response = await model.ainvoke(messages)
+    AuditStore.record_llm_call(response, model=get_model("triage"))
     result = _parse_response(response)
 
     failure_class = result.get("failure_class", "unknown")

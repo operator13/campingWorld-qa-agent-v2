@@ -1,11 +1,15 @@
-"""Per-agent audit trail — automatic logging of inputs, outputs, timing, and errors.
+"""Per-agent audit trail — automatic logging of inputs, outputs, timing, tokens, and errors.
 
 Phase AT1: Core decorator + dual-format logging (markdown + JSON).
-No token tracking yet (Phase AT2).
+Phase AT2: Token tracking + cost estimation.
 
 Usage in graph.py:
     from qa_agent.audit import audit_node
     graph.add_node("triage", audit_node("triage")(triage))
+
+Usage in nodes (after model.ainvoke):
+    from qa_agent.audit import AuditStore
+    AuditStore.record_llm_call(response, model=get_model("triage"))
 """
 
 from __future__ import annotations
@@ -36,6 +40,12 @@ class AuditStore:
     _current_run_entries: list[dict[str, Any]] = []
     _run_start_time: float | None = None
 
+    # Token tracking (Phase AT2) — accumulates LLM call data per node
+    _current_node_llm_calls: list[dict[str, Any]] = []
+    _run_total_input_tokens: int = 0
+    _run_total_output_tokens: int = 0
+    _run_total_cost: float = 0.0
+
     def __init__(self) -> None:
         _AUDIT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
         self._init_markdown()
@@ -46,11 +56,63 @@ class AuditStore:
             _AUDIT_TRAIL_PATH.write_text("# Audit Trail\n\n")
 
     @classmethod
+    def record_llm_call(cls, response: Any, model: str | None = None) -> None:
+        """Called by nodes after model.ainvoke() to capture token data.
+
+        Usage:
+            response = await model.ainvoke(messages)
+            AuditStore.record_llm_call(response, model=get_model("triage"))
+        """
+        usage = getattr(response, "usage_metadata", None) or {}
+        meta = getattr(response, "response_metadata", None) or {}
+
+        input_tokens = usage.get("input_tokens", 0) if isinstance(usage, dict) else 0
+        output_tokens = usage.get("output_tokens", 0) if isinstance(usage, dict) else 0
+
+        cls._current_node_llm_calls.append({
+            "model": model or meta.get("model", None),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+        })
+
+    @classmethod
+    def _consume_llm_calls(cls) -> dict[str, Any]:
+        """Consume accumulated LLM calls for the current node and return token summary."""
+        from qa_agent.config import estimate_cost
+
+        calls = cls._current_node_llm_calls
+        cls._current_node_llm_calls = []
+
+        if not calls:
+            return {"model": None, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+
+        total_in = sum(c["input_tokens"] for c in calls)
+        total_out = sum(c["output_tokens"] for c in calls)
+        model = calls[0]["model"]  # Use the model from the first call
+        cost = estimate_cost(model or "claude-sonnet-4-6", total_in, total_out)
+
+        # Accumulate run-level totals
+        cls._run_total_input_tokens += total_in
+        cls._run_total_output_tokens += total_out
+        cls._run_total_cost += cost
+
+        return {
+            "model": model,
+            "input_tokens": total_in,
+            "output_tokens": total_out,
+            "cost_usd": round(cost, 6),
+        }
+
+    @classmethod
     def start_run(cls, run_id: str) -> None:
         """Begin a new run — call once at the start of a graph invocation."""
         cls._current_run_id = run_id
         cls._current_run_entries = []
         cls._run_start_time = time.monotonic()
+        cls._current_node_llm_calls = []
+        cls._run_total_input_tokens = 0
+        cls._run_total_output_tokens = 0
+        cls._run_total_cost = 0.0
         logger.info("Audit: starting run %s", run_id)
 
     @classmethod
@@ -79,9 +141,9 @@ class AuditStore:
             "run_id": run_id,
             "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "total_duration_ms": total_duration,
-            "total_input_tokens": None,  # Phase AT2
-            "total_output_tokens": None,  # Phase AT2
-            "estimated_cost_usd": None,  # Phase AT2
+            "total_input_tokens": cls._run_total_input_tokens,
+            "total_output_tokens": cls._run_total_output_tokens,
+            "estimated_cost_usd": round(cls._run_total_cost, 6),
             "outcome": _derive_outcome(cls._current_run_entries),
             "nodes": cls._current_run_entries,
         }
@@ -130,25 +192,31 @@ def audit_node(node_name: str):
             # Capture input summary
             input_summary = _summarize_state(state)
 
+            # Clear any leftover LLM calls from a previous node
+            AuditStore._current_node_llm_calls = []
+
             try:
                 result = await fn(state, **kwargs)
                 elapsed_ms = int((time.monotonic() - start) * 1000)
+
+                # Consume token data recorded by the node
+                token_data = AuditStore._consume_llm_calls()
 
                 entry = {
                     "node": node_name,
                     "timestamp": timestamp,
                     "duration_ms": elapsed_ms,
-                    "model": None,  # Phase AT2
+                    "model": token_data["model"],
                     "prompt_version": None,  # Phase AT3
-                    "input_tokens": None,  # Phase AT2
-                    "output_tokens": None,  # Phase AT2
-                    "cost_usd": None,  # Phase AT2
+                    "input_tokens": token_data["input_tokens"],
+                    "output_tokens": token_data["output_tokens"],
+                    "cost_usd": token_data["cost_usd"],
                     "cache_hit": None,
                     "errors": [],
                     "input_state": input_summary,
                     "parsed_output": _safe_serialize(result),
-                    "raw_prompt": None,  # Phase AT2
-                    "raw_llm_response": None,  # Phase AT2
+                    "raw_prompt": None,  # Phase AT3
+                    "raw_llm_response": None,  # Phase AT3
                     "memory_context": None,  # Phase AT3
                     "routing_decision": None,  # Phase AT3
                 }
@@ -158,16 +226,17 @@ def audit_node(node_name: str):
 
             except Exception as exc:
                 elapsed_ms = int((time.monotonic() - start) * 1000)
+                token_data = AuditStore._consume_llm_calls()
 
                 entry = {
                     "node": node_name,
                     "timestamp": timestamp,
                     "duration_ms": elapsed_ms,
-                    "model": None,
+                    "model": token_data["model"],
                     "prompt_version": None,
-                    "input_tokens": None,
-                    "output_tokens": None,
-                    "cost_usd": None,
+                    "input_tokens": token_data["input_tokens"],
+                    "output_tokens": token_data["output_tokens"],
+                    "cost_usd": token_data["cost_usd"],
                     "cache_hit": None,
                     "errors": [str(exc)],
                     "input_state": input_summary,
@@ -273,6 +342,15 @@ def _append_node_entry_md(run_id: str, entry: dict[str, Any]) -> None:
 
     lines = [f"\n### {node} ({ts} — {duration}ms)\n"]
 
+    # Model and tokens
+    model = entry.get("model")
+    in_tok = entry.get("input_tokens", 0)
+    out_tok = entry.get("output_tokens", 0)
+    cost = entry.get("cost_usd", 0)
+    if model and (in_tok or out_tok):
+        lines.append(f"- **Model:** {model}")
+        lines.append(f"- **Tokens:** {in_tok} in / {out_tok} out (${cost:.4f})")
+
     # Input summary
     input_state = entry.get("input_state", {})
     if input_state:
@@ -313,9 +391,15 @@ def _append_run_summary_md(
     node_names = [e["node"] for e in entries]
     error_count = sum(1 for e in entries if e.get("errors"))
 
+    total_in = sum(e.get("input_tokens", 0) or 0 for e in entries)
+    total_out = sum(e.get("output_tokens", 0) or 0 for e in entries)
+    total_cost = sum(e.get("cost_usd", 0) or 0 for e in entries)
+
     lines = [
         f"\n## Run {run_id} — {now}\n",
         f"- **Duration:** {total_duration_ms}ms",
+        f"- **Tokens:** {total_in} in / {total_out} out",
+        f"- **Cost:** ${total_cost:.4f}",
         f"- **Nodes:** {', '.join(node_names)}",
         f"- **Outcome:** {outcome}",
         f"- **Errors:** {error_count}",

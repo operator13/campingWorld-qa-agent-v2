@@ -40,6 +40,24 @@ def get_model(node_name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Cost per million tokens — for audit trail cost estimation
+# ---------------------------------------------------------------------------
+COST_PER_MILLION_TOKENS: dict[str, dict[str, float]] = {
+    "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
+    "claude-opus-4-6": {"input": 15.00, "output": 75.00},
+    "claude-haiku-4-5": {"input": 0.80, "output": 4.00},
+}
+
+
+def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    """Estimate USD cost for a single LLM call."""
+    pricing = COST_PER_MILLION_TOKENS.get(model, {"input": 3.00, "output": 15.00})
+    return (input_tokens / 1_000_000 * pricing["input"]) + (
+        output_tokens / 1_000_000 * pricing["output"]
+    )
+
+
+# ---------------------------------------------------------------------------
 # Figma frame → app route mapping
 # ---------------------------------------------------------------------------
 class RouteMapping(BaseModel):

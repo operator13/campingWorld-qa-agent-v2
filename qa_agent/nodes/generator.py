@@ -14,6 +14,7 @@ from typing import Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from qa_agent.audit import AuditStore
 from qa_agent.config import FIGMA_ROUTE_MAP, get_model
 from qa_agent.memory import MemoryStore
 from pathlib import Path
@@ -52,6 +53,7 @@ async def generator(state: QAState) -> dict:
     ]
 
     response = await model.ainvoke(messages)
+    AuditStore.record_llm_call(response, model=get_model("generator"))
     result = _parse_response(response)
 
     page_objects = result.get("page_objects", {})

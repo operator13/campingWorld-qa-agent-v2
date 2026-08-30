@@ -12,6 +12,7 @@ from typing import Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from qa_agent.audit import AuditStore
 from qa_agent.config import get_model
 from qa_agent.memory import MemoryStore
 from pathlib import Path
@@ -46,6 +47,7 @@ async def planner(state: QAState) -> dict:
     ]
 
     response = await model.ainvoke(messages)
+    AuditStore.record_llm_call(response, model=get_model("planner"))
     test_cases = _parse_response(response)
 
     logger.info("Planner: generated %d test case(s)", len(test_cases))

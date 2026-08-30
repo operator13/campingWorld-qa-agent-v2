@@ -13,6 +13,7 @@ from typing import Any
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from qa_agent.audit import AuditStore
 from qa_agent.config import get_model
 from pathlib import Path
 
@@ -50,6 +51,7 @@ async def design_reader(state: QAState, *, tools: list[Any] | None = None) -> di
     ]
 
     response = await model.ainvoke(messages)
+    AuditStore.record_llm_call(response, model=get_model("design_reader"))
     result = _parse_response(response)
 
     return {
