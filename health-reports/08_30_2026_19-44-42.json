@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-08-30T19:45:40.305189+00:00",
+  "run_id": "08_30_2026_19-44-42",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 21,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 21,
+  "trend": {
+    "delta": 0.0,
+    "status": "stable",
+    "previous_score": 1.0
+  },
+  "domains": [
+    {
+      "name": "Good Sam",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "duration_ms": 46904,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Rv Parts",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "total": 5,
+      "duration_ms": 36328,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Rvs For Sale Detail",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10,
+      "duration_ms": 80519,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
