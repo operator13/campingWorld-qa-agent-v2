@@ -1,0 +1,85 @@
+{
+  "eval_run_id": "eval-20260830-221133",
+  "agent": "healer",
+  "timestamp": "2026-08-30T22:11:33.114546+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 15,
+  "scenarios_skipped_expired": 0,
+  "healer_accuracy": {
+    "score": 0.98,
+    "correct": 15,
+    "total": 15,
+    "misses": []
+  },
+  "by_category": {
+    "locator_drift": {
+      "score": 1.0,
+      "correct": 10,
+      "total": 10
+    },
+    "test_flake": {
+      "score": 1.0,
+      "correct": 5,
+      "total": 5
+    }
+  },
+  "thresholds": {
+    "healer_accuracy": 0.75
+  },
+  "passed": true,
+  "regression_vs_previous": {
+    "status": "stable",
+    "severity": null,
+    "delta": -0.02,
+    "previous_score": 1.0,
+    "current_score": 0.98,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  },
+  "assertion_integrity": {
+    "score": 1.0,
+    "clean": 10,
+    "violations": 0,
+    "total": 10,
+    "violation_routes": []
+  },
+  "diff_minimality": {
+    "score": 0.7692,
+    "locator_changes": 20,
+    "non_locator_changes": 6,
+    "total_changes": 26
+  },
+  "fix_correctness": {
+    "score": 0.9,
+    "correct": 9,
+    "total": 10,
+    "misses": [
+      {
+        "scenario": "checkbox_renamed",
+        "expected": "Accept Terms and Conditions",
+        "found": false
+      }
+    ]
+  },
+  "old_locator_removed": {
+    "score": 1.0,
+    "removed": 10,
+    "still_present": 0,
+    "total": 10,
+    "failures": []
+  },
+  "fix_rate": {
+    "score": 0.9333,
+    "correct": 14,
+    "total": 15
+  },
+  "recommendations": [
+    {
+      "priority": "low",
+      "category": "overall",
+      "finding": "All scenarios pass. Triage accuracy is above threshold.",
+      "action": "No action needed. Consider adding more challenging golden scenarios."
+    }
+  ]
+}
