@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: qa_agent/dashboard/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../../health-reports:/data/health-reports:ro
+      - ../../qa_agent/eval/reports:/data/qa_agent/eval/reports:ro
+      - ../../memory/audit_runs:/data/memory/audit_runs:ro
+    environment:
+      - DATA_DIR=/data
+    restart: unless-stopped

@@ -476,7 +476,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["run", "memory", "review", "crawl", "eval", "health", "triage"],
+        choices=["run", "memory", "review", "crawl", "eval", "health", "triage", "dashboard"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -596,6 +596,14 @@ def main() -> None:
         else:
             print("Usage: qa-agent eval run [--agent triage] [--threshold 0.80] | baseline")
             sys.exit(1)
+    elif args.command == "dashboard":
+        import subprocess as _sp
+        import webbrowser as _wb
+        compose_file = Path(__file__).resolve().parent / "dashboard" / "docker-compose.yml"
+        print("Starting QA Command Center Dashboard...")
+        _sp.run(["docker", "compose", "-f", str(compose_file), "up", "-d", "--build"])
+        print("\nDashboard running at http://localhost:8080")
+        _wb.open("http://localhost:8080")
     elif args.command == "health":
         _health_report()
     elif args.command == "triage":

@@ -1,0 +1,720 @@
+/* ============================================
+   QA COMMAND CENTER - Cyberpunk Dashboard
+   ============================================ */
+
+/* Core colors */
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-surface: #12121a;
+  --bg-card: rgba(18, 18, 30, 0.8);
+  --border-glow: rgba(0, 255, 200, 0.15);
+  --neon-cyan: #00ffc8;
+  --neon-amber: #ffb800;
+  --neon-red: #ff003c;
+  --neon-blue: #00a8ff;
+  --neon-purple: #b400ff;
+  --text-primary: #e0e0e0;
+  --text-secondary: #7a7a8a;
+}
+
+/* Reset & base */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Cyan grid overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(0, 255, 200, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 200, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Scan line animation */
+.scan-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  opacity: 0.15;
+  z-index: 9999;
+  pointer-events: none;
+  animation: scan 6s linear infinite;
+}
+
+@keyframes scan {
+  0% { top: -2px; }
+  100% { top: 100vh; }
+}
+
+/* ============================================
+   Header
+   ============================================ */
+.header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border-glow);
+  background: linear-gradient(180deg, rgba(0, 255, 200, 0.04) 0%, transparent 100%);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 1.8rem;
+  letter-spacing: 4px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 20px rgba(0, 255, 200, 0.4), 0 0 60px rgba(0, 255, 200, 0.15);
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border: 1px solid rgba(0, 255, 200, 0.3);
+  border-radius: 20px;
+  background: rgba(0, 255, 200, 0.05);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ff88;
+  box-shadow: 0 0 8px #00ff88, 0 0 20px rgba(0, 255, 136, 0.4);
+  animation: pulse-green 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.live-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #00ff88;
+  letter-spacing: 2px;
+}
+
+.timestamp {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+/* ============================================
+   Sections
+   ============================================ */
+.section {
+  position: relative;
+  z-index: 1;
+  padding: 24px 32px;
+}
+
+.section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  color: var(--neon-cyan);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 255, 200, 0.3);
+}
+
+/* ============================================
+   Section 1: Health Gauge + Domain Cards
+   ============================================ */
+.section-health {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Health Gauge */
+.health-gauge-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.health-gauge {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto 16px;
+}
+
+.gauge-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gauge-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 10;
+}
+
+.gauge-fg {
+  fill: none;
+  stroke: var(--neon-cyan);
+  stroke-width: 10;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 200, 0.5));
+  transition: stroke-dashoffset 1.5s ease-out, stroke 0.5s ease;
+}
+
+.gauge-score {
+  fill: var(--text-primary);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: central;
+  transform: rotate(90deg);
+  transform-origin: 100px 100px;
+}
+
+.gauge-status {
+  fill: var(--neon-cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  letter-spacing: 2px;
+  transform: rotate(90deg);
+  transform-origin: 100px 100px;
+}
+
+.health-meta {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.meta-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* Domain Cards Grid */
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.domain-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glow);
+  border-radius: 8px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  cursor: default;
+}
+
+.domain-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  border-radius: 8px 0 0 8px;
+}
+
+.domain-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Domain card status variants */
+.domain-card.status-healthy-card::before {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 12px var(--neon-cyan);
+}
+
+.domain-card.status-healthy-card:hover {
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
+}
+
+.domain-card.status-degraded-card::before {
+  background: var(--neon-amber);
+  box-shadow: 0 0 12px var(--neon-amber);
+}
+
+.domain-card.status-degraded-card:hover {
+  box-shadow: 0 0 20px rgba(255, 184, 0, 0.15);
+}
+
+.domain-card.status-critical-card::before {
+  background: var(--neon-red);
+  box-shadow: 0 0 12px var(--neon-red);
+}
+
+.domain-card.status-critical-card:hover {
+  box-shadow: 0 0 20px rgba(255, 0, 60, 0.15);
+}
+
+.domain-card.status-critical-card {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    border-color: var(--border-glow);
+    box-shadow: none;
+  }
+  50% {
+    border-color: rgba(255, 0, 60, 0.4);
+    box-shadow: 0 0 15px rgba(255, 0, 60, 0.1);
+  }
+}
+
+.domain-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.critical-badge {
+  color: var(--neon-red);
+  font-size: 0.7rem;
+}
+
+.domain-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.domain-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.domain-ratio {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.domain-status-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.domain-status-badge.badge-healthy {
+  color: var(--neon-cyan);
+  background: rgba(0, 255, 200, 0.1);
+  border: 1px solid rgba(0, 255, 200, 0.2);
+}
+
+.domain-status-badge.badge-degraded {
+  color: var(--neon-amber);
+  background: rgba(255, 184, 0, 0.1);
+  border: 1px solid rgba(255, 184, 0, 0.2);
+}
+
+.domain-status-badge.badge-critical {
+  color: var(--neon-red);
+  background: rgba(255, 0, 60, 0.1);
+  border: 1px solid rgba(255, 0, 60, 0.2);
+}
+
+/* ============================================
+   Section 2: Agent Eval Cards
+   ============================================ */
+.eval-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.eval-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  cursor: default;
+}
+
+.eval-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 30px rgba(0, 255, 200, 0.1);
+}
+
+.eval-agent-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.eval-score {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 12px;
+  text-shadow: 0 0 20px currentColor;
+}
+
+.eval-score.score-pass {
+  color: var(--neon-cyan);
+}
+
+.eval-score.score-fail {
+  color: var(--neon-red);
+}
+
+.eval-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 4px 16px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.eval-badge.badge-pass {
+  color: var(--neon-cyan);
+  background: rgba(0, 255, 200, 0.1);
+  border: 1px solid rgba(0, 255, 200, 0.3);
+}
+
+.eval-badge.badge-fail {
+  color: var(--neon-red);
+  background: rgba(255, 0, 60, 0.1);
+  border: 1px solid rgba(255, 0, 60, 0.3);
+}
+
+/* Agent-specific accent colors */
+.eval-card[data-agent="triage"] {
+  border-top: 2px solid var(--neon-cyan);
+}
+
+.eval-card[data-agent="planner"] {
+  border-top: 2px solid var(--neon-blue);
+}
+
+.eval-card[data-agent="generator"] {
+  border-top: 2px solid var(--neon-purple);
+}
+
+.eval-card[data-agent="healer"] {
+  border-top: 2px solid var(--neon-amber);
+}
+
+/* ============================================
+   Section 3: Cost/Chart + Run History
+   ============================================ */
+.section-history {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.chart-container {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.chart-wrapper {
+  width: 100%;
+  height: 250px;
+  margin-bottom: 20px;
+}
+
+.chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.cost-summary {
+  display: flex;
+  justify-content: space-around;
+  border-top: 1px solid var(--border-glow);
+  padding-top: 16px;
+}
+
+.cost-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cost-label {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cost-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--neon-amber);
+}
+
+/* Run History Table */
+.history-container {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.run-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.run-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.run-table th {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--neon-cyan);
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-glow);
+  background: var(--bg-surface);
+}
+
+.run-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+}
+
+.run-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.run-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.run-table tbody tr:hover {
+  background: rgba(0, 255, 200, 0.03);
+}
+
+.run-table .row-healthy td {
+  border-left: none;
+}
+
+.run-table .row-healthy td:first-child {
+  border-left: 2px solid var(--neon-cyan);
+}
+
+.run-table .row-degraded td:first-child {
+  border-left: 2px solid var(--neon-amber);
+}
+
+.run-table .row-critical td:first-child {
+  border-left: 2px solid var(--neon-red);
+}
+
+.table-status-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+/* ============================================
+   Status utility classes
+   ============================================ */
+.status-healthy {
+  color: var(--neon-cyan);
+}
+
+.status-degraded {
+  color: var(--neon-amber);
+}
+
+.status-critical {
+  color: var(--neon-red);
+}
+
+/* ============================================
+   "No data" placeholder
+   ============================================ */
+.no-data {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 1200px) {
+  .domain-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .section-health {
+    grid-template-columns: 1fr;
+  }
+
+  .health-gauge-container {
+    order: -1;
+  }
+
+  .domain-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .eval-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .section-history {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 20px;
+  }
+
+  .header-title {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+  }
+
+  .section {
+    padding: 16px 20px;
+  }
+
+  .domain-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .eval-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .domain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .eval-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-meta {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
