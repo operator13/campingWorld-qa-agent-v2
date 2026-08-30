@@ -103,6 +103,14 @@ async def health_latest() -> JSONResponse:
     files = _sorted_json_files(HEALTH_DIR)
     if not files:
         return JSONResponse(content={})
+    # Prefer the latest full run (all domains) over a partial run
+    for f in reversed(files):
+        data = _read_json(f)
+        if data and isinstance(data, dict):
+            domains = data.get("domains", [])
+            if len(domains) >= 10:  # full run has 14 domains, partial has fewer
+                return JSONResponse(content=data)
+    # Fallback to most recent if no full run found
     data = _read_json(files[-1])
     return JSONResponse(content=data or {})
 
