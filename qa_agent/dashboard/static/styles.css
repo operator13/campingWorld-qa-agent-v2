@@ -809,7 +809,11 @@ body::before {
   }
 
   .history-container, .runner-card {
-    padding: 16px;
+    padding: 12px;
+  }
+
+  .runner-header .section-title {
+    font-size: 0.8rem;
   }
 
   .run-table th, .run-table td {
@@ -832,9 +836,18 @@ body::before {
     display: contents;
   }
 
-  .runner-btn {
+  .runner-option-label {
     font-size: 0.5rem;
-    padding: 5px 10px;
+  }
+
+  .pill {
+    font-size: 0.55rem;
+    padding: 3px 7px;
+  }
+
+  .runner-btn {
+    font-size: 0.45rem;
+    padding: 5px 8px;
     letter-spacing: 0;
   }
 
