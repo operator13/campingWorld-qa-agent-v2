@@ -728,43 +728,254 @@ body::before {
   }
 }
 
+/* iPad (portrait & landscape) */
+@media (max-width: 1024px) {
+  .section-health {
+    grid-template-columns: 1fr;
+  }
+
+  .health-gauge-container {
+    order: -1;
+    flex-direction: row;
+    gap: 24px;
+  }
+
+  .health-gauge {
+    width: 160px;
+    height: 160px;
+  }
+
+  .domain-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .eval-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .section-history {
+    grid-template-columns: 1fr;
+  }
+
+  .runner-top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .runner-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* iPad mini / large phones landscape */
 @media (max-width: 768px) {
   .header {
     flex-direction: column;
-    gap: 12px;
-    padding: 16px 20px;
+    gap: 8px;
+    padding: 12px 16px;
   }
 
   .header-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     letter-spacing: 2px;
   }
 
   .section {
-    padding: 16px 20px;
+    padding: 12px 16px;
   }
 
   .domain-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .domain-card {
+    padding: 12px;
   }
 
   .eval-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .eval-card {
+    padding: 16px;
+  }
+
+  .eval-score {
+    font-size: 1.8rem;
+  }
+
+  .history-container, .runner-card {
+    padding: 16px;
+  }
+
+  .run-table th, .run-table td {
+    padding: 8px 10px;
+    font-size: 0.65rem;
+  }
+
+  .runner-options {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .domain-row-right {
+    max-width: 200px;
   }
 }
 
+/* iPhone (portrait) */
 @media (max-width: 480px) {
-  .domain-grid {
-    grid-template-columns: 1fr;
+  body {
+    padding: 0;
   }
 
-  .eval-grid {
-    grid-template-columns: 1fr;
+  .header {
+    padding: 10px 12px;
+  }
+
+  .header-title {
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+  }
+
+  .live-indicator {
+    font-size: 0.55rem;
+    padding: 2px 8px;
+  }
+
+  .timestamp {
+    font-size: 0.55rem;
+  }
+
+  .section {
+    padding: 10px 12px;
+  }
+
+  .section-title {
+    font-size: 0.85rem;
+  }
+
+  .health-gauge {
+    width: 130px;
+    height: 130px;
+  }
+
+  .gauge-score {
+    font-size: 20px;
+  }
+
+  .gauge-status {
+    font-size: 8px;
   }
 
   .health-meta {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .domain-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .domain-card {
+    padding: 10px;
+  }
+
+  .domain-score {
+    font-size: 1.1rem;
+  }
+
+  .eval-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .eval-card {
+    padding: 14px;
+  }
+
+  .eval-agent-name {
+    font-size: 0.65rem;
+  }
+
+  .eval-score {
+    font-size: 1.6rem;
+  }
+
+  .eval-cost-row {
     gap: 12px;
+  }
+
+  .runner-top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .runner-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .runner-actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+
+  .runner-btn {
+    flex: 1;
+    text-align: center;
+    font-size: 0.5rem;
+    padding: 6px 8px;
+  }
+
+  .domain-row {
+    padding: 8px 6px;
+  }
+
+  .domain-row-name {
+    font-size: 0.65rem;
+    min-width: 80px;
+  }
+
+  .domain-row-count {
+    font-size: 0.5rem;
+  }
+
+  .domain-row-right {
+    max-width: 120px;
+  }
+
+  .domain-row-pct {
+    font-size: 0.5rem;
+    width: 28px;
+  }
+
+  .run-table th, .run-table td {
+    padding: 6px 6px;
+    font-size: 0.55rem;
+  }
+
+  .runner-log {
+    font-size: 0.55rem;
+    max-height: 200px;
+    padding: 8px;
+  }
+
+  .pill {
+    font-size: 0.55rem;
+    padding: 3px 8px;
+  }
+
+  .runner-option-label {
+    font-size: 0.5rem;
   }
 }
 
