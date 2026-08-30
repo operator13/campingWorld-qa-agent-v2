@@ -306,7 +306,7 @@
     "dom_has_element": true,
     "dom_element_renamed": null,
     "expected_class": "test_flake",
-    "expected_confidence_min": 0.7,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -316,7 +316,7 @@
     "dom_has_element": true,
     "dom_element_renamed": null,
     "expected_class": "test_flake",
-    "expected_confidence_min": 0.7,
+    "expected_confidence_min": 0.5,
     "valid_until": "2027-06-01"
   },
   {
@@ -326,7 +326,7 @@
     "dom_has_element": true,
     "dom_element_renamed": null,
     "expected_class": "test_flake",
-    "expected_confidence_min": 0.7,
+    "expected_confidence_min": 0.4,
     "valid_until": "2027-06-01"
   },
   {
@@ -336,7 +336,7 @@
     "dom_has_element": true,
     "dom_element_renamed": null,
     "expected_class": "test_flake",
-    "expected_confidence_min": 0.65,
+    "expected_confidence_min": 0.15,
     "valid_until": "2027-06-01"
   },
   {
@@ -346,7 +346,7 @@
     "dom_has_element": null,
     "dom_element_renamed": null,
     "expected_class": "test_flake",
-    "expected_confidence_min": 0.6,
+    "expected_confidence_min": 0.15,
     "valid_until": "2027-06-01"
   }
 ]

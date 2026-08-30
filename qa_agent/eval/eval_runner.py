@@ -797,12 +797,18 @@ async def run_healer_eval(
         accuracy_key="healer_accuracy",
     )
 
+    # Preserve locator/timing sub-scores in healer_accuracy
+    scorecard["healer_accuracy"]["locator_score"] = locator_score
+    scorecard["healer_accuracy"]["timing_score"] = timing_fix_score
+
     # Attach extra healer-specific metrics to scorecard
     scorecard["assertion_integrity"] = assertion_integrity
     scorecard["diff_minimality"] = diff_minimality
     scorecard["fix_correctness"] = fix_correctness
     scorecard["old_locator_removed"] = old_locator_removed
     scorecard["fix_rate"] = eval_result["fix_rate"]
+    scorecard["timing_fix_accuracy"] = timing_fix_accuracy
+    scorecard["scenarios"] = eval_result["scenarios"]
 
     # Generate recommendations — alias healer_accuracy to triage_accuracy for engine compatibility
     scorecard_for_recs = dict(scorecard)

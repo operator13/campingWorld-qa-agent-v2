@@ -92,11 +92,9 @@ _DEFECT_ERROR_PATTERNS = [
 _FLAKE_ERROR_PATTERNS = [
     re.compile(r"scrollIntoViewIfNeeded.*Timeout", re.I),
     re.compile(r"locator\.(click|fill|type)\s*:.*Timeout.*exceeded", re.I),
-    re.compile(r"waiting for.*visible", re.I),
     re.compile(r"element is not visible", re.I),
     re.compile(r"element is not stable", re.I),
     re.compile(r"element is outside of the viewport", re.I),
-    re.compile(r"beforeEach.*Timeout", re.I),
 ]
 
 _TIMEOUT_PATTERN = re.compile(r"TimeoutError|Timeout.*exceeded", re.I)
@@ -144,18 +142,19 @@ def score_c1_error_type(error: str) -> float:
 
     if drift_match and defect_match:
         return 0.1  # conflicting signals — ambiguous
+    # Flake check first — if a specific interaction method timed out without
+    # "no element matching", it's a flake, not drift
+    if flake_match and not has_no_element and not defect_match:
+        return 0.3  # strong flake signal — interaction timeout, element likely exists
+
     if drift_match and not defect_match:
         if has_no_element:
             return 0.3  # strong confirmed drift — element truly absent
-        if flake_match and not has_no_element:
-            return 0.15  # likely flake, not drift (timeout on interaction, element may exist)
         if is_timeout:
             return 0.15  # timeout on a locator — likely drift but not certain
         return 0.3  # non-timeout drift signal (stale element, selector-not-found)
     if defect_match and not drift_match:
         return 0.3  # strong unambiguous defect signal
-    if flake_match and is_timeout and not has_no_element:
-        return 0.3  # strong flake signal — interaction timeout, element exists
     if is_timeout:
         return 0.1  # generic timeout — ambiguous
     return 0.0
