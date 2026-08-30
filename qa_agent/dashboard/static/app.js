@@ -427,7 +427,13 @@
             appendRunnerLog('[HEAL] ' + data.message);
             break;
           case 'runner:healed':
+            setRunnerState('complete');
+            document.getElementById('btn-clear').disabled = false;
+            document.getElementById('btn-run-selected').style.display = 'inline-block';
+            document.getElementById('btn-run-all').style.display = 'inline-block';
+            document.getElementById('btn-stop').style.display = 'none';
             appendRunnerLog('[HEAL] Done: ' + data.healed + ' healed, ' + data.skipped + ' skipped');
+            refreshAllData();
             break;
           case 'runner:clear':
             doClearRunner();
