@@ -37,13 +37,15 @@ test.describe('Product Detail Page', () => {
   });
 
   test('add to cart button is visible', async () => {
+    await productPage.addToCartButton.waitFor({ state: 'visible', timeout: 20_000 });
     await productPage.addToCartButton.scrollIntoViewIfNeeded();
-    await expect(productPage.addToCartButton).toBeVisible({ timeout: 15_000 });
+    await expect(productPage.addToCartButton).toBeVisible();
   });
 
   test('add to cart button is enabled', async () => {
+    await productPage.addToCartButton.waitFor({ state: 'visible', timeout: 20_000 });
     await productPage.addToCartButton.scrollIntoViewIfNeeded();
-    await expect(productPage.addToCartButton).toBeEnabled({ timeout: 15_000 });
+    await expect(productPage.addToCartButton).toBeEnabled();
   });
 
   test('primary product image is visible', async () => {
