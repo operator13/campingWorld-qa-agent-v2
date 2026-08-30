@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "cart.spec.ts",
+      "test_title": "Top Picks section shows Add To Cart buttons on empty cart",
+      "failure_class": "unknown",
+      "confidence": 0.05,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-30T22:52:19.637678+00:00"
+}
