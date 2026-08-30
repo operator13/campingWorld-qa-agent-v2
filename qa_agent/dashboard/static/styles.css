@@ -515,7 +515,10 @@ body::before {
    Section 3: Cost/Chart + Run History
    ============================================ */
 .section-history {
-  display: block;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
 }
 
 .chart-container {
@@ -768,7 +771,10 @@ body::before {
 /* ============================================
    TEST RUNNER — Elegant tile-based design
    ============================================ */
-.section-runner { margin-top: 24px; }
+.section-runner {
+  margin-top: 24px;
+  max-width: calc(50% - 16px);
+}
 
 .runner-header {
   display: flex;
