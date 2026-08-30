@@ -43,7 +43,9 @@ logger = logging.getLogger(__name__)
 def route_after_execute(state: QAState) -> str:
     """After running tests: pass → metrics, fail → triage."""
     if state.run_results and state.run_results.passed:
+        AuditStore.record_routing_decision("metrics", "run_results.passed=True")
         return "metrics"
+    AuditStore.record_routing_decision("triage", "run_results.passed=False")
     return "triage"
 
 
@@ -58,20 +60,24 @@ def route_after_triage(state: QAState) -> str:
     """
     if state.attempts >= MAX_ATTEMPTS:
         logger.info("Router: MAX_ATTEMPTS (%d) reached → defect_report", MAX_ATTEMPTS)
+        AuditStore.record_routing_decision("defect_report", f"attempts {state.attempts} >= MAX_ATTEMPTS {MAX_ATTEMPTS}")
         return "defect_report"
 
     if state.confidence < CONF_SURE:
         logger.info("Router: low confidence (%.2f < %.2f) → human_review",
                      state.confidence, CONF_SURE)
+        AuditStore.record_routing_decision("human_review", f"confidence {state.confidence:.2f} < CONF_SURE {CONF_SURE}")
         return "human_review"
 
     if state.failure_class == "locator_drift":
         logger.info("Router: sure drift (confidence=%.2f) → healer", state.confidence)
+        AuditStore.record_routing_decision("healer", f"confidence {state.confidence:.2f} >= {CONF_SURE}, class=locator_drift")
         return "healer"
 
     # app_defect or unknown with high confidence
     logger.info("Router: sure bug/unknown (class=%s, confidence=%.2f) → defect_report",
                 state.failure_class, state.confidence)
+    AuditStore.record_routing_decision("defect_report", f"class={state.failure_class}, confidence={state.confidence:.2f}")
     return "defect_report"
 
 

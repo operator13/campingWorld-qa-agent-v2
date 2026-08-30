@@ -134,6 +134,10 @@ async def healer(state: QAState) -> dict:
                     validate_healer_diff(state.page_objects.get(r, ""), new_src)
                 logger.info("Healer: applying known fix from memory (%s → %s)", old_locator, known_new)
                 memory.record_healer_event("cache_hit")
+                AuditStore.record_cache_hit(True)
+                AuditStore.record_memory_context(
+                    files_read=[f"locators/{route.strip('/')}.md" if route else "locators/ROOT.md"],
+                )
                 return {
                     "page_objects": {**state.page_objects, **patched},
                     "attempts": 1,
@@ -162,6 +166,15 @@ async def healer(state: QAState) -> dict:
 
     response = await model.ainvoke(messages)
     AuditStore.record_llm_call(response, model=get_model("healer"))
+    AuditStore.record_cache_hit(False)
+    AuditStore.record_prompt_version(SYSTEM_PROMPT, "HEALER.md")
+    AuditStore.record_prompt_data(
+        raw_prompt=messages[-1].content,
+        raw_response=response.content if hasattr(response, "content") else str(response),
+    )
+    AuditStore.record_memory_context(
+        files_read=[f"locators/{route.strip('/')}.md" if route else "locators/ROOT.md", "LESSONS.md"],
+    )
     result = _parse_response(response)
 
     patched_page_objects = result.get("page_objects", {})

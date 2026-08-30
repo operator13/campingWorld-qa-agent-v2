@@ -85,6 +85,16 @@ async def triage(state: QAState) -> dict:
 
     response = await model.ainvoke(messages)
     AuditStore.record_llm_call(response, model=get_model("triage"))
+    AuditStore.record_prompt_version(SYSTEM_PROMPT, "TRIAGE.md")
+    AuditStore.record_prompt_data(
+        raw_prompt=messages[-1].content,
+        raw_response=response.content if hasattr(response, "content") else str(response),
+    )
+    AuditStore.record_memory_context(
+        files_read=["FAILURES.md", "HUMAN_DECISIONS.md", "LESSONS.md"],
+        similar_failures=1 if similar else 0,
+        calibration_examples=calibration_context.count("| ") if calibration_context else 0,
+    )
     result = _parse_response(response)
 
     failure_class = result.get("failure_class", "unknown")

@@ -52,6 +52,11 @@ async def design_reader(state: QAState, *, tools: list[Any] | None = None) -> di
 
     response = await model.ainvoke(messages)
     AuditStore.record_llm_call(response, model=get_model("design_reader"))
+    AuditStore.record_prompt_version(SYSTEM_PROMPT, "DESIGN_READER.md")
+    AuditStore.record_prompt_data(
+        raw_prompt=messages[-1].content,
+        raw_response=response.content if hasattr(response, "content") else str(response),
+    )
     result = _parse_response(response)
 
     return {

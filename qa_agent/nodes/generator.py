@@ -54,6 +54,14 @@ async def generator(state: QAState) -> dict:
 
     response = await model.ainvoke(messages)
     AuditStore.record_llm_call(response, model=get_model("generator"))
+    AuditStore.record_prompt_version(SYSTEM_PROMPT, "GENERATOR.md")
+    AuditStore.record_prompt_data(
+        raw_prompt=messages[-1].content,
+        raw_response=response.content if hasattr(response, "content") else str(response),
+    )
+    AuditStore.record_memory_context(
+        files_read=["APP_STRUCTURE.md", "LESSONS.md"] + [f"locators/{r.strip('/')}.md" for r in routes if r],
+    )
     result = _parse_response(response)
 
     page_objects = result.get("page_objects", {})

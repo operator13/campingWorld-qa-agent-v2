@@ -2,6 +2,7 @@
 
 Phase AT1: Core decorator + dual-format logging (markdown + JSON).
 Phase AT2: Token tracking + cost estimation.
+Phase AT3: Prompt versioning + memory context + routing decisions.
 
 Usage in graph.py:
     from qa_agent.audit import audit_node
@@ -10,13 +11,18 @@ Usage in graph.py:
 Usage in nodes (after model.ainvoke):
     from qa_agent.audit import AuditStore
     AuditStore.record_llm_call(response, model=get_model("triage"))
+    AuditStore.record_prompt_data(prompt=messages[-1].content, response=response.content)
+    AuditStore.record_prompt_version(SYSTEM_PROMPT, "TRIAGE.md")
+    AuditStore.record_memory_context(files_read=["FAILURES.md"], similar_failures=1)
 """
 
 from __future__ import annotations
 
 import functools
+import hashlib
 import json
 import logging
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,6 +52,13 @@ class AuditStore:
     _run_total_output_tokens: int = 0
     _run_total_cost: float = 0.0
 
+    # Prompt/memory/routing context (Phase AT3)
+    _current_prompt_version: str | None = None
+    _current_memory_context: dict[str, Any] | None = None
+    _current_prompt_data: dict[str, str | None] = {}
+    _current_routing_decision: dict[str, str] | None = None
+    _current_cache_hit: bool | None = None
+
     def __init__(self) -> None:
         _AUDIT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
         self._init_markdown()
@@ -54,6 +67,78 @@ class AuditStore:
         """Create AUDIT_TRAIL.md with header if it doesn't exist."""
         if not _AUDIT_TRAIL_PATH.exists():
             _AUDIT_TRAIL_PATH.write_text("# Audit Trail\n\n")
+
+    @classmethod
+    def record_prompt_version(cls, prompt_text: str, prompt_name: str) -> None:
+        """Record the prompt version hash for the current node."""
+        short_hash = hashlib.sha256(prompt_text.encode()).hexdigest()[:12]
+        cls._current_prompt_version = f"{prompt_name}@sha256:{short_hash}"
+
+    @classmethod
+    def record_memory_context(
+        cls,
+        files_read: list[str] | None = None,
+        similar_failures: int = 0,
+        calibration_examples: int = 0,
+        context_tokens: int = 0,
+    ) -> None:
+        """Record what memory was injected into the current node."""
+        cls._current_memory_context = {
+            "files_read": files_read or [],
+            "similar_failures_found": similar_failures,
+            "calibration_examples": calibration_examples,
+            "context_tokens": context_tokens,
+        }
+
+    @classmethod
+    def record_prompt_data(
+        cls, raw_prompt: str | None = None, raw_response: str | None = None
+    ) -> None:
+        """Record raw prompt and response text for the current node.
+
+        Per pre-mortem Risk 2: raw data only stored when AUDIT_RAW=true
+        or the run ends in failure.
+        """
+        cls._current_prompt_data = {
+            "raw_prompt": raw_prompt,
+            "raw_response": raw_response,
+        }
+
+    @classmethod
+    def record_routing_decision(cls, next_node: str, reason: str) -> None:
+        """Record a routing decision (called from graph routers)."""
+        cls._current_routing_decision = {
+            "next_node": next_node,
+            "reason": reason,
+        }
+
+    @classmethod
+    def record_cache_hit(cls, hit: bool) -> None:
+        """Record whether the current node used a cached result."""
+        cls._current_cache_hit = hit
+
+    @classmethod
+    def _consume_at3_context(cls) -> dict[str, Any]:
+        """Consume all AT3 staged data for the current node entry."""
+        include_raw = os.getenv("AUDIT_RAW", "").lower() in ("true", "1", "yes")
+
+        result = {
+            "prompt_version": cls._current_prompt_version,
+            "memory_context": cls._current_memory_context,
+            "raw_prompt": cls._current_prompt_data.get("raw_prompt") if include_raw else None,
+            "raw_llm_response": cls._current_prompt_data.get("raw_response") if include_raw else None,
+            "routing_decision": cls._current_routing_decision,
+            "cache_hit": cls._current_cache_hit,
+        }
+
+        # Reset for next node
+        cls._current_prompt_version = None
+        cls._current_memory_context = None
+        cls._current_prompt_data = {}
+        cls._current_routing_decision = None
+        cls._current_cache_hit = None
+
+        return result
 
     @classmethod
     def record_llm_call(cls, response: Any, model: str | None = None) -> None:
@@ -113,6 +198,11 @@ class AuditStore:
         cls._run_total_input_tokens = 0
         cls._run_total_output_tokens = 0
         cls._run_total_cost = 0.0
+        cls._current_prompt_version = None
+        cls._current_memory_context = None
+        cls._current_prompt_data = {}
+        cls._current_routing_decision = None
+        cls._current_cache_hit = None
         logger.info("Audit: starting run %s", run_id)
 
     @classmethod
@@ -199,26 +289,27 @@ def audit_node(node_name: str):
                 result = await fn(state, **kwargs)
                 elapsed_ms = int((time.monotonic() - start) * 1000)
 
-                # Consume token data recorded by the node
+                # Consume token data and AT3 context recorded by the node
                 token_data = AuditStore._consume_llm_calls()
+                at3 = AuditStore._consume_at3_context()
 
                 entry = {
                     "node": node_name,
                     "timestamp": timestamp,
                     "duration_ms": elapsed_ms,
                     "model": token_data["model"],
-                    "prompt_version": None,  # Phase AT3
+                    "prompt_version": at3["prompt_version"],
                     "input_tokens": token_data["input_tokens"],
                     "output_tokens": token_data["output_tokens"],
                     "cost_usd": token_data["cost_usd"],
-                    "cache_hit": None,
+                    "cache_hit": at3["cache_hit"],
                     "errors": [],
                     "input_state": input_summary,
                     "parsed_output": _safe_serialize(result),
-                    "raw_prompt": None,  # Phase AT3
-                    "raw_llm_response": None,  # Phase AT3
-                    "memory_context": None,  # Phase AT3
-                    "routing_decision": None,  # Phase AT3
+                    "raw_prompt": at3["raw_prompt"],
+                    "raw_llm_response": at3["raw_llm_response"],
+                    "memory_context": at3["memory_context"],
+                    "routing_decision": at3["routing_decision"],
                 }
 
                 store.record_node(entry)
@@ -227,24 +318,25 @@ def audit_node(node_name: str):
             except Exception as exc:
                 elapsed_ms = int((time.monotonic() - start) * 1000)
                 token_data = AuditStore._consume_llm_calls()
+                at3 = AuditStore._consume_at3_context()
 
                 entry = {
                     "node": node_name,
                     "timestamp": timestamp,
                     "duration_ms": elapsed_ms,
                     "model": token_data["model"],
-                    "prompt_version": None,
+                    "prompt_version": at3["prompt_version"],
                     "input_tokens": token_data["input_tokens"],
                     "output_tokens": token_data["output_tokens"],
                     "cost_usd": token_data["cost_usd"],
-                    "cache_hit": None,
+                    "cache_hit": at3["cache_hit"],
                     "errors": [str(exc)],
                     "input_state": input_summary,
                     "parsed_output": None,
-                    "raw_prompt": None,
-                    "raw_llm_response": None,
-                    "memory_context": None,
-                    "routing_decision": None,
+                    "raw_prompt": at3["raw_prompt"],
+                    "raw_llm_response": at3["raw_llm_response"],
+                    "memory_context": at3["memory_context"],
+                    "routing_decision": at3["routing_decision"],
                 }
 
                 store.record_node(entry)

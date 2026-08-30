@@ -48,6 +48,14 @@ async def planner(state: QAState) -> dict:
 
     response = await model.ainvoke(messages)
     AuditStore.record_llm_call(response, model=get_model("planner"))
+    AuditStore.record_prompt_version(SYSTEM_PROMPT, "PLANNER.md")
+    AuditStore.record_prompt_data(
+        raw_prompt=messages[-1].content,
+        raw_response=response.content if hasattr(response, "content") else str(response),
+    )
+    AuditStore.record_memory_context(
+        files_read=["APP_STRUCTURE.md", "TEST_STABILITY.md", "LESSONS.md"],
+    )
     test_cases = _parse_response(response)
 
     logger.info("Planner: generated %d test case(s)", len(test_cases))
