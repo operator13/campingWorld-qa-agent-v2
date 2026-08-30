@@ -467,6 +467,13 @@
   function startPolling() { if (!pollInterval) pollInterval = setInterval(refreshAllData, 5000); }
   function stopPolling() { if (pollInterval) { clearInterval(pollInterval); pollInterval = null; } }
 
+  // Background poll for eval/audit data every 30s — keeps cards fresh
+  // even when no test is running (e.g., evals triggered from CLI)
+  setInterval(() => {
+    fetchEvalSummary();
+    fetchAuditSummary();
+  }, 30000);
+
   function updateDomainCard(name, passed) {
     const card = document.querySelector(`.domain-card[data-domain="${name}"]`);
     if (!card) return;
