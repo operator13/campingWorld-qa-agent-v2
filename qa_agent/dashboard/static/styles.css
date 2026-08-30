@@ -803,6 +803,7 @@ body::before {
 }
 
 .runner-card {
+  max-width: 700px;
   background: var(--bg-card);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-glow);
