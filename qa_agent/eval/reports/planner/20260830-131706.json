@@ -1,0 +1,43 @@
+{
+  "eval_run_id": "eval-20260830-131706",
+  "agent": "planner",
+  "timestamp": "2026-08-30T13:17:06.338474+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 8,
+  "scenarios_skipped_expired": 0,
+  "planner_accuracy": {
+    "score": 0.9631,
+    "correct": 8,
+    "total": 8,
+    "misses": []
+  },
+  "by_category": {
+    "planner": {
+      "score": 1.0,
+      "correct": 8,
+      "total": 8
+    }
+  },
+  "thresholds": {
+    "planner_accuracy": 0.75
+  },
+  "passed": true,
+  "regression_vs_previous": {
+    "status": "stable",
+    "severity": null,
+    "delta": -0.0369,
+    "previous_score": 1.0,
+    "current_score": 0.9631,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  },
+  "recommendations": [
+    {
+      "priority": "low",
+      "category": "overall",
+      "finding": "All scenarios pass. Triage accuracy is above threshold.",
+      "action": "No action needed. Consider adding more challenging golden scenarios."
+    }
+  ]
+}
