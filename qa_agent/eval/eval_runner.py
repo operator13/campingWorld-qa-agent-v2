@@ -92,8 +92,28 @@ def _git_commit_and_push_reports(agent: str, scorecard: dict) -> None:
             logger.info("Eval report auto-pushed to GitHub")
         else:
             logger.warning("Git push failed: %s", result.stderr.decode()[:200])
+
+        # Notify dashboard to refresh eval data
+        _notify_dashboard(agent)
     except Exception as e:
         logger.warning("Auto-commit failed (non-fatal): %s", e)
+
+
+def _notify_dashboard(agent: str) -> None:
+    """Notify the dashboard server that an eval completed."""
+    import urllib.request
+    try:
+        data = json.dumps({"agent": agent}).encode()
+        req = urllib.request.Request(
+            "http://localhost:8080/api/eval/notify",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=3)
+        logger.info("Dashboard notified of %s eval update", agent)
+    except Exception:
+        pass  # Dashboard may not be running — not an error
 
 
 def load_triage_scenarios(golden_path: Path | None = None) -> tuple[list[dict], int]:

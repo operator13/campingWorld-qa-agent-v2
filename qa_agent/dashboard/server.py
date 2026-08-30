@@ -243,6 +243,14 @@ async def serve_report(run_id: str) -> FileResponse:
 # ---------------------------------------------------------------------------
 
 
+@app.post("/api/eval/notify")
+async def eval_notify(body: dict = {}) -> JSONResponse:
+    """Called by the eval runner after an eval completes. Broadcasts to all dashboards."""
+    agent = body.get("agent", "unknown")
+    await broadcast_to_dashboard(json.dumps({"event": "eval:updated", "agent": agent}))
+    return JSONResponse({"status": "notified"})
+
+
 @app.get("/api/eval/{agent}/latest")
 async def eval_agent_latest(agent: str) -> JSONResponse:
     agent_dir = EVAL_DIR / agent
