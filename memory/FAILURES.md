@@ -32,6 +32,6 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /checkout
-- **Occurrences:** 20
+- **Occurrences:** 30
 - **Last seen:** 2026-08-30
 - **Stale after:** 2026-11-28
