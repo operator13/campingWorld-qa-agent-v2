@@ -803,7 +803,6 @@ body::before {
 }
 
 .runner-card {
-  max-width: 700px;
   background: var(--bg-card);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-glow);
@@ -811,27 +810,25 @@ body::before {
   padding: 20px;
 }
 
-/* Top bar: options + actions in one row */
+/* Top bar: options left, buttons right, single row */
 .runner-top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
 .runner-options {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
-  flex-wrap: wrap;
 }
 
 .runner-option-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .runner-option-label {
@@ -865,13 +862,13 @@ body::before {
   box-shadow: 0 0 8px rgba(0, 255, 200, 0.08);
 }
 
-.runner-actions { display: flex; gap: 8px; }
+.runner-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 .runner-btn {
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.65rem;
-  padding: 8px 20px;
-  border-radius: 5px;
+  font-size: 0.55rem;
+  padding: 6px 14px;
+  border-radius: 4px;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 1px;
