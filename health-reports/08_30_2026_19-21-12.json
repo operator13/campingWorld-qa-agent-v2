@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-08-30T19:21:46.624569+00:00",
+  "run_id": "08_30_2026_19-21-12",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 13,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 13,
+  "trend": {
+    "delta": 0.0,
+    "status": "stable",
+    "previous_score": 1.0
+  },
+  "domains": [
+    {
+      "name": "Homepage",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "total": 13,
+      "duration_ms": 86318,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
