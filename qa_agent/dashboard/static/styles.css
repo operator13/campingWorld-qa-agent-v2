@@ -1023,8 +1023,14 @@ body::before {
   }
 
   .run-table th, .run-table td {
-    padding: 6px 6px;
+    padding: 6px 4px;
     font-size: 0.55rem;
+  }
+
+  .run-table .domain-status-badge {
+    font-size: 0.45rem;
+    padding: 2px 5px;
+    white-space: nowrap;
   }
 
   .runner-log {
