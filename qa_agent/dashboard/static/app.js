@@ -319,7 +319,21 @@
     let ws;
     try { ws = new WebSocket(wsUrl); } catch (err) { startPolling(); return; }
 
-    ws.onopen = () => { wsConnected = true; stopPolling(); };
+    ws.onopen = () => {
+      wsConnected = true;
+      stopPolling();
+      // Sync runner state on connect (in case we joined mid-run)
+      fetch('/api/tests/status').then(r => r.json()).then(status => {
+        if (status.state === 'running' || status.state === 'healing') {
+          setRunnerState(status.state);
+          document.getElementById('runner-log-container').style.display = 'block';
+          document.getElementById('btn-run-selected').style.display = 'none';
+          document.getElementById('btn-run-all').style.display = 'none';
+          document.getElementById('btn-stop').style.display = 'inline-block';
+          document.getElementById('btn-clear').disabled = true;
+        }
+      }).catch(() => {});
+    };
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -346,6 +360,7 @@
             runnerFailCount = 0;
             break;
           case 'runner:log':
+            document.getElementById('runner-log-container').style.display = 'block';
             appendRunnerLog(data.line);
             // Parse per-domain progress from log lines like "  ✓  1 [chromium] › tests_generated/cart.spec.ts:12..."
             const specMatch = data.line.match(/([a-z0-9-]+\.spec\.ts)/);
