@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "product.spec.ts",
+      "test_title": "add to cart button is enabled",
+      "failure_class": "locator_drift",
+      "confidence": 0.45,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-30T20:39:43.024805+00:00"
+}
