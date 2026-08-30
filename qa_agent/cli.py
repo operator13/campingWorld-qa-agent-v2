@@ -476,7 +476,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["run", "memory", "review", "crawl", "eval", "health"],
+        choices=["run", "memory", "review", "crawl", "eval", "health", "triage"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -529,6 +529,13 @@ def main() -> None:
         "--overwrite",
         action="store_true",
         help="Overwrite existing POM/test files",
+    )
+    # Triage-specific arguments
+    parser.add_argument(
+        "--results",
+        type=str,
+        default=None,
+        help="Path to Playwright results.json for triage command",
     )
     # Eval-specific arguments
     parser.add_argument(
@@ -591,6 +598,23 @@ def main() -> None:
             sys.exit(1)
     elif args.command == "health":
         _health_report()
+    elif args.command == "triage":
+        if args.subcommand == "run" or not args.subcommand:
+            results_path = getattr(args, "results", None)
+            if not results_path:
+                # Find latest results.json
+                results_dir = Path(__file__).resolve().parent.parent / "test-results"
+                runs = sorted(results_dir.iterdir(), reverse=True) if results_dir.exists() else []
+                for run_dir in runs:
+                    candidate = run_dir / "results.json"
+                    if candidate.exists():
+                        results_path = str(candidate)
+                        break
+            if not results_path:
+                print("[ERROR] No results.json found. Run tests first: ./run-tests.sh")
+                sys.exit(1)
+            from qa_agent.triage_runner import run_self_healing
+            asyncio.run(run_self_healing(Path(results_path)))
     elif args.command == "review":
         if args.subcommand == "weekly":
             _review_weekly()
