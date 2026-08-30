@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-08-30T14:53:57.750302+00:00",
+  "run_id": "08_30_2026_09-53-15",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 8,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 8,
+  "trend": {
+    "delta": 0.0135,
+    "status": "improving",
+    "previous_score": 0.9865
+  },
+  "domains": [
+    {
+      "name": "Cart",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "total": 8,
+      "duration_ms": 40979,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 2.0,
+      "is_critical": true
+    }
+  ],
+  "critical_domains": [
+    "Cart"
+  ]
+}
