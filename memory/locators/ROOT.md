@@ -22,3 +22,10 @@
 - 2026-08-17: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
 - 2026-08-17: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
 - 2026-08-18: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-08-29: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-08-29: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-08-29: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-08-29: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-08-29: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-08-29: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-08-29: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no

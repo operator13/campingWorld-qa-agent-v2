@@ -14,3 +14,7 @@ test-results/
 playwright-report/
 checkpoints.db
 .qa_cache/
+.playwright-mcp/
+test-results-tmp/
+orchestrator_progress.json
+screenshots/

@@ -39,10 +39,10 @@ SITE_MAP: dict[str, PageConfig] = {
     ),
     "product_detail": PageConfig(
         name="Product Detail Page",
-        url="/product/",
+        url="/wenzel-bristlecone-8-person-dome-tent-761437.html",
         route="/product",
         priority=2,
-        dynamic_url=True,
+        dynamic_url=False,
         regions=["product_title", "images", "pricing", "add_to_cart", "reviews", "related"],
     ),
     "cart": PageConfig(
@@ -99,10 +99,10 @@ SITE_MAP: dict[str, PageConfig] = {
     ),
     "rv_detail": PageConfig(
         name="RV Detail",
-        url="/rvs-for-sale/",
+        url="https://rv.campingworld.com/rv/2027-keystone-coleman-17b-2667651-wauconda-il",
         route="/rvs-for-sale/detail",
         priority=3,
-        dynamic_url=True,
+        dynamic_url=False,
         regions=["rv_specs", "images", "pricing", "dealer_info", "contact_form"],
     ),
     "good_sam": PageConfig(

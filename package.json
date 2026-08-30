@@ -1,0 +1,14 @@
+{
+  "name": "camping-world-qa-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "./run-tests.sh",
+    "test:headed": "./run-tests.sh --headed",
+    "test:ui": "npx playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "typescript": "^5.7.0"
+  }
+}

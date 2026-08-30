@@ -238,24 +238,24 @@ async def _crawl(
         print("Mode: RESUME (skipping completed pages)")
     print()
 
-    async with await create_playwright_client() as mcp_client:
-        tools = await mcp_client.get_tools()
-        print(f"[OK] Playwright MCP connected ({len(tools)} tools)\n")
+    mcp_client = await create_playwright_client()
+    tools = await mcp_client.get_tools()
+    print(f"[OK] Playwright MCP connected ({len(tools)} tools)\n")
 
-        async def call_tool(tool_name: str, args: dict) -> object:
-            """Invoke a Playwright MCP tool by name."""
-            for tool in tools:
-                if tool.name == tool_name:
-                    return await tool.ainvoke(args)
-            raise ValueError(f"MCP tool not found: {tool_name}")
+    async def call_tool(tool_name: str, args: dict) -> object:
+        """Invoke a Playwright MCP tool by name."""
+        for tool in tools:
+            if tool.name == tool_name:
+                return await tool.ainvoke(args)
+        raise ValueError(f"MCP tool not found: {tool_name}")
 
-        orchestrator = Orchestrator(call_tool, overwrite=overwrite)
-        result = await orchestrator.crawl_site(
-            pages=pages,
-            include_auth=include_auth,
-            resume=resume,
-            dry_run=dry,
-        )
+    orchestrator = Orchestrator(call_tool, overwrite=overwrite)
+    result = await orchestrator.crawl_site(
+        pages=pages,
+        include_auth=include_auth,
+        resume=resume,
+        dry_run=dry,
+    )
 
     if result.pages_failed > 0:
         sys.exit(1)

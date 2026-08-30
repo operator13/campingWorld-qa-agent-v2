@@ -25,18 +25,18 @@ MAX_ATTEMPTS: int = 3  # heal attempts before escalating to a bug
 # Model map — which Claude model each node uses
 # ---------------------------------------------------------------------------
 MODEL_MAP: dict[str, str] = {
-    "design_reader": "claude-sonnet-4-20250514",
-    "planner": "claude-opus-4-20250514",
-    "generator": "claude-sonnet-4-20250514",
-    "triage": "claude-opus-4-20250514",
-    "healer": "claude-sonnet-4-20250514",
+    "design_reader": "claude-sonnet-4-6",
+    "planner": "claude-sonnet-4-6",
+    "generator": "claude-sonnet-4-6",
+    "triage": "claude-sonnet-4-6",
+    "healer": "claude-sonnet-4-6",
 }
 
 
 def get_model(node_name: str) -> str:
     """Return the model ID for a given node, with env override support."""
     env_key = f"MODEL_{node_name.upper()}"
-    return os.getenv(env_key, MODEL_MAP.get(node_name, "claude-sonnet-4-20250514"))
+    return os.getenv(env_key, MODEL_MAP.get(node_name, "claude-sonnet-4-6"))
 
 
 # ---------------------------------------------------------------------------
