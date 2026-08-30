@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "register.spec.ts",
+      "test_title": "account login page loads",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-30T23:13:03.204831+00:00"
+}
