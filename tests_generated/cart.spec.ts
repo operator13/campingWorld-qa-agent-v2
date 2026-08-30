@@ -26,11 +26,13 @@ test.describe('Shopping Cart', () => {
   });
 
   test('Top Picks section shows Add To Cart buttons on empty cart', async () => {
+    await cartPage.addToCartButtons.first().waitFor({ state: 'visible', timeout: 20_000 });
     const count = await cartPage.addToCartButtons.count();
     expect(count).toBeGreaterThan(0);
   });
 
   test('Add To Cart buttons in Top Picks carousel are enabled', async () => {
+    await cartPage.addToCartButtons.first().waitFor({ state: 'visible', timeout: 20_000 });
     await expect(cartPage.addToCartButtons.first()).toBeEnabled();
   });
 
