@@ -295,32 +295,24 @@ async def eval_summary() -> JSONResponse:
         score = score_obj.get("score") if isinstance(score_obj, dict) else None
         passed = data.get("passed")
 
-        # Read token/cost from eval report if available
-        token_usage = data.get("token_usage", {})
-        tokens = token_usage.get("total_tokens") if token_usage else None
-        cost = token_usage.get("cost_usd") if token_usage else None
+        # Accumulate token/cost across ALL eval reports (odometer — only goes up)
+        cumulative_tokens = 0
+        cumulative_cost = 0.0
+        for f in files:
+            report = _read_json(f)
+            if not report or not isinstance(report, dict):
+                continue
+            tu = report.get("token_usage", {})
+            if isinstance(tu, dict):
+                cumulative_tokens += tu.get("total_tokens", 0) or 0
+                cumulative_cost += tu.get("cost_usd", 0.0) or 0.0
 
-        summary[agent] = {"score": score, "passed": passed, "tokens": tokens, "cost": cost}
-
-    # Fallback: enrich with audit run data only for agents missing token data
-    audit_files = _sorted_json_files(AUDIT_DIR)
-    for af in reversed(audit_files):
-        audit_data = _read_json(af)
-        if not audit_data or not isinstance(audit_data, dict):
-            continue
-        if not audit_data.get("total_input_tokens"):
-            continue
-        nodes = audit_data.get("nodes", [])
-        if isinstance(nodes, list):
-            for node in nodes:
-                name = node.get("node", "")
-                inp = node.get("input_tokens") or 0
-                out = node.get("output_tokens") or 0
-                cost = node.get("cost_usd") or 0.0
-                if name in summary and summary[name].get("tokens") is None and (inp + out) > 0:
-                    summary[name]["tokens"] = inp + out
-                    summary[name]["cost"] = round(cost, 4)
-        break
+        summary[agent] = {
+            "score": score,
+            "passed": passed,
+            "tokens": cumulative_tokens if cumulative_tokens > 0 else None,
+            "cost": round(cumulative_cost, 4) if cumulative_cost > 0 else None,
+        }
 
     return JSONResponse(content=summary)
 
