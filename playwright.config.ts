@@ -7,7 +7,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: true,
   retries: 1,
-  workers: 4,
+  workers: 3,
   reporter: [
     ['html', { open: 'never', outputFolder: './test-results-tmp/html-report' }],
     ['json', { outputFile: './test-results-tmp/results.json' }],
