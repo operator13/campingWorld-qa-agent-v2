@@ -560,11 +560,16 @@ def _build_healer_state(scenario: dict[str, Any]) -> QAState:
         steps=["eval step"],
         expected=["eval expected"],
     )
+
+    is_timing = scenario.get("type") == "timing_fix"
+
     return QAState(
         goal=f"eval-{scenario['scenario']}",
         error=scenario["error"],
-        dom_snapshot=scenario["dom_snippet"],
-        page_objects={route: scenario["old_source"]},
+        failure_class="test_flake" if is_timing else "locator_drift",
+        dom_snapshot=scenario.get("dom_snippet", ""),
+        page_objects={} if is_timing else {route: scenario["old_source"]},
+        test_code={scenario["scenario"]: scenario["old_source"]} if is_timing else {},
         plan=[test_case],
         run_results=RunResult(
             passed=False,
@@ -612,17 +617,25 @@ async def run_healer_eval(
         async with semaphore:
             state = _build_healer_state(scenario)
             route = scenario["route"]
-            logger.info("[%d/%d] %s", i, total, scenario["scenario"])
+            is_timing = scenario.get("type") == "timing_fix"
+            logger.info("[%d/%d] %s%s", i, total, scenario["scenario"], " (timing)" if is_timing else "")
             try:
                 result = await healer(state)
-                patched = result.get("page_objects", {})
-                new_source = patched.get(route, scenario["old_source"])
+                if is_timing:
+                    patched_specs = result.get("test_code", {})
+                    new_source = patched_specs.get(scenario["scenario"], scenario["old_source"])
+                else:
+                    patched = result.get("page_objects", {})
+                    new_source = patched.get(route, scenario["old_source"])
                 expected_fix = scenario.get("expected_fix_contains", "")
+                has_hard_wait = "waitForTimeout" in new_source
                 return {
                     "scenario": scenario, "route": route,
                     "old_source": scenario["old_source"], "new_source": new_source,
                     "fix_present": bool(expected_fix and expected_fix in new_source),
                     "expected_fix_contains": expected_fix,
+                    "is_timing": is_timing,
+                    "has_hard_wait": has_hard_wait,
                     "attempts": result.get("attempts", 0), "error": None,
                 }
             except Exception as e:
@@ -632,6 +645,8 @@ async def run_healer_eval(
                     "old_source": scenario["old_source"], "new_source": scenario["old_source"],
                     "fix_present": False,
                     "expected_fix_contains": scenario.get("expected_fix_contains", ""),
+                    "is_timing": is_timing,
+                    "has_hard_wait": False,
                     "attempts": 0, "error": str(e),
                 }
 
@@ -694,7 +709,10 @@ async def run_healer_eval(
         "old_locator_removed": old_locator_removed,
         "fix_rate": {"score": round(fix_rate, 4), "correct": fix_present_count, "total": total},
         "scenarios": [
-            {"scenario": s["scenario"], "category": "locator_drift"}
+            {
+                "scenario": s["scenario"],
+                "category": "test_flake" if s.get("type") == "timing_fix" else "locator_drift",
+            }
             for s in scenarios
         ],
         "skipped_expired": skipped,

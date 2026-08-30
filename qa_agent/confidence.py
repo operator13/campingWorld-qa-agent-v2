@@ -335,8 +335,13 @@ def apply_guards(
 
     # Guard 4: TimeoutError alone (no DOM) → cap at 0.6
     # Only applies if G3 hasn't already capped lower
+    # Relaxed: skip G4 when flake patterns are strong (C1 >= 0.3) — timing
+    # flakes are legitimately diagnosed from the error pattern alone
     if _TIMEOUT_PATTERN.search(error) and not dom_snapshot:
-        if score > 0.6 and not any("G3" in g for g in guards):
+        flake_match = any(p.search(error) for p in _FLAKE_ERROR_PATTERNS)
+        if flake_match and c1_score >= 0.25:
+            pass  # Strong flake signal — don't cap
+        elif score > 0.6 and not any("G3" in g for g in guards):
             score = 0.6
             guards.append("G4: timeout without DOM → capped at 0.6")
 

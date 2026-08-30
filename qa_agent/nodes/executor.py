@@ -70,6 +70,11 @@ async def executor(state: QAState) -> dict:
         # The healer recorded fixes as unverified — mark them as verified in place
         for route in state.page_objects:
             memory.verify_unverified_fixes(route)
+        # Verify timing fixes for test_flake failures
+        if state.failure_class == "test_flake" and state.plan:
+            for tc in state.plan:
+                if tc.route:
+                    memory.verify_timing_fixes(tc.route)
 
     # Increment route change count on failure (locator drift signal)
     if not run_result.passed:

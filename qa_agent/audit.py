@@ -527,6 +527,8 @@ def _derive_outcome(entries: list[dict[str, Any]]) -> str:
                 fc = output["failure_class"]
                 if fc == "locator_drift":
                     return "healed" if "healer" in [e["node"] for e in entries] else "drift"
+                if fc == "test_flake":
+                    return "flake_healed" if "healer" in [e["node"] for e in entries] else "flake"
                 if fc == "app_defect":
                     return "defect"
                 return fc
