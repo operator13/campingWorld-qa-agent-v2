@@ -8,6 +8,15 @@ A test just failed. You must decide: is the **test** broken (locator/wait drift)
 - The DOM snapshot shows the element exists but with a different selector/role/name
 - The page structure changed but the feature logic is intact
 
+## Rubric — lean toward test_flake when:
+- TimeoutError on `scrollIntoViewIfNeeded`, `click`, `fill`, or `type` — but the locator is valid (the call log does NOT say "no element matching")
+- The error occurs in an interaction step, not in an assertion
+- The element likely loads asynchronously (after API call, dynamic render)
+- The test has passed before (intermittent failure pattern)
+- No DOM changes detected — the locator is correct, the element just loads late
+
+**Key distinction from locator_drift:** In `locator_drift`, the call log says "no element matching X" — the selector is wrong. In `test_flake`, the element times out during an interaction but the selector itself is correct — the element just wasn't ready yet.
+
 ## Rubric — lean toward app_defect when:
 - The assertion fails on **value mismatch** (wrong text, wrong count, wrong state)
 - The HTTP response is 4xx/5xx
@@ -54,7 +63,7 @@ Score each criterion 0.0–0.2. Your total confidence is the sum (0.0–1.0).
 ## Output schema
 Return a JSON object:
 {
-  "failure_class": "locator_drift" | "app_defect" | "unknown",
+  "failure_class": "locator_drift" | "app_defect" | "test_flake" | "unknown",
   "confidence": 0.0 to 1.0,
   "reasoning": "Brief explanation referencing which criteria (C1-C5) drove your score"
 }

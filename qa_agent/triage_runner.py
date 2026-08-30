@@ -161,7 +161,7 @@ async def run_triage_and_heal(failures: list[dict[str, Any]]) -> dict[str, Any]:
             "healed": False,
         }
 
-        # Heal if locator drift with high confidence
+        # Heal if locator drift or test flake with high confidence
         if failure_class == "locator_drift" and confidence >= CONF_SURE and pom_file and route:
             pom_path = _PAGE_OBJECTS_DIR / pom_file
             if pom_path.exists():
@@ -176,6 +176,7 @@ async def run_triage_and_heal(failures: list[dict[str, Any]]) -> dict[str, Any]:
                 heal_state = QAState(
                     goal=f"heal:{spec}:{title}",
                     error=error,
+                    failure_class="locator_drift",
                     page_objects={route: pom_source},
                     plan=[TestCase(
                         id=f"tc-{spec}",
@@ -198,7 +199,7 @@ async def run_triage_and_heal(failures: list[dict[str, Any]]) -> dict[str, Any]:
                         healed_files.append(pom_file)
                         healed_specs.add(spec)
                         detail["healed"] = True
-                        print(f"        Healing: {pom_file} -> fixed")
+                        print(f"        Healing: {pom_file} -> fixed (locator)")
                     else:
                         print(f"        Healing: no changes produced")
                 except Exception as e:
@@ -206,12 +207,65 @@ async def run_triage_and_heal(failures: list[dict[str, Any]]) -> dict[str, Any]:
                     print(f"        Healing: FAILED ({e})")
             else:
                 print(f"        Skipped: POM file {pom_file} not found")
+        elif failure_class == "test_flake" and confidence >= CONF_SURE and route:
+            # Timing fix — patch the spec file, not the POM
+            spec_path = _TESTS_DIR / spec
+            if spec_path.exists():
+                spec_source = spec_path.read_text()
+
+                # Backup original
+                backup_path = spec_path.with_suffix(".ts.bak")
+                if not backup_path.exists():
+                    shutil.copy2(spec_path, backup_path)
+
+                # Build healer state with spec file source
+                pom_source = ""
+                if pom_file:
+                    pom_path = _PAGE_OBJECTS_DIR / pom_file
+                    if pom_path.exists():
+                        pom_source = pom_path.read_text()
+
+                heal_state = QAState(
+                    goal=f"heal:{spec}:{title}",
+                    error=error,
+                    failure_class="test_flake",
+                    test_code={spec: spec_source},
+                    page_objects={route: pom_source} if pom_source else {},
+                    plan=[TestCase(
+                        id=f"tc-{spec}",
+                        title=title,
+                        feature=spec.replace(".spec.ts", ""),
+                        route=route,
+                        steps=["(from failed test)"],
+                        expected=["(test should pass)"],
+                    )],
+                    run_results=RunResult(passed=False, failed_cases=[title], logs=error),
+                    attempts=0,
+                )
+
+                try:
+                    heal_result = await healer(heal_state)
+                    patched_specs = heal_result.get("test_code", {})
+                    if spec in patched_specs and patched_specs[spec] != spec_source:
+                        spec_path.write_text(patched_specs[spec])
+                        healed_count += 1
+                        healed_files.append(spec)
+                        healed_specs.add(spec)
+                        detail["healed"] = True
+                        print(f"        Healing: {spec} -> fixed (timing)")
+                    else:
+                        print(f"        Healing: no timing changes produced")
+                except Exception as e:
+                    logger.error("Healer timing fix failed for %s: %s", spec, e)
+                    print(f"        Healing: FAILED ({e})")
+            else:
+                print(f"        Skipped: spec file {spec} not found")
         elif failure_class == "app_defect":
             app_defect_count += 1
             print(f"        Skipped: app defect — not a locator issue")
         else:
             unknown_count += 1
-            reason = "low confidence — needs human review" if failure_class == "locator_drift" else f"classified as {failure_class}"
+            reason = "low confidence — needs human review" if failure_class in ("locator_drift", "test_flake") else f"classified as {failure_class}"
             print(f"        Skipped: {reason}")
 
         details.append(detail)
@@ -352,10 +406,12 @@ def _format_triage_markdown(summary: dict[str, Any]) -> str:
             lines.append(f"- **Classification:** {d['failure_class']}")
             lines.append(f"- **Confidence:** {d['confidence']:.2f}")
             if d["failure_class"] == "locator_drift" and d.get("healed"):
-                lines.append(f"- **Action:** Auto-healed by healer agent")
+                lines.append(f"- **Action:** Auto-healed by healer agent (locator fix)")
+            elif d["failure_class"] == "test_flake" and d.get("healed"):
+                lines.append(f"- **Action:** Auto-healed by healer agent (timing fix)")
             elif d["failure_class"] == "app_defect":
                 lines.append(f"- **Action:** Skipped — app defect, not a locator issue")
-            elif d["failure_class"] == "locator_drift" and not d.get("healed"):
+            elif d["failure_class"] in ("locator_drift", "test_flake") and not d.get("healed"):
                 lines.append(f"- **Action:** Skipped — confidence below threshold ({d['confidence']:.2f} < 0.75)")
             else:
                 lines.append(f"- **Action:** Skipped — needs human review")
@@ -365,18 +421,22 @@ def _format_triage_markdown(summary: dict[str, Any]) -> str:
 
 
 def _git_commit_healed(healed_files: list[str]) -> None:
-    """Commit healed POM files to git."""
+    """Commit healed POM and spec files to git."""
     try:
         for f in healed_files:
+            if f.endswith(".spec.ts"):
+                path = f"tests_generated/{f}"
+            else:
+                path = f"page_objects/{f}"
             subprocess.run(
-                ["git", "add", f"page_objects/{f}"],
+                ["git", "add", path],
                 cwd=str(_PROJECT_ROOT),
                 capture_output=True,
                 timeout=10,
             )
         subprocess.run(
             ["git", "commit", "-m",
-             f"Self-healed {len(healed_files)} POM file(s): {', '.join(healed_files)}\n\n"
+             f"Self-healed {len(healed_files)} file(s): {', '.join(healed_files)}\n\n"
              f"Auto-fixed by triage → healer pipeline."],
             cwd=str(_PROJECT_ROOT),
             capture_output=True,

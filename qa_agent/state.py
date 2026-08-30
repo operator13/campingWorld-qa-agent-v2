@@ -50,7 +50,7 @@ class QAState(BaseModel):
     dom_snapshot: str | None = None
 
     # --- Triage output ---
-    failure_class: Literal["locator_drift", "app_defect", "unknown"] | None = None
+    failure_class: Literal["locator_drift", "app_defect", "test_flake", "unknown"] | None = None
     confidence: float = 0.0
 
     # --- Loop control ---

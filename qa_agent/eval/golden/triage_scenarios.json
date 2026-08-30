@@ -298,5 +298,55 @@
     "expected_class": "unknown",
     "expected_confidence_min": 0.0,
     "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "flake_scroll_into_view_timeout",
+    "category": "test_flake",
+    "error": "TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Add to Cart' })",
+    "dom_has_element": true,
+    "dom_element_renamed": null,
+    "expected_class": "test_flake",
+    "expected_confidence_min": 0.7,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "flake_click_timeout_element_exists",
+    "category": "test_flake",
+    "error": "TimeoutError: locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for getByTestId('checkout-btn')\n  - element is not visible",
+    "dom_has_element": true,
+    "dom_element_renamed": null,
+    "expected_class": "test_flake",
+    "expected_confidence_min": 0.7,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "flake_fill_timeout_not_stable",
+    "category": "test_flake",
+    "error": "TimeoutError: locator.fill: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByLabel('Quantity')\n  - element is not stable",
+    "dom_has_element": true,
+    "dom_element_renamed": null,
+    "expected_class": "test_flake",
+    "expected_confidence_min": 0.7,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "flake_element_outside_viewport",
+    "category": "test_flake",
+    "error": "Error: locator.click: element is outside of the viewport\n  - getByRole('button', { name: 'Load More' })",
+    "dom_has_element": true,
+    "dom_element_renamed": null,
+    "expected_class": "test_flake",
+    "expected_confidence_min": 0.65,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "flake_before_each_timeout",
+    "category": "test_flake",
+    "error": "Test timeout of 30000ms exceeded while running \"beforeEach\" hook.\nTimeoutError: page.originalGoto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.example.com/product\"",
+    "dom_has_element": null,
+    "dom_element_renamed": null,
+    "expected_class": "test_flake",
+    "expected_confidence_min": 0.6,
+    "valid_until": "2027-06-01"
   }
 ]

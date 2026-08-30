@@ -89,7 +89,42 @@ _DEFECT_ERROR_PATTERNS = [
     re.compile(r"Hydration failed", re.I),               # SSR mismatch
 ]
 
+_FLAKE_ERROR_PATTERNS = [
+    re.compile(r"scrollIntoViewIfNeeded.*Timeout", re.I),
+    re.compile(r"locator\.(click|fill|type)\s*:.*Timeout.*exceeded", re.I),
+    re.compile(r"waiting for.*visible", re.I),
+    re.compile(r"element is not visible", re.I),
+    re.compile(r"element is not stable", re.I),
+    re.compile(r"element is outside of the viewport", re.I),
+    re.compile(r"beforeEach.*Timeout", re.I),
+]
+
 _TIMEOUT_PATTERN = re.compile(r"TimeoutError|Timeout.*exceeded", re.I)
+_NO_ELEMENT_PATTERN = re.compile(r"no element matching|0 elements", re.I)
+
+
+def detect_failure_class_hint(error: str) -> str:
+    """Suggest a failure class based on error patterns alone.
+
+    Returns 'locator_drift', 'app_defect', 'test_flake', or 'unknown'.
+    Used by Triage to seed the LLM's classification.
+    """
+    if not error:
+        return "unknown"
+    drift_match = any(p.search(error) for p in _DRIFT_ERROR_PATTERNS)
+    defect_match = any(p.search(error) for p in _DEFECT_ERROR_PATTERNS)
+    flake_match = any(p.search(error) for p in _FLAKE_ERROR_PATTERNS)
+    has_no_element = bool(_NO_ELEMENT_PATTERN.search(error))
+
+    if defect_match and not drift_match:
+        return "app_defect"
+    if drift_match and has_no_element:
+        return "locator_drift"
+    if flake_match and not has_no_element:
+        return "test_flake"
+    if drift_match:
+        return "locator_drift"
+    return "unknown"
 
 
 def score_c1_error_type(error: str) -> float:
@@ -103,21 +138,24 @@ def score_c1_error_type(error: str) -> float:
 
     drift_match = any(p.search(error) for p in _DRIFT_ERROR_PATTERNS)
     defect_match = any(p.search(error) for p in _DEFECT_ERROR_PATTERNS)
+    flake_match = any(p.search(error) for p in _FLAKE_ERROR_PATTERNS)
     is_timeout = bool(_TIMEOUT_PATTERN.search(error))
+    has_no_element = bool(_NO_ELEMENT_PATTERN.search(error))
 
     if drift_match and defect_match:
         return 0.1  # conflicting signals — ambiguous
     if drift_match and not defect_match:
-        # Drift requires confirmation — "no element matching" is strong,
-        # but a bare timeout on a locator without that confirmation is weaker
-        has_confirmation = bool(re.search(r"no element matching|0 elements", error, re.I))
-        if has_confirmation:
-            return 0.3  # strong confirmed drift
+        if has_no_element:
+            return 0.3  # strong confirmed drift — element truly absent
+        if flake_match and not has_no_element:
+            return 0.15  # likely flake, not drift (timeout on interaction, element may exist)
         if is_timeout:
             return 0.15  # timeout on a locator — likely drift but not certain
         return 0.3  # non-timeout drift signal (stale element, selector-not-found)
     if defect_match and not drift_match:
         return 0.3  # strong unambiguous defect signal
+    if flake_match and is_timeout and not has_no_element:
+        return 0.3  # strong flake signal — interaction timeout, element exists
     if is_timeout:
         return 0.1  # generic timeout — ambiguous
     return 0.0
@@ -151,6 +189,10 @@ def score_c2_dom_evidence(
         if not has_interactive:
             return 0.2  # DOM is empty/broken — element completely absent
         return 0.1
+    elif failure_class == "test_flake":
+        if has_interactive:
+            return 0.2  # element IS in DOM — confirms flake, not drift
+        return 0.1
 
     return 0.1
 
@@ -181,7 +223,7 @@ def score_c4_human_calibration(
         return 0.1  # no data — neutral
 
     # Only count decisions where the triage guess matches the class we're scoring
-    expected_verdict = "heal" if failure_class == "locator_drift" else "defect"
+    expected_verdict = "heal" if failure_class in ("locator_drift", "test_flake") else "defect"
 
     agreements = 0
     disagreements = 0

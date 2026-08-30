@@ -36,3 +36,41 @@ Return a JSON object:
     }
   ]
 }
+
+---
+
+## Timing Fix Rules (when failure_class is test_flake)
+
+When the failure is classified as `test_flake`, the locator is CORRECT.
+The element exists in the DOM but wasn't ready when the test tried to interact with it.
+
+### What you MUST do:
+1. Add `await element.waitFor({ state: 'visible', timeout: 20_000 })` BEFORE the failing interaction
+2. Return the patched **spec file** source (not the page object)
+
+### What you MUST NOT do:
+1. DO NOT change any locators — they are correct
+2. DO NOT add `page.waitForTimeout()` — this is a hard wait anti-pattern and will be REJECTED
+3. DO NOT modify `expect()` assertions or their timeouts
+4. DO NOT add `page.waitForLoadState()` unless the failure is on navigation
+
+### Strategies:
+- **Strategy A:** Add `waitFor({ state: 'visible' })` before `scrollIntoViewIfNeeded()`, `click()`, `fill()`
+- **Strategy B:** Add `waitFor({ state: 'attached' })` before `expect()` that checks element existence
+- **Strategy C:** Replace bare `scrollIntoViewIfNeeded()` with `waitFor` + `scrollIntoViewIfNeeded()`
+- **Strategy D:** Add `{ waitUntil: 'networkidle' }` to `page.goto()` when data depends on API calls
+
+### Output schema for timing fixes:
+{
+  "spec_files": {
+    "product.spec.ts": "// full patched TypeScript source"
+  },
+  "changes": [
+    {
+      "element": "addToCartButton",
+      "strategy": "A",
+      "fix": "Added waitFor({ state: 'visible', timeout: 20000 }) before scrollIntoViewIfNeeded",
+      "reason": "Button renders after async inventory API call"
+    }
+  ]
+}

@@ -88,5 +88,65 @@
     "dom_snippet": "<a href=\"#\" role=\"link\" aria-label=\"Delete item\">Delete item</a>",
     "expected_fix_contains": "Delete item",
     "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "timing_scroll_before_visible",
+    "type": "timing_fix",
+    "error": "TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Add to Cart' })",
+    "route": "/product",
+    "old_source": "test('add to cart button is enabled', async () => {\n  await productPage.addToCartButton.scrollIntoViewIfNeeded();\n  await expect(productPage.addToCartButton).toBeEnabled({ timeout: 15_000 });\n});",
+    "dom_snippet": "<button>Add to Cart</button>",
+    "expected_fix_contains": "waitFor",
+    "expected_no_hard_waits": true,
+    "expected_assertions_preserved": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "timing_click_before_visible",
+    "type": "timing_fix",
+    "error": "TimeoutError: locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for getByTestId('checkout-btn')\n  - element is not visible",
+    "route": "/checkout",
+    "old_source": "test('checkout button works', async () => {\n  await checkoutPage.checkoutBtn.click();\n  await expect(page).toHaveURL(/checkout/);\n});",
+    "dom_snippet": "<button data-testid=\"checkout-btn\">Checkout</button>",
+    "expected_fix_contains": "waitFor",
+    "expected_no_hard_waits": true,
+    "expected_assertions_preserved": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "timing_fill_not_stable",
+    "type": "timing_fix",
+    "error": "TimeoutError: locator.fill: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByLabel('Quantity')\n  - element is not stable",
+    "route": "/product",
+    "old_source": "test('can set quantity', async () => {\n  await productPage.quantityInput.fill('2');\n  await expect(productPage.quantityInput).toHaveValue('2');\n});",
+    "dom_snippet": "<input aria-label=\"Quantity\" type=\"number\" value=\"1\" />",
+    "expected_fix_contains": "waitFor",
+    "expected_no_hard_waits": true,
+    "expected_assertions_preserved": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "timing_element_outside_viewport",
+    "type": "timing_fix",
+    "error": "Error: locator.click: element is outside of the viewport\n  - getByRole('button', { name: 'Load More' })",
+    "route": "/search",
+    "old_source": "test('load more results', async () => {\n  await searchPage.loadMoreBtn.click();\n  await expect(searchPage.resultCards).toHaveCount(20);\n});",
+    "dom_snippet": "<button>Load More</button>",
+    "expected_fix_contains": "waitFor",
+    "expected_no_hard_waits": true,
+    "expected_assertions_preserved": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "timing_network_dependent_content",
+    "type": "timing_fix",
+    "error": "TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByText('Reviews')",
+    "route": "/product",
+    "old_source": "test('reviews section loads', async () => {\n  await productPage.reviewsSection.scrollIntoViewIfNeeded();\n  await expect(productPage.reviewsSection).toBeVisible();\n});",
+    "dom_snippet": "<section>Reviews</section>",
+    "expected_fix_contains": "waitFor",
+    "expected_no_hard_waits": true,
+    "expected_assertions_preserved": true,
+    "valid_until": "2027-06-01"
   }
 ]

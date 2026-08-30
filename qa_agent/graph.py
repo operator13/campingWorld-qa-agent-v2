@@ -69,9 +69,9 @@ def route_after_triage(state: QAState) -> str:
         AuditStore.record_routing_decision("human_review", f"confidence {state.confidence:.2f} < CONF_SURE {CONF_SURE}")
         return "human_review"
 
-    if state.failure_class == "locator_drift":
-        logger.info("Router: sure drift (confidence=%.2f) → healer", state.confidence)
-        AuditStore.record_routing_decision("healer", f"confidence {state.confidence:.2f} >= {CONF_SURE}, class=locator_drift")
+    if state.failure_class in ("locator_drift", "test_flake"):
+        logger.info("Router: sure %s (confidence=%.2f) → healer", state.failure_class, state.confidence)
+        AuditStore.record_routing_decision("healer", f"confidence {state.confidence:.2f} >= {CONF_SURE}, class={state.failure_class}")
         return "healer"
 
     # app_defect or unknown with high confidence

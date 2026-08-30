@@ -302,6 +302,146 @@ class MemoryStore:
         }
 
     # -------------------------------------------------------------------
+    # Timing Fix History
+    # -------------------------------------------------------------------
+
+    def _timing_fixes_file(self) -> Path:
+        return self.memory_dir / "TIMING_FIXES.md"
+
+    def record_timing_fix(
+        self,
+        route: str,
+        element: str,
+        error_pattern: str,
+        strategy: str,
+        fix_description: str,
+        success: bool = False,
+    ) -> None:
+        """Record a timing fix attempt in TIMING_FIXES.md."""
+        if not self._enabled("healer"):
+            return
+
+        filepath = self._timing_fixes_file()
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        success_str = "yes" if success else "no"
+
+        if not filepath.exists():
+            self._write_locked(filepath,
+                "# Known Timing Fixes\n\n"
+                "| Date | Route | Element | Error Pattern | Strategy | Fix | Success |\n"
+                "|------|-------|---------|--------------|----------|-----|--------|\n"
+            )
+
+        row = (
+            f"| {now} | {route} | {element} | {error_pattern} "
+            f"| {strategy} | {fix_description[:100]} | {success_str} |\n"
+        )
+        self._append_locked(filepath, row)
+        logger.info("Memory: recorded timing fix for %s/%s", route, element)
+
+    def get_known_timing_fix(
+        self,
+        route: str,
+        element: str,
+        error_pattern: str,
+    ) -> str | None:
+        """Look up a known successful timing fix.
+
+        Returns the fix description if found, None otherwise.
+        """
+        if not self._enabled("healer"):
+            return None
+
+        filepath = self._timing_fixes_file()
+        if not filepath.exists():
+            return None
+
+        content = filepath.read_text()
+        for line in reversed(content.split("\n")):
+            if not line.startswith("| ") or line.startswith("| Date") or line.startswith("|---"):
+                continue
+            parts = [p.strip() for p in line.split("|")]
+            # Remove empty first/last from split
+            parts = [p for p in parts if p]
+            if len(parts) >= 7:
+                r, el, ep, _, fix, success = parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]
+                if r == route and el == element and ep == error_pattern and success == "yes":
+                    return fix
+        return None
+
+    def mark_timing_fix_failed(
+        self,
+        route: str,
+        element: str,
+        error_pattern: str,
+    ) -> None:
+        """Mark a timing fix as failed so it won't be reused."""
+        if not self._enabled("healer"):
+            return
+
+        filepath = self._timing_fixes_file()
+        if not filepath.exists():
+            return
+
+        def _modify(content: str) -> str:
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if route in line and element in line and error_pattern in line and "| yes |" in line:
+                    lines[i] = line.replace("| yes |", "| no |")
+            return "\n".join(lines)
+
+        self._read_modify_write(filepath, _modify)
+
+    def verify_timing_fixes(self, route: str) -> None:
+        """Mark all unverified timing fixes for a route as verified."""
+        if not self._enabled("healer"):
+            return
+
+        filepath = self._timing_fixes_file()
+        if not filepath.exists():
+            return
+
+        def _modify(content: str) -> str:
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if route in line and "| no |" in line:
+                    lines[i] = line.replace("| no |", "| yes |")
+            return "\n".join(lines)
+
+        self._read_modify_write(filepath, _modify)
+
+    def build_healer_timing_context(
+        self,
+        route: str,
+        element: str | None = None,
+        max_tokens: int = 500,
+    ) -> str:
+        """Build timing fix memory context for injection into the Healer prompt."""
+        if not self._enabled("healer"):
+            return ""
+
+        filepath = self._timing_fixes_file()
+        if not filepath.exists():
+            return ""
+
+        content = filepath.read_text()
+        relevant_lines = []
+        for line in content.split("\n"):
+            if route in line and (not element or element in line):
+                relevant_lines.append(line)
+
+        if not relevant_lines:
+            return ""
+
+        result = f"## Memory: Timing Fix History for {route}\n"
+        result += "\n".join(relevant_lines[-5:])
+
+        char_limit = max_tokens * 4
+        if len(result) > char_limit:
+            result = result[:char_limit].rsplit("\n", 1)[0]
+        return result
+
+    # -------------------------------------------------------------------
     # Failure Patterns
     # -------------------------------------------------------------------
 

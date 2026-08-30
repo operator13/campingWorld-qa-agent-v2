@@ -209,7 +209,7 @@ def _parse_response(response: Any) -> dict:
         data = {"failure_class": "unknown", "confidence": 0.0}
 
     fc = data.get("failure_class", "unknown")
-    if fc not in ("locator_drift", "app_defect", "unknown"):
+    if fc not in ("locator_drift", "app_defect", "test_flake", "unknown"):
         fc = "unknown"
 
     conf = float(data.get("confidence", 0.0))
