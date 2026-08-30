@@ -32,6 +32,31 @@
     fetchEvalSummary();
     fetchRunHistory();
     fetchAuditSummary();
+    syncRunnerStatus();
+  }
+
+  function syncRunnerStatus() {
+    fetch('/api/tests/status').then(r => r.json()).then(status => {
+      const state = status.state || 'idle';
+      if (state === 'running' || state === 'healing') {
+        setRunnerState(state);
+        document.getElementById('runner-log-container').style.display = 'block';
+        document.getElementById('btn-run-selected').style.display = 'none';
+        document.getElementById('btn-run-all').style.display = 'none';
+        document.getElementById('btn-stop').style.display = 'inline-block';
+        document.getElementById('btn-clear').disabled = true;
+      } else if (state === 'idle' || state === 'complete') {
+        // If we were showing RUNNING but server says idle, sync to idle
+        const currentStatus = document.getElementById('runner-status')?.textContent;
+        if (currentStatus === 'RUNNING' || currentStatus === 'HEALING') {
+          setRunnerState(state === 'complete' ? 'complete' : 'idle');
+          document.getElementById('btn-run-selected').style.display = 'inline-block';
+          document.getElementById('btn-run-all').style.display = 'inline-block';
+          document.getElementById('btn-stop').style.display = 'none';
+          document.getElementById('btn-clear').disabled = false;
+        }
+      }
+    }).catch(() => {});
   }
 
   // ============================================
