@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-08-30T14:36:42.685363+00:00",
+  "run_id": "08_30_2026_09-34-47",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 15,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 15,
+  "trend": {
+    "delta": 0.1886,
+    "status": "improving",
+    "previous_score": 0.8114
+  },
+  "domains": [
+    {
+      "name": "Product",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 68042,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Register",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "duration_ms": 45180,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
