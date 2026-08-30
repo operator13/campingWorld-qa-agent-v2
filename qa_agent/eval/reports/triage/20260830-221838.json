@@ -1,0 +1,160 @@
+{
+  "eval_run_id": "eval-20260830-221838",
+  "agent": "triage",
+  "timestamp": "2026-08-30T22:18:38.254317+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 35,
+  "scenarios_skipped_expired": 0,
+  "triage_accuracy": {
+    "score": 0.8571,
+    "correct": 30,
+    "total": 35,
+    "misses": [
+      {
+        "scenario": "unknown_generic_timeout_no_dom",
+        "expected_class": "unknown",
+        "got_class": "test_flake",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.5,
+        "error": "TimeoutError: page.waitForNavigation: Timeout 30000ms exceeded.",
+        "confidence_breakdown": {
+          "c1_error_type": 0.1,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.2,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.1,
+          "raw_score": 0.5,
+          "guards_applied": [],
+          "final_score": 0.5
+        },
+        "root_cause": "misclassification"
+      },
+      {
+        "scenario": "unknown_ci_env_timeout",
+        "expected_class": "unknown",
+        "got_class": "test_flake",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.5,
+        "error": "TimeoutError: page.waitForSelector: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator('[data-loaded=\"true\"]')",
+        "confidence_breakdown": {
+          "c1_error_type": 0.1,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.2,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.1,
+          "raw_score": 0.5,
+          "guards_applied": [],
+          "final_score": 0.5
+        },
+        "root_cause": "misclassification"
+      },
+      {
+        "scenario": "unknown_missing_element_no_context",
+        "expected_class": "unknown",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.9,
+        "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Continue' })",
+        "confidence_breakdown": {
+          "c1_error_type": 0.3,
+          "c2_dom_evidence": 0.1,
+          "c3_history_match": 0.2,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.2,
+          "raw_score": 0.9,
+          "guards_applied": [],
+          "final_score": 0.9
+        },
+        "root_cause": "misclassification"
+      },
+      {
+        "scenario": "unknown_slow_network_timeout",
+        "expected_class": "unknown",
+        "got_class": "test_flake",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.45,
+        "error": "TimeoutError: page.waitForResponse: Timeout 60000ms exceeded.\nCall log:\n  - waiting for response matching /api/search",
+        "confidence_breakdown": {
+          "c1_error_type": 0.1,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.2,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.1,
+          "raw_score": 0.5,
+          "guards_applied": [],
+          "final_score": 0.5
+        },
+        "root_cause": "misclassification"
+      },
+      {
+        "scenario": "unknown_element_detached",
+        "expected_class": "unknown",
+        "got_class": "test_flake",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.05,
+        "error": "Error: locator.click: Element is not attached to the DOM\n    at ProductPage.addToCart\nNote: Element was found but detached before click could be performed",
+        "confidence_breakdown": {
+          "c1_error_type": 0.0,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.0,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.0,
+          "raw_score": 0.1,
+          "guards_applied": [],
+          "final_score": 0.1
+        },
+        "root_cause": "misclassification"
+      }
+    ]
+  },
+  "by_category": {
+    "app_defect": {
+      "score": 1.0,
+      "correct": 12,
+      "total": 12
+    },
+    "locator_drift": {
+      "score": 1.0,
+      "correct": 10,
+      "total": 10
+    },
+    "test_flake": {
+      "score": 1.0,
+      "correct": 5,
+      "total": 5
+    },
+    "unknown": {
+      "score": 0.375,
+      "correct": 3,
+      "total": 8
+    }
+  },
+  "thresholds": {
+    "triage_accuracy": 0.75
+  },
+  "passed": true,
+  "regression_vs_previous": {
+    "status": "stable",
+    "severity": null,
+    "delta": 0.0,
+    "previous_score": 0.8571,
+    "current_score": 0.8571,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "unknown",
+      "finding": "4 scenario(s) expected 'unknown' but triage returned 'test_flake': unknown_generic_timeout_no_dom, unknown_ci_env_timeout, unknown_slow_network_timeout, unknown_element_detached.",
+      "action": "Add clearer 'unknown' vs 'test_flake' disambiguation examples to the triage prompt in qa_agent/prompts/TRIAGE.md."
+    },
+    {
+      "priority": "high",
+      "category": "unknown",
+      "finding": "1 scenario(s) expected 'unknown' but triage returned 'locator_drift': unknown_missing_element_no_context.",
+      "action": "Add clearer 'unknown' vs 'locator_drift' disambiguation examples to the triage prompt in qa_agent/prompts/TRIAGE.md."
+    }
+  ]
+}
