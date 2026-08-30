@@ -105,7 +105,7 @@
     </div>
 
     <div class="runner-card">
-      <!-- Top bar: options + actions -->
+      <!-- Options bar -->
       <div class="runner-top-bar">
         <div class="runner-options">
           <div class="runner-option-group">
@@ -140,24 +140,14 @@
         </div>
       </div>
 
-      <!-- Domain selector tiles -->
-      <div class="runner-tile-bar">
-        <button class="runner-select-all active" id="select-all-tile">ALL</button>
-        <div class="runner-tiles" id="domain-tiles">
-          <!-- Populated by JS as clickable tiles -->
-        </div>
+      <!-- Domain list with per-domain progress -->
+      <div class="runner-domain-list" id="runner-domain-list">
+        <!-- Populated by JS -->
       </div>
 
-      <!-- Progress (hidden until running) -->
-      <div class="runner-progress" id="runner-progress" style="display:none;">
-        <div class="progress-bar-container">
-          <div class="progress-bar" id="progress-bar"></div>
-          <span class="progress-text" id="progress-text">0 passed, 0 failed</span>
-        </div>
-      </div>
-
-      <!-- Log output -->
+      <!-- Log output (expandable) -->
       <div class="runner-log-container" id="runner-log-container" style="display:none;">
+        <div class="runner-log-header" id="runner-log-toggle">CONSOLE OUTPUT ▾</div>
         <div class="runner-log" id="runner-log"></div>
       </div>
     </div>

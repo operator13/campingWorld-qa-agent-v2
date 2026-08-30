@@ -905,102 +905,140 @@ body::before {
   box-shadow: 0 0 20px rgba(255, 0, 60, 0.15);
 }
 
-/* Domain tile bar */
-.runner-tile-bar {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 12px 0;
+/* Domain list */
+.runner-domain-list {
+  margin: 16px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.runner-select-all {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.6rem;
-  padding: 5px 14px;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 255, 200, 0.3);
-  background: transparent;
-  color: var(--neon-cyan);
+.domain-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   cursor: pointer;
   transition: all 0.2s;
-  letter-spacing: 1px;
-  margin-right: 6px;
+  opacity: 0.4;
 }
 
-.runner-select-all.active {
-  background: rgba(0, 255, 200, 0.12);
+.domain-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.domain-row.selected {
+  opacity: 1;
+}
+
+.domain-row.selected .domain-row-select {
+  background: rgba(0, 255, 200, 0.15);
   border-color: var(--neon-cyan);
+  box-shadow: 0 0 6px rgba(0, 255, 200, 0.1);
 }
 
-.runner-tiles { display: flex; gap: 5px; flex-wrap: wrap; }
+.domain-row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+}
 
-.runner-tile {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
-  padding: 5px 12px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.domain-row-select {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
   transition: all 0.2s;
-  position: relative;
 }
 
-.runner-tile:hover {
-  border-color: rgba(0, 255, 200, 0.25);
-  color: var(--text-primary);
-}
-
-.runner-tile.active {
-  background: rgba(0, 255, 200, 0.08);
-  border-color: rgba(0, 255, 200, 0.3);
-  color: var(--neon-cyan);
-}
-
-.tile-star {
+.domain-row-star {
   color: var(--neon-amber);
-  font-size: 0.55rem;
-  margin-right: 2px;
+  font-size: 0.65rem;
+  width: 14px;
+  display: inline-block;
 }
 
-/* Progress bar */
-.runner-progress { margin-top: 16px; }
+.domain-row-star-spacer {
+  width: 14px;
+  display: inline-block;
+}
 
-.progress-bar-container {
-  width: 100%;
-  height: 16px;
-  background: var(--bg-surface);
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  position: relative;
+.domain-row-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  min-width: 120px;
+}
+
+.domain-row-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+}
+
+.domain-row-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.domain-row-progress {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 2px;
   overflow: hidden;
 }
 
-.progress-bar {
+.domain-row-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, rgba(0, 255, 200, 0.2), var(--neon-cyan));
-  box-shadow: 0 0 12px rgba(0, 255, 200, 0.2);
+  background: var(--neon-cyan);
+  box-shadow: 0 0 6px rgba(0, 255, 200, 0.2);
   transition: width 0.3s;
   border-radius: 2px;
 }
 
-.progress-text {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+.domain-row-bar.bar-has-failures {
+  background: var(--neon-amber);
+  box-shadow: 0 0 6px rgba(255, 184, 0, 0.2);
+}
+
+.domain-row-pct {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem;
-  color: var(--text-primary);
-  z-index: 1;
+  color: var(--text-secondary);
+  width: 35px;
+  text-align: right;
 }
+
+.domain-row-result {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  width: 70px;
+  text-align: right;
+}
+
+.result-pass { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 255, 200, 0.3); }
+.result-fail { color: var(--neon-red); text-shadow: 0 0 8px rgba(255, 0, 60, 0.3); }
 
 /* Log output */
 .runner-log-container { margin-top: 12px; }
+
+.runner-log-header {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.55rem;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.2s;
+}
+
+.runner-log-header:hover { color: var(--neon-cyan); }
 
 .runner-log {
   background: rgba(0, 0, 0, 0.4);

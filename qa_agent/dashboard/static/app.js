@@ -338,9 +338,16 @@
             break;
           case 'runner:log':
             appendRunnerLog(data.line);
-            if (data.line.includes('✓') || data.line.includes('passed')) runnerPassCount++;
-            if (data.line.includes('✘') || data.line.includes('failed')) runnerFailCount++;
-            updateProgress();
+            // Parse per-domain progress from log lines like "  ✓  1 [chromium] › cart.spec.ts:12..."
+            const specMatch = data.line.match(/›\s+(\S+\.spec\.ts)/);
+            if (specMatch) {
+              const spec = specMatch[1];
+              const passed = data.line.includes('✓');
+              const failed = data.line.includes('✘');
+              if (passed) { runnerPassCount++; updateDomainProgress(spec, true); }
+              if (failed) { runnerFailCount++; updateDomainProgress(spec, false); }
+              updateProgress();
+            }
             break;
           case 'runner:end':
             setRunnerState('complete');
@@ -423,49 +430,48 @@
   // Test Runner
   // ============================================
   const DOMAINS = [
-    {spec: "cart.spec.ts", label: "Cart", critical: true},
-    {spec: "checkout.spec.ts", label: "Checkout", critical: true},
-    {spec: "sign-in.spec.ts", label: "Sign In", critical: true},
-    {spec: "homepage.spec.ts", label: "Homepage", critical: false},
-    {spec: "nav.spec.ts", label: "Nav", critical: false},
-    {spec: "search.spec.ts", label: "Search", critical: false},
-    {spec: "product.spec.ts", label: "Product", critical: false},
-    {spec: "register.spec.ts", label: "Register", critical: false},
-    {spec: "store-locator.spec.ts", label: "Store Locator", critical: false},
-    {spec: "good-sam.spec.ts", label: "Good Sam", critical: false},
-    {spec: "rv-parts.spec.ts", label: "RV Parts", critical: false},
-    {spec: "rvs-for-sale.spec.ts", label: "RVs For Sale", critical: false},
-    {spec: "rvs-for-sale-detail.spec.ts", label: "RV Detail", critical: false},
-    {spec: "footer.spec.ts", label: "Footer", critical: false},
+    {spec: "cart.spec.ts", label: "Cart", tests: 8, critical: true},
+    {spec: "checkout.spec.ts", label: "Checkout", tests: 4, critical: true},
+    {spec: "sign-in.spec.ts", label: "Sign In", tests: 10, critical: true},
+    {spec: "search.spec.ts", label: "Search", tests: 9, critical: false},
+    {spec: "product.spec.ts", label: "Product", tests: 9, critical: false},
+    {spec: "homepage.spec.ts", label: "Homepage", tests: 13, critical: false},
+    {spec: "nav.spec.ts", label: "Nav", tests: 14, critical: false},
+    {spec: "register.spec.ts", label: "Register", tests: 6, critical: false},
+    {spec: "store-locator.spec.ts", label: "Store Locator", tests: 10, critical: false},
+    {spec: "rvs-for-sale.spec.ts", label: "RVs For Sale", tests: 10, critical: false},
+    {spec: "rvs-for-sale-detail.spec.ts", label: "RV Detail", tests: 10, critical: false},
+    {spec: "good-sam.spec.ts", label: "Good Sam", tests: 6, critical: false},
+    {spec: "rv-parts.spec.ts", label: "RV Parts", tests: 5, critical: false},
+    {spec: "footer.spec.ts", label: "Footer", tests: 13, critical: false},
   ];
 
   function initRunnerControls() {
-    // Populate domain tiles
-    const tilesContainer = document.getElementById('domain-tiles');
-    if (tilesContainer) {
-      tilesContainer.innerHTML = DOMAINS.map(d => `
-        <button class="runner-tile active" data-spec="${d.spec}">
-          ${d.critical ? '<span class="tile-star">&#9733;</span>' : ''}${escapeHtml(d.label)}
-        </button>
+    // Populate domain list rows
+    const list = document.getElementById('runner-domain-list');
+    if (list) {
+      list.innerHTML = DOMAINS.map(d => `
+        <div class="domain-row selected" data-spec="${d.spec}" data-tests="${d.tests}">
+          <div class="domain-row-left">
+            <div class="domain-row-select"></div>
+            <span class="domain-row-name">${d.critical ? '<span class="domain-row-star">★</span>' : '<span class="domain-row-star-spacer"></span>'}${escapeHtml(d.label)}</span>
+            <span class="domain-row-count">${d.tests} tests</span>
+          </div>
+          <div class="domain-row-right">
+            <div class="domain-row-progress">
+              <div class="domain-row-bar" data-domain-bar="${d.spec}"></div>
+            </div>
+            <span class="domain-row-pct" data-domain-pct="${d.spec}"></span>
+            <span class="domain-row-result" data-domain-result="${d.spec}"></span>
+          </div>
+        </div>
       `).join('');
 
-      // Toggle individual tiles
-      tilesContainer.addEventListener('click', (e) => {
-        const tile = e.target.closest('.runner-tile');
-        if (!tile) return;
-        tile.classList.toggle('active');
-        syncSelectAll();
-      });
-    }
-
-    // Select All tile
-    const selectAllTile = document.getElementById('select-all-tile');
-    if (selectAllTile) {
-      selectAllTile.addEventListener('click', () => {
-        const tiles = document.querySelectorAll('.runner-tile');
-        const allActive = [...tiles].every(t => t.classList.contains('active'));
-        tiles.forEach(t => allActive ? t.classList.remove('active') : t.classList.add('active'));
-        selectAllTile.classList.toggle('active', !allActive);
+      // Click row to toggle selection
+      list.addEventListener('click', (e) => {
+        const row = e.target.closest('.domain-row');
+        if (!row) return;
+        row.classList.toggle('selected');
       });
     }
 
@@ -518,8 +524,8 @@
     // Reset UI
     document.getElementById('runner-log').innerHTML = '';
     document.getElementById('runner-log-container').style.display = 'block';
-    document.getElementById('runner-progress').style.display = 'block';
     document.getElementById('btn-run-selected').style.display = 'none';
+    resetDomainProgress();
     document.getElementById('btn-run-all').style.display = 'none';
     document.getElementById('btn-stop').style.display = 'inline-block';
     setRunnerState('running');
@@ -561,14 +567,48 @@
   }
 
   function getSelectedSpecs() {
-    return [...document.querySelectorAll('.runner-tile.active')].map(t => t.dataset.spec);
+    return [...document.querySelectorAll('.domain-row.selected')].map(r => r.dataset.spec);
   }
 
-  function syncSelectAll() {
-    const tiles = document.querySelectorAll('.runner-tile');
-    const allActive = [...tiles].every(t => t.classList.contains('active'));
-    const selectAllTile = document.getElementById('select-all-tile');
-    if (selectAllTile) selectAllTile.classList.toggle('active', allActive);
+  // Track per-domain progress during a run
+  const domainProgress = {};
+
+  function resetDomainProgress() {
+    DOMAINS.forEach(d => { domainProgress[d.spec] = {passed: 0, failed: 0, total: d.tests, done: false}; });
+    document.querySelectorAll('.domain-row-bar').forEach(bar => { bar.style.width = '0%'; bar.className = 'domain-row-bar'; });
+    document.querySelectorAll('.domain-row-pct').forEach(el => el.textContent = '');
+    document.querySelectorAll('.domain-row-result').forEach(el => { el.textContent = ''; el.className = 'domain-row-result'; });
+  }
+
+  function updateDomainProgress(spec, passed) {
+    if (!domainProgress[spec]) return;
+    const dp = domainProgress[spec];
+    if (passed) dp.passed++; else dp.failed++;
+    const completed = dp.passed + dp.failed;
+    const pct = Math.round((completed / dp.total) * 100);
+
+    const bar = document.querySelector(`[data-domain-bar="${spec}"]`);
+    const pctEl = document.querySelector(`[data-domain-pct="${spec}"]`);
+    const resultEl = document.querySelector(`[data-domain-result="${spec}"]`);
+
+    if (bar) {
+      bar.style.width = pct + '%';
+      if (dp.failed > 0) bar.classList.add('bar-has-failures');
+    }
+    if (pctEl) pctEl.textContent = pct + '%';
+
+    if (completed >= dp.total) {
+      dp.done = true;
+      if (resultEl) {
+        if (dp.failed === 0) {
+          resultEl.textContent = '✓';
+          resultEl.className = 'domain-row-result result-pass';
+        } else {
+          resultEl.textContent = dp.failed + ' failed';
+          resultEl.className = 'domain-row-result result-fail';
+        }
+      }
+    }
   }
 
   function updateProgress() {
