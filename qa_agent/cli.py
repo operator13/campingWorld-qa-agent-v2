@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
 from qa_agent.graph import compile_graph
 from qa_agent.intake.base import parse_source
@@ -439,6 +440,34 @@ async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None
         sys.exit(1)
 
 
+def _health_report() -> None:
+    """Compute and display site health from the latest test run."""
+    from qa_agent.health import (
+        compute_health_from_json, load_previous_health, print_health,
+    )
+
+    results_dir = Path(__file__).resolve().parent.parent / "test-results"
+    if not results_dir.exists():
+        print("[ERROR] No test results found. Run tests first: ./run-tests.sh")
+        sys.exit(1)
+
+    # Find the latest run with results.json
+    runs = sorted(results_dir.iterdir(), reverse=True)
+    json_path = None
+    for run_dir in runs:
+        candidate = run_dir / "results.json"
+        if candidate.exists():
+            json_path = candidate
+            break
+
+    if not json_path:
+        print("[ERROR] No results.json found in test-results/. Run tests with JSON reporter: ./run-tests.sh")
+        sys.exit(1)
+
+    report = compute_health_from_json(json_path, json_path.parent)
+    print_health(report)
+
+
 def main() -> None:
     """CLI entrypoint."""
     parser = argparse.ArgumentParser(
@@ -447,7 +476,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["run", "memory", "review", "crawl", "eval"],
+        choices=["run", "memory", "review", "crawl", "eval", "health"],
         help="Command to execute",
     )
     parser.add_argument(
@@ -560,6 +589,8 @@ def main() -> None:
         else:
             print("Usage: qa-agent eval run [--agent triage] [--threshold 0.80] | baseline")
             sys.exit(1)
+    elif args.command == "health":
+        _health_report()
     elif args.command == "review":
         if args.subcommand == "weekly":
             _review_weekly()

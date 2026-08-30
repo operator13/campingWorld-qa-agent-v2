@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run Playwright tests and archive results into a timestamped folder
+# Run Playwright tests, archive results, and compute site health score
 
 TIMESTAMP=$(date +%m_%d_%Y_%H-%M-%S)
 DEST="./test-results/${TIMESTAMP}"
@@ -18,6 +18,11 @@ if [ -d "./test-results-tmp" ]; then
   rm -rf ./test-results-tmp
   echo ""
   echo "Results saved to: ${DEST}"
+
+  # Compute site health score if results.json exists
+  if [ -f "$DEST/results.json" ]; then
+    python3 -m qa_agent.health "$DEST/results.json" --output "$DEST"
+  fi
 fi
 
 exit $EXIT_CODE

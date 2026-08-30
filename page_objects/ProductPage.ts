@@ -2,35 +2,82 @@ import { type Page, type Locator } from '@playwright/test';
 
 export class ProductPage {
   readonly page: Page;
-  readonly addToCartButton: Locator;
+
+  // Product Title
   readonly productTitle: Locator;
-  readonly cartConfirmationModal: Locator;
-  readonly cartConfirmationToast: Locator;
+
+  // Pricing
+  readonly productPrice: Locator;
+
+  // Add to Cart
+  readonly addToCartButton: Locator;
+
+  // Image
+  readonly primaryProductImage: Locator;
+
+  // Reviews section
+  readonly reviewsSection: Locator;
+  readonly totalReviewCount: Locator;
+  readonly writeReviewButton: Locator;
+
+  // Availability / shipping
+  readonly availabilityStatus: Locator;
+  readonly shippingInfo: Locator;
+
+  // SKU
+  readonly productSku: Locator;
+
+  // Main content
+  readonly mainContent: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.addToCartButton = page.getByRole('button', { name: /add to cart/i });
-    this.productTitle = page.getByRole('heading', { level: 1 });
-    // Cart confirmation feedback — modal or toast
-    this.cartConfirmationModal = page.getByRole('dialog');
-    this.cartConfirmationToast = page.getByRole('alert');
+
+    // H1 product title — first h1 in main content (there's also a Q&A h1)
+    this.productTitle = page.locator('h1.product-name').first();
+
+    // Price text in main content
+    this.productPrice = page.getByRole('main').getByText(/\$[\d,]+\.\d{2}/).first();
+
+    // Add to cart button — the main one in the qty-cart-container (not related products)
+    this.addToCartButton = page.locator('#qty-cart-container').getByRole('button', { name: /add to cart/i });
+
+    // Primary product image
+    this.primaryProductImage = page.getByRole('main').getByRole('img').first();
+
+    // Reviews section — look for a region or section containing "reviews"
+    this.reviewsSection = page.getByRole('region', { name: /reviews/i });
+    this.totalReviewCount = page.getByText(/\d+\s+review/i).first();
+    this.writeReviewButton = page.getByRole('button', { name: /write a review/i });
+
+    // Availability and shipping
+    this.availabilityStatus = page.getByText(/in stock|out of stock|available/i).first();
+    this.shippingInfo = page.getByText(/free shipping|ships/i).first();
+
+    // SKU — may be labeled as "SKU", "Item #", or "Item Number"
+    this.productSku = page.getByText(/sku|item\s*#|item\s*number/i).first();
+
+    // Main content
+    this.mainContent = page.getByRole('main');
+  }
+
+  async navigate(productPath: string) {
+    await this.page.goto(productPath);
   }
 
   async addToCart() {
-    await this.addToCartButton.waitFor({ state: 'visible', timeout: 10000 });
     await this.addToCartButton.click();
   }
 
-  async getProductTitle(): Promise<string | null> {
-    await this.productTitle.waitFor({ state: 'visible', timeout: 10000 });
-    return await this.productTitle.textContent();
+  async getProductTitleText(): Promise<string> {
+    return (await this.productTitle.textContent()) ?? '';
   }
 
-  async waitForCartConfirmation() {
-    // Wait for either a modal dialog or an alert/toast to appear
-    await Promise.race([
-      this.cartConfirmationModal.waitFor({ state: 'visible', timeout: 10000 }),
-      this.cartConfirmationToast.waitFor({ state: 'visible', timeout: 10000 }),
-    ]);
+  async getPriceText(): Promise<string> {
+    return (await this.productPrice.textContent()) ?? '';
+  }
+
+  async isAddToCartEnabled(): Promise<boolean> {
+    return this.addToCartButton.isEnabled();
   }
 }

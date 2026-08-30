@@ -1,71 +1,52 @@
 import { type Page, type Locator } from '@playwright/test';
 
-export class SearchResultsPage {
+export class SearchPage {
   readonly page: Page;
-  readonly productCards: Locator;
-  readonly firstProductCard: Locator;
-  readonly firstProductLink: Locator;
+
+  // Results
+  readonly productLinks: Locator;
+  readonly addToCartButtons: Locator;
+  readonly productPrices: Locator;
+
+  // Search box in header (can re-search)
+  readonly searchInput: Locator;
+  readonly searchButton: Locator;
+
+  // Main content area
+  readonly mainContent: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    // Prefer known testid 'product-card' from memory
-    this.productCards = page.getByTestId('product-card');
-    this.firstProductCard = page.getByTestId('product-card').first();
-    this.firstProductLink = page.getByTestId('product-card').first().getByRole('link');
+
+    // Product result links (product titles link to product pages)
+    this.productLinks = page.getByRole('main').getByRole('link');
+
+    // Add To Cart buttons on search result cards
+    this.addToCartButtons = page.getByRole('button', { name: /add to cart/i });
+
+    // Price text in results
+    this.productPrices = page.getByText(/\$[\d,]+(\.\d{2})?/);
+
+    // Header search
+    this.searchInput = page.getByRole('searchbox', { name: /submit/i });
+    this.searchButton = page.getByRole('button', { name: /submit/i }).first();
+
+    // Main content
+    this.mainContent = page.getByRole('main');
   }
 
-  async waitForResults() {
-    await this.page.waitForLoadState('domcontentloaded');
+  async navigate(query = 'tent') {
+    await this.page.goto(`/search?q=${encodeURIComponent(query)}`);
+    // Wait for Algolia search results to load
+    await this.addToCartButtons.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
   }
 
-  async getProductCount(): Promise<number> {
-    return this.productCards.count();
+  async search(query: string) {
+    await this.searchInput.fill(query);
+    await this.searchButton.click();
   }
 
-  async getFirstProductName(): Promise<string> {
-    // Try heading inside card, then any link text
-    const heading = this.firstProductCard.getByRole('heading');
-    if (await heading.isVisible().catch(() => false)) {
-      return heading.innerText();
-    }
-    return this.firstProductCard.getByRole('link').first().innerText();
-  }
-
-  async getFirstProductPrice(): Promise<string> {
-    return this.firstProductCard.getByText(/\$[\d,]+\.\d{2}/).first().innerText();
-  }
-
-  async clickFirstProduct() {
-    const link = this.firstProductCard.getByRole('link').first();
-    await link.click();
-  }
-
-  async getNoResultsMessage(): Promise<Locator> {
-    // Common no-results patterns
-    const byText = this.page.getByText(/no results|0 results|no products found|did not match/i);
-    return byText;
-  }
-
-  async hasErrorMessage(): Promise<boolean> {
-    const error = this.page.getByText(/error|something went wrong|500/i);
-    return error.isVisible().catch(() => false);
-  }
-
-  async getAllProductTitles(): Promise<string[]> {
-    const count = await this.productCards.count();
-    const titles: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const card = this.productCards.nth(i);
-      const heading = card.getByRole('heading');
-      if (await heading.isVisible().catch(() => false)) {
-        titles.push(await heading.innerText());
-      } else {
-        const link = card.getByRole('link').first();
-        if (await link.isVisible().catch(() => false)) {
-          titles.push(await link.innerText());
-        }
-      }
-    }
-    return titles;
+  async getAddToCartCount(): Promise<number> {
+    return await this.addToCartButtons.count();
   }
 }

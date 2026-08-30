@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests_generated',
-  outputDir: './test-results-tmp',
+  outputDir: './test-results-tmp/artifacts',
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
@@ -10,6 +10,7 @@ export default defineConfig({
   workers: 4,
   reporter: [
     ['html', { open: 'never', outputFolder: './test-results-tmp/html-report' }],
+    ['json', { outputFile: './test-results-tmp/results.json' }],
     ['list'],
   ],
   use: {
