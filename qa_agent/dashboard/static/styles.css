@@ -914,7 +914,7 @@ body::before {
   .runner-top-bar {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 8px 12px;
     align-items: center;
   }
 
@@ -923,7 +923,7 @@ body::before {
   }
 
   .runner-option-label {
-    font-size: 0.55rem;
+    font-size: 0.5rem;
   }
 
   .runner-actions {
@@ -931,9 +931,9 @@ body::before {
   }
 
   .runner-btn {
-    text-align: center;
-    font-size: 0.5rem;
-    padding: 7px 10px;
+    font-size: 0.45rem;
+    padding: 5px 8px;
+    letter-spacing: 0;
   }
 
   .domain-row {
