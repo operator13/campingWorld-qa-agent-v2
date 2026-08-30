@@ -600,6 +600,8 @@
     runnerPassCount = 0;
     runnerFailCount = 0;
     setRunnerState('idle');
+    // Re-select all domains
+    document.querySelectorAll('.domain-row').forEach(r => r.classList.add('selected'));
   }
 
   async function startTestRun(runAll) {
