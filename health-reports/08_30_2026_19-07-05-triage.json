@@ -1,0 +1,158 @@
+{
+  "triaged": 21,
+  "healed": 0,
+  "app_defects": 3,
+  "unknown": 18,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "Privacy Policy link is present in the footer",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "Terms of Use link is present in the footer",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "Accessibility link is present in the footer",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "footer contains multiple navigation links",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "Facebook social link has correct href",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "Instagram social link has correct href",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "YouTube social link has correct href",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "Privacy Policy link has correct href",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "Terms of Use link has correct href",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "privacy policy page has a heading",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "privacy policy page has main content body",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "privacy policy page shows main content",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "Good Sam page loads at /good-sam URL",
+      "failure_class": "app_defect",
+      "confidence": 0.2,
+      "healed": false
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "main content area is visible",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "page has a heading",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "heading contains Good Sam",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "breadcrumb navigation is visible",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "footer is visible",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "homepage.spec.ts",
+      "test_title": "hero banner is visible",
+      "failure_class": "app_defect",
+      "confidence": 0.2,
+      "healed": false
+    },
+    {
+      "spec_file": "homepage.spec.ts",
+      "test_title": "logo is visible in navigation",
+      "failure_class": "app_defect",
+      "confidence": 0.2,
+      "healed": false
+    },
+    {
+      "spec_file": "homepage.spec.ts",
+      "test_title": "main navigation is visible",
+      "failure_class": "unknown",
+      "confidence": 0.25,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-30T19:07:05.170458+00:00"
+}
