@@ -338,14 +338,13 @@
             break;
           case 'runner:log':
             appendRunnerLog(data.line);
-            // Parse per-domain progress from log lines like "  ✓  1 [chromium] › cart.spec.ts:12..."
-            const specMatch = data.line.match(/›\s+(\S+\.spec\.ts)/);
-            if (specMatch) {
+            // Parse per-domain progress from log lines like "  ✓  1 [chromium] › tests_generated/cart.spec.ts:12..."
+            const specMatch = data.line.match(/([a-z0-9-]+\.spec\.ts)/);
+            if (specMatch && (data.line.includes('✓') || data.line.includes('✘') || data.line.includes('·'))) {
               const spec = specMatch[1];
               const passed = data.line.includes('✓');
-              const failed = data.line.includes('✘');
               if (passed) { runnerPassCount++; updateDomainProgress(spec, true); }
-              if (failed) { runnerFailCount++; updateDomainProgress(spec, false); }
+              else { runnerFailCount++; updateDomainProgress(spec, false); }
               updateProgress();
             }
             break;
