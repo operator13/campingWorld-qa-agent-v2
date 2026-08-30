@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-08-30T17:14:33.383035+00:00",
+  "run_id": "08_30_2026_17-14-12",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 10,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 10,
+  "trend": {
+    "delta": 0.0,
+    "status": "stable",
+    "previous_score": 1.0
+  },
+  "domains": [
+    {
+      "name": "Rvs For Sale",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10,
+      "duration_ms": 50727,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
