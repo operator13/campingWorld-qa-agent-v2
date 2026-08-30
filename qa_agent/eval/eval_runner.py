@@ -46,6 +46,25 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_THRESHOLD = 0.75
 
 
+def _capture_eval_token_usage() -> dict[str, Any]:
+    """Capture accumulated token/cost from AuditStore during eval run."""
+    from qa_agent.audit import AuditStore
+    return {
+        "input_tokens": AuditStore._run_total_input_tokens,
+        "output_tokens": AuditStore._run_total_output_tokens,
+        "total_tokens": AuditStore._run_total_input_tokens + AuditStore._run_total_output_tokens,
+        "cost_usd": round(AuditStore._run_total_cost, 6),
+    }
+
+
+def _reset_eval_token_tracking() -> None:
+    """Reset AuditStore token accumulators before an eval run."""
+    from qa_agent.audit import AuditStore
+    AuditStore._run_total_input_tokens = 0
+    AuditStore._run_total_output_tokens = 0
+    AuditStore._run_total_cost = 0.0
+
+
 def _git_commit_and_push_reports(agent: str, scorecard: dict) -> None:
     """Auto-commit and push eval reports after each eval run."""
     try:
@@ -190,6 +209,8 @@ async def run_triage_eval(
     Returns:
         The full scorecard dict.
     """
+    _reset_eval_token_tracking()
+
     # Load scenarios
     skipped = 0
     if scenarios is None:
@@ -282,6 +303,9 @@ async def run_triage_eval(
         regression_report=regression_report,
     )
 
+    # Capture token usage from this eval run
+    scorecard["token_usage"] = _capture_eval_token_usage()
+
     # Generate recommendations
     recommendations = generate_recommendations(scorecard)
     scorecard["recommendations"] = recommendations
@@ -361,6 +385,8 @@ async def run_planner_eval(
     Returns:
         The full scorecard dict.
     """
+    _reset_eval_token_tracking()
+
     # Load scenarios
     skipped = 0
     if scenarios is None:
@@ -506,6 +532,9 @@ async def run_planner_eval(
     )
 
     # Generate recommendations — existing engine reads "triage_accuracy", so alias it
+    # Capture token usage from this eval run
+    scorecard["token_usage"] = _capture_eval_token_usage()
+
     scorecard_for_recs = dict(scorecard)
     scorecard_for_recs["triage_accuracy"] = scorecard.get("planner_accuracy", {})
     scorecard_for_recs["thresholds"] = {"triage_accuracy": effective_threshold}
@@ -618,6 +647,8 @@ async def run_healer_eval(
     Returns:
         The full scorecard dict.
     """
+    _reset_eval_token_tracking()
+
     skipped = 0
     if scenarios is None:
         scenarios, skipped = load_healer_scenarios()
@@ -829,6 +860,7 @@ async def run_healer_eval(
     scorecard["fix_rate"] = eval_result["fix_rate"]
     scorecard["timing_fix_accuracy"] = timing_fix_accuracy
     scorecard["scenarios"] = eval_result["scenarios"]
+    scorecard["token_usage"] = _capture_eval_token_usage()
 
     # Generate recommendations — alias healer_accuracy to triage_accuracy for engine compatibility
     scorecard_for_recs = dict(scorecard)
@@ -939,6 +971,8 @@ async def run_generator_eval(
     Returns:
         The full scorecard dict.
     """
+    _reset_eval_token_tracking()
+
     skipped = 0
     if scenarios is None:
         scenarios, skipped = load_generator_scenarios()
@@ -1029,6 +1063,9 @@ async def run_generator_eval(
         "passed": passed,
         "scenario_results": scenario_results,
     }
+
+    # Capture token usage from this eval run
+    scorecard["token_usage"] = _capture_eval_token_usage()
 
     # Generate recommendations
     recommendations = _generate_generator_recommendations(scorecard)

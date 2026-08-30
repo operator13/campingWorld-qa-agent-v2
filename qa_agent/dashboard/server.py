@@ -294,7 +294,13 @@ async def eval_summary() -> JSONResponse:
 
         score = score_obj.get("score") if isinstance(score_obj, dict) else None
         passed = data.get("passed")
-        summary[agent] = {"score": score, "passed": passed, "tokens": None, "cost": None}
+
+        # Read token/cost from eval report if available
+        token_usage = data.get("token_usage", {})
+        tokens = token_usage.get("total_tokens") if token_usage else None
+        cost = token_usage.get("cost_usd") if token_usage else None
+
+        summary[agent] = {"score": score, "passed": passed, "tokens": tokens, "cost": cost}
 
     # Enrich with per-agent token/cost from latest audit run with real data
     audit_files = _sorted_json_files(AUDIT_DIR)
