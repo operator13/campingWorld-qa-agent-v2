@@ -1,5 +1,10 @@
+import asyncio
 import json
 import os
+import shutil
+import subprocess
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +39,14 @@ if STATIC_DIR.exists():
 
 # Browser clients connected to /ws/dashboard
 dashboard_connections: list[WebSocket] = []
+
+# Test runner state
+_test_process: asyncio.subprocess.Process | None = None
+_test_run_status: dict = {"state": "idle", "run_id": None, "started_at": None}
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+TESTS_DIR = PROJECT_ROOT / "tests_generated"
+TEST_RESULTS_TMP = PROJECT_ROOT / "test-results-tmp"
+TEST_RESULTS_DIR = PROJECT_ROOT / "test-results"
 
 
 async def broadcast_to_dashboard(message: str) -> None:
@@ -227,6 +240,136 @@ async def audit_summary() -> JSONResponse:
             "runs": runs_list,
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Test runner endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/tests/run")
+async def run_tests(body: dict = {}):
+    global _test_process, _test_run_status
+    if _test_process and _test_process.returncode is None:
+        return JSONResponse({"error": "Tests already running"}, status_code=409)
+
+    specs = body.get("specs", [])  # list of spec filenames, empty = all
+    workers = body.get("workers", 3)
+    retries = body.get("retries", 0)
+    heal = body.get("heal", False)
+
+    run_id = datetime.now(tz=timezone.utc).strftime("%m_%d_%Y_%H-%M-%S")
+    _test_run_status = {"state": "running", "run_id": run_id, "started_at": datetime.now(tz=timezone.utc).isoformat()}
+
+    asyncio.create_task(_execute_test_run(specs, workers, retries, heal, run_id))
+    return JSONResponse({"status": "started", "run_id": run_id})
+
+
+@app.get("/api/tests/status")
+async def test_status():
+    return JSONResponse(content=_test_run_status)
+
+
+@app.post("/api/tests/stop")
+async def stop_tests():
+    global _test_process, _test_run_status
+    if _test_process and _test_process.returncode is None:
+        _test_process.terminate()
+        _test_run_status["state"] = "stopped"
+        return JSONResponse({"status": "stopped"})
+    return JSONResponse({"status": "not_running"})
+
+
+async def _execute_test_run(specs: list, workers: int, retries: int, heal: bool, run_id: str):
+    global _test_process, _test_run_status
+
+    # Clean temp dir
+    if TEST_RESULTS_TMP.exists():
+        shutil.rmtree(TEST_RESULTS_TMP)
+
+    # Build command
+    cmd = ["npx", "playwright", "test", f"--workers={workers}", f"--retries={retries}"]
+    if specs:
+        cmd.extend(specs)
+
+    await broadcast_to_dashboard(json.dumps({"event": "runner:start", "run_id": run_id, "specs": specs or ["all"]}))
+
+    try:
+        _test_process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd=str(PROJECT_ROOT),
+        )
+
+        # Stream output line by line
+        while True:
+            line = await _test_process.stdout.readline()
+            if not line:
+                break
+            decoded = line.decode("utf-8", errors="replace").rstrip()
+            if decoded:
+                await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": decoded}))
+
+        exit_code = await _test_process.wait()
+
+        # Move results to timestamped folder
+        dest = TEST_RESULTS_DIR / run_id
+        if TEST_RESULTS_TMP.exists():
+            dest.mkdir(parents=True, exist_ok=True)
+            for item in TEST_RESULTS_TMP.iterdir():
+                target = dest / item.name
+                if item.is_dir():
+                    shutil.copytree(item, target, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(item, target)
+            shutil.rmtree(TEST_RESULTS_TMP)
+
+        # Compute health score
+        results_json = dest / "results.json"
+        if results_json.exists():
+            try:
+                from qa_agent.health import compute_health_from_json
+                compute_health_from_json(results_json, dest)
+
+                # Copy to health-reports
+                health_reports = PROJECT_ROOT / "health-reports"
+                health_reports.mkdir(exist_ok=True)
+                health_json = dest / "health.json"
+                health_md = dest / "health.md"
+                if health_json.exists():
+                    shutil.copy2(health_json, health_reports / f"{run_id}.json")
+                if health_md.exists():
+                    shutil.copy2(health_md, health_reports / f"{run_id}.md")
+
+                # Git commit
+                subprocess.run(["git", "add", "health-reports/"], cwd=str(PROJECT_ROOT), capture_output=True, timeout=10)
+                subprocess.run(["git", "commit", "-m", f"Health report: {run_id} (via dashboard)"], cwd=str(PROJECT_ROOT), capture_output=True, timeout=10)
+                subprocess.run(["git", "push"], cwd=str(PROJECT_ROOT), capture_output=True, timeout=30)
+            except Exception as e:
+                await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": f"[Health] Error: {e}"}))
+
+        _test_run_status["state"] = "complete"
+        _test_run_status["exit_code"] = exit_code
+        await broadcast_to_dashboard(json.dumps({"event": "runner:end", "exit_code": exit_code, "run_id": run_id}))
+
+        # Self-healing
+        if heal and exit_code != 0 and results_json.exists():
+            _test_run_status["state"] = "healing"
+            await broadcast_to_dashboard(json.dumps({"event": "runner:healing", "message": "Self-healing in progress..."}))
+            try:
+                from qa_agent.triage_runner import run_self_healing
+                summary = await run_self_healing(results_json)
+                await broadcast_to_dashboard(json.dumps({"event": "runner:healed", "healed": summary.get("healed", 0), "skipped": summary.get("unknown", 0) + summary.get("app_defects", 0)}))
+            except Exception as e:
+                await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": f"[Heal] Error: {e}"}))
+
+        _test_run_status["state"] = "idle"
+
+    except Exception as e:
+        _test_run_status["state"] = "error"
+        _test_run_status["error"] = str(e)
+        await broadcast_to_dashboard(json.dumps({"event": "runner:end", "exit_code": -1, "error": str(e)}))
 
 
 # ---------------------------------------------------------------------------

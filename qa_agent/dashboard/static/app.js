@@ -8,11 +8,13 @@
   let wsConnected = false;
   let pollInterval = null;
   let costChart = null;
+  let runnerTestCount = 0, runnerPassCount = 0, runnerFailCount = 0;
 
   document.addEventListener('DOMContentLoaded', () => {
     startTimestampClock();
     refreshAllData();
     connectWebSocket();
+    initRunnerControls();
   });
 
   function startTimestampClock() {
@@ -321,9 +323,42 @@
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.event === 'test:pass') updateDomainCard(data.suite, true);
-        else if (data.event === 'test:fail') flashDomainRed(data.suite);
-        else if (data.event === 'run:end') refreshAllData();
+        switch (data.event) {
+          case 'test:pass':
+            updateDomainCard(data.suite, true);
+            break;
+          case 'test:fail':
+            flashDomainRed(data.suite);
+            break;
+          case 'run:end':
+            refreshAllData();
+            break;
+          case 'runner:start':
+            setRunnerState('running');
+            break;
+          case 'runner:log':
+            appendRunnerLog(data.line);
+            if (data.line.includes('✓') || data.line.includes('passed')) runnerPassCount++;
+            if (data.line.includes('✘') || data.line.includes('failed')) runnerFailCount++;
+            updateProgress();
+            break;
+          case 'runner:end':
+            setRunnerState('complete');
+            document.getElementById('btn-run-selected').style.display = 'inline-block';
+            document.getElementById('btn-run-all').style.display = 'inline-block';
+            document.getElementById('btn-stop').style.display = 'none';
+            setTimeout(() => { refreshAllData(); setRunnerState('idle'); }, 3000);
+            break;
+          case 'runner:healing':
+            setRunnerState('healing');
+            appendRunnerLog('[HEAL] ' + data.message);
+            break;
+          case 'runner:healed':
+            appendRunnerLog('[HEAL] Done: ' + data.healed + ' healed, ' + data.skipped + ' skipped');
+            break;
+          default:
+            break;
+        }
       } catch (err) { console.warn('WS parse error:', err); }
     };
     ws.onclose = () => { wsConnected = false; startPolling(); setTimeout(connectWebSocket, 3000); };
@@ -382,5 +417,150 @@
     if (n >= 1000000) return (n / 1000000).toFixed(2) + 'M';
     if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
     return String(n);
+  }
+
+  // ============================================
+  // Test Runner
+  // ============================================
+  const DOMAINS = [
+    {spec: "cart.spec.ts", label: "Cart", critical: true},
+    {spec: "checkout.spec.ts", label: "Checkout", critical: true},
+    {spec: "sign-in.spec.ts", label: "Sign In", critical: true},
+    {spec: "homepage.spec.ts", label: "Homepage", critical: false},
+    {spec: "nav.spec.ts", label: "Nav", critical: false},
+    {spec: "search.spec.ts", label: "Search", critical: false},
+    {spec: "product.spec.ts", label: "Product", critical: false},
+    {spec: "register.spec.ts", label: "Register", critical: false},
+    {spec: "store-locator.spec.ts", label: "Store Locator", critical: false},
+    {spec: "good-sam.spec.ts", label: "Good Sam", critical: false},
+    {spec: "rv-parts.spec.ts", label: "RV Parts", critical: false},
+    {spec: "rvs-for-sale.spec.ts", label: "RVs For Sale", critical: false},
+    {spec: "rvs-for-sale-detail.spec.ts", label: "RV Detail", critical: false},
+    {spec: "footer.spec.ts", label: "Footer", critical: false},
+  ];
+
+  function initRunnerControls() {
+    // Populate domain checkboxes
+    const grid = document.getElementById('domain-checkboxes');
+    if (grid) {
+      grid.innerHTML = DOMAINS.map(d => `
+        <label class="runner-checkbox">
+          <input type="checkbox" value="${d.spec}" checked>
+          ${d.critical ? '<span style="color:var(--neon-red)">&#9733;</span> ' : ''}${escapeHtml(d.label)}
+        </label>
+      `).join('');
+    }
+
+    // Select All toggle
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        document.querySelectorAll('#domain-checkboxes input[type="checkbox"]').forEach(cb => {
+          cb.checked = selectAll.checked;
+        });
+      });
+
+      // Keep Select All in sync when individual boxes change
+      document.getElementById('domain-checkboxes').addEventListener('change', () => {
+        const all = document.querySelectorAll('#domain-checkboxes input[type="checkbox"]');
+        const checked = document.querySelectorAll('#domain-checkboxes input[type="checkbox"]:checked');
+        selectAll.checked = all.length === checked.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+      });
+    }
+
+    // Pill group click handlers
+    document.querySelectorAll('.pill-group').forEach(group => {
+      group.addEventListener('click', (e) => {
+        if (e.target.classList.contains('pill')) {
+          group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+          e.target.classList.add('active');
+        }
+      });
+    });
+
+    // Run Selected button
+    const btnRunSelected = document.getElementById('btn-run-selected');
+    if (btnRunSelected) {
+      btnRunSelected.addEventListener('click', () => startTestRun(false));
+    }
+
+    // Run All button
+    const btnRunAll = document.getElementById('btn-run-all');
+    if (btnRunAll) {
+      btnRunAll.addEventListener('click', () => startTestRun(true));
+    }
+
+    // Stop button
+    const btnStop = document.getElementById('btn-stop');
+    if (btnStop) {
+      btnStop.addEventListener('click', () => stopTestRun());
+    }
+  }
+
+  async function startTestRun(runAll) {
+    const specs = runAll ? [] : getSelectedSpecs();
+    if (!runAll && specs.length === 0) { alert('Select at least one domain'); return; }
+
+    const workers = document.querySelector('#worker-pills .pill.active')?.dataset.value || '3';
+    const retries = document.querySelector('#retry-pills .pill.active')?.dataset.value || '0';
+    const heal = document.getElementById('heal-toggle')?.checked || false;
+
+    // Reset UI
+    document.getElementById('runner-log').innerHTML = '';
+    document.getElementById('runner-log-container').style.display = 'block';
+    document.getElementById('runner-progress').style.display = 'block';
+    document.getElementById('btn-run-selected').style.display = 'none';
+    document.getElementById('btn-run-all').style.display = 'none';
+    document.getElementById('btn-stop').style.display = 'inline-block';
+    setRunnerState('running');
+    runnerTestCount = 0;
+    runnerPassCount = 0;
+    runnerFailCount = 0;
+
+    await fetch('/api/tests/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({specs, workers: parseInt(workers), retries: parseInt(retries), heal})
+    });
+  }
+
+  async function stopTestRun() {
+    await fetch('/api/tests/stop', {method: 'POST'});
+    setRunnerState('idle');
+  }
+
+  function appendRunnerLog(line) {
+    const log = document.getElementById('runner-log');
+    if (!log) return;
+    const el = document.createElement('div');
+    el.className = 'log-line';
+    if (line.includes('✓')) el.classList.add('log-pass');
+    else if (line.includes('✘') || line.includes('FAIL')) el.classList.add('log-fail');
+    else if (line.startsWith('[HEAL]')) el.classList.add('log-heal');
+    el.textContent = line;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setRunnerState(state) {
+    const dot = document.getElementById('runner-dot');
+    const text = document.getElementById('runner-status');
+    if (!dot || !text) return;
+    text.textContent = state.toUpperCase();
+    dot.className = 'runner-status-dot runner-state-' + state;
+  }
+
+  function getSelectedSpecs() {
+    return [...document.querySelectorAll('#domain-checkboxes input:checked')].map(cb => cb.value);
+  }
+
+  function updateProgress() {
+    const total = runnerPassCount + runnerFailCount;
+    const pct = total > 0 ? ((runnerPassCount / total) * 100).toFixed(0) : 0;
+    const bar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    if (bar) bar.style.width = pct + '%';
+    if (progressText) progressText.textContent = `${runnerPassCount} passed, ${runnerFailCount} failed`;
   }
 })();

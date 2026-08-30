@@ -767,3 +767,250 @@ body::before {
     gap: 12px;
   }
 }
+
+/* ============================================
+   TEST RUNNER
+   ============================================ */
+.section-runner {
+  margin-top: 24px;
+}
+
+.runner-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.runner-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.runner-state-idle { background: var(--text-secondary); }
+.runner-state-running { background: var(--neon-cyan); animation: pulse-green 1.5s ease-in-out infinite; }
+.runner-state-healing { background: var(--neon-purple); animation: pulse-green 1.5s ease-in-out infinite; }
+.runner-state-complete { background: var(--neon-cyan); }
+.runner-state-error { background: var(--neon-red); }
+
+.runner-status-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* Domain checkboxes */
+.runner-domain-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.runner-checkbox {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.runner-checkbox input[type="checkbox"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border-glow);
+  border-radius: 3px;
+  background: var(--bg-surface);
+  cursor: pointer;
+  position: relative;
+}
+
+.runner-checkbox input[type="checkbox"]:checked {
+  background: rgba(0, 255, 200, 0.15);
+  border-color: var(--neon-cyan);
+}
+
+.runner-checkbox input[type="checkbox"]:checked::after {
+  content: '✓';
+  color: var(--neon-cyan);
+  font-size: 12px;
+  position: absolute;
+  top: -1px;
+  left: 2px;
+}
+
+.runner-checkbox.select-all {
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--neon-cyan);
+}
+
+/* Options row */
+.runner-options {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.runner-option-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.runner-option-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.pill-group {
+  display: flex;
+  gap: 4px;
+}
+
+.pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  padding: 4px 12px;
+  border: 1px solid var(--border-glow);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pill:hover {
+  border-color: var(--neon-cyan);
+  color: var(--text-primary);
+}
+
+.pill.active {
+  background: rgba(0, 255, 200, 0.15);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 255, 200, 0.1);
+}
+
+/* Run/Stop buttons */
+.runner-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.runner-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  padding: 10px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+}
+
+.runner-btn-run {
+  background: rgba(0, 255, 200, 0.1);
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+.runner-btn-run:hover {
+  background: rgba(0, 255, 200, 0.25);
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.2);
+}
+
+.runner-btn-stop {
+  background: rgba(255, 0, 60, 0.1);
+  border: 1px solid var(--neon-red);
+  color: var(--neon-red);
+}
+
+.runner-btn-stop:hover {
+  background: rgba(255, 0, 60, 0.25);
+  box-shadow: 0 0 20px rgba(255, 0, 60, 0.2);
+}
+
+/* Progress bar */
+.runner-progress {
+  margin-top: 20px;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 20px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  border: 1px solid var(--border-glow);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(0, 255, 200, 0.3), var(--neon-cyan));
+  box-shadow: 0 0 15px rgba(0, 255, 200, 0.3);
+  transition: width 0.3s;
+  border-radius: 3px;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-primary);
+  z-index: 1;
+}
+
+/* Log output */
+.runner-log-container {
+  margin-top: 16px;
+}
+
+.runner-log {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-glow);
+  border-radius: 6px;
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: scroll;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.runner-log::-webkit-scrollbar { width: 6px; }
+.runner-log::-webkit-scrollbar-track { background: var(--bg-surface); }
+.runner-log::-webkit-scrollbar-thumb { background: rgba(0, 255, 200, 0.3); border-radius: 3px; }
+
+.log-line { white-space: pre-wrap; word-break: break-all; }
+.log-pass { color: var(--neon-cyan); }
+.log-fail { color: var(--neon-red); }
+.log-heal { color: var(--neon-purple); }
+
+@media (max-width: 768px) {
+  .runner-domain-grid { grid-template-columns: repeat(2, 1fr); }
+  .runner-options { flex-direction: column; align-items: flex-start; }
+  .runner-buttons { flex-direction: column; }
+}

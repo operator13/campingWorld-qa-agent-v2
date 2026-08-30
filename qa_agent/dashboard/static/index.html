@@ -94,6 +94,73 @@
     </div>
   </section>
 
+  <!-- Section 4: Test Runner -->
+  <section class="section section-runner">
+    <h2 class="section-title">TEST RUNNER <span class="runner-status-dot" id="runner-dot"></span> <span class="runner-status-text" id="runner-status">IDLE</span></h2>
+
+    <div class="runner-card">
+      <div class="runner-controls">
+        <!-- Domain checkboxes -->
+        <div class="runner-domains">
+          <label class="runner-checkbox select-all">
+            <input type="checkbox" id="select-all" checked> Select All
+          </label>
+          <div class="runner-domain-grid" id="domain-checkboxes">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Options row -->
+        <div class="runner-options">
+          <div class="runner-option-group">
+            <span class="runner-option-label">Workers</span>
+            <div class="pill-group" id="worker-pills">
+              <button class="pill" data-value="1">1</button>
+              <button class="pill" data-value="2">2</button>
+              <button class="pill active" data-value="3">3</button>
+              <button class="pill" data-value="4">4</button>
+            </div>
+          </div>
+          <div class="runner-option-group">
+            <span class="runner-option-label">Retries</span>
+            <div class="pill-group" id="retry-pills">
+              <button class="pill active" data-value="0">0</button>
+              <button class="pill" data-value="1">1</button>
+            </div>
+          </div>
+          <div class="runner-option-group">
+            <label class="runner-checkbox">
+              <input type="checkbox" id="heal-toggle"> Self-Heal
+            </label>
+          </div>
+        </div>
+
+        <!-- Run buttons -->
+        <div class="runner-buttons">
+          <button class="runner-btn runner-btn-run" id="btn-run-selected">&#9654; RUN SELECTED</button>
+          <button class="runner-btn runner-btn-run" id="btn-run-all">&#9654; RUN ALL</button>
+          <button class="runner-btn runner-btn-stop" id="btn-stop" style="display:none;">&#9632; STOP</button>
+        </div>
+      </div>
+
+      <!-- Progress (hidden until running) -->
+      <div class="runner-progress" id="runner-progress" style="display:none;">
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar"></div>
+          <span class="progress-text" id="progress-text">0/0 (0%)</span>
+        </div>
+        <div class="runner-domain-status" id="runner-domain-status">
+          <!-- Per-domain mini status populated by JS -->
+        </div>
+      </div>
+
+      <!-- Log output -->
+      <div class="runner-log-container" id="runner-log-container" style="display:none;">
+        <div class="runner-log" id="runner-log"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- Scan line overlay -->
   <div class="scan-line"></div>
 
