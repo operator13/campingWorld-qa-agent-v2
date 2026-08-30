@@ -103,16 +103,79 @@ async def health_latest() -> JSONResponse:
     files = _sorted_json_files(HEALTH_DIR)
     if not files:
         return JSONResponse(content={})
-    # Prefer the latest full run (all domains) over a partial run
-    for f in reversed(files):
+
+    # Find the latest full run as the baseline
+    base: dict[str, Any] | None = None
+    base_idx = -1
+    for i, f in enumerate(reversed(files)):
         data = _read_json(f)
         if data and isinstance(data, dict):
             domains = data.get("domains", [])
-            if len(domains) >= 10:  # full run has 14 domains, partial has fewer
-                return JSONResponse(content=data)
-    # Fallback to most recent if no full run found
-    data = _read_json(files[-1])
-    return JSONResponse(content=data or {})
+            if len(domains) >= 10:
+                base = data
+                base_idx = len(files) - 1 - i
+                break
+
+    if base is None:
+        # No full run yet — return the most recent report as-is
+        data = _read_json(files[-1])
+        return JSONResponse(content=data or {})
+
+    # Merge any partial runs that came after the full run
+    partial_files = files[base_idx + 1:]
+    if not partial_files:
+        return JSONResponse(content=base)
+
+    # Build domain lookup from the base full run
+    domain_map: dict[str, dict] = {}
+    for d in base.get("domains", []):
+        domain_map[d["name"]] = d
+
+    merged = False
+    for pf in partial_files:
+        pdata = _read_json(pf)
+        if not pdata or not isinstance(pdata, dict):
+            continue
+        for d in pdata.get("domains", []):
+            if d.get("name"):
+                domain_map[d["name"]] = d
+                merged = True
+
+    if not merged:
+        return JSONResponse(content=base)
+
+    # Recompute totals from merged domains
+    merged_domains = list(domain_map.values())
+    total_passed = sum(d.get("passed", 0) for d in merged_domains)
+    total_failed = sum(d.get("failed", 0) for d in merged_domains)
+    total_skipped = sum(d.get("skipped", 0) for d in merged_domains)
+    total_tests = sum(d.get("total", 0) for d in merged_domains)
+
+    # Recompute weighted overall score
+    total_weight = sum(d.get("weight", 1.0) for d in merged_domains)
+    if total_weight > 0:
+        overall_score = sum(d.get("score", 0) * d.get("weight", 1.0) for d in merged_domains) / total_weight
+    else:
+        overall_score = 0.0
+
+    if overall_score >= 0.95:
+        overall_status = "HEALTHY"
+    elif overall_score >= 0.75:
+        overall_status = "DEGRADED"
+    else:
+        overall_status = "CRITICAL"
+
+    result = {
+        **base,
+        "domains": merged_domains,
+        "total_passed": total_passed,
+        "total_failed": total_failed,
+        "total_skipped": total_skipped,
+        "total_tests": total_tests,
+        "overall_score": round(overall_score, 4),
+        "overall_status": overall_status,
+    }
+    return JSONResponse(content=result)
 
 
 @app.get("/api/health/history")
