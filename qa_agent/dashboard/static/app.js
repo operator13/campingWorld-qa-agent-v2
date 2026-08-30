@@ -340,6 +340,7 @@
             document.getElementById('btn-run-selected').style.display = 'none';
             document.getElementById('btn-run-all').style.display = 'none';
             document.getElementById('btn-stop').style.display = 'inline-block';
+            document.getElementById('btn-clear').disabled = true;
             resetDomainProgress();
             runnerPassCount = 0;
             runnerFailCount = 0;
@@ -361,7 +362,7 @@
             document.getElementById('btn-run-selected').style.display = 'inline-block';
             document.getElementById('btn-run-all').style.display = 'inline-block';
             document.getElementById('btn-stop').style.display = 'none';
-            /* btn-clear always visible */
+            document.getElementById('btn-clear').disabled = false;
             refreshAllData();
             break;
           case 'runner:healing':

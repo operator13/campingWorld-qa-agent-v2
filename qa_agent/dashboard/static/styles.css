@@ -1088,9 +1088,14 @@ body::before {
   margin-right: 8px;
 }
 
-.runner-btn-clear:hover {
+.runner-btn-clear:hover:not(:disabled) {
   border-color: var(--neon-cyan);
   color: var(--neon-cyan);
+}
+
+.runner-btn-clear:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .runner-card {
