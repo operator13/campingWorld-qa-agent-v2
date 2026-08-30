@@ -377,9 +377,18 @@
             document.getElementById('btn-run-all').style.display = 'none';
             document.getElementById('btn-stop').style.display = 'inline-block';
             document.getElementById('btn-clear').disabled = true;
-            // If run-all, highlight all domains on all devices
+            // Sync domain selection across all devices
             if (data.specs && data.specs[0] === 'all') {
               document.querySelectorAll('.domain-row').forEach(r => r.classList.add('selected'));
+            } else if (data.specs) {
+              const runningSpecs = new Set(data.specs.map(s => s.replace('tests_generated/', '')));
+              document.querySelectorAll('.domain-row').forEach(r => {
+                if (runningSpecs.has(r.dataset.spec)) {
+                  r.classList.add('selected');
+                } else {
+                  r.classList.remove('selected');
+                }
+              });
             }
             resetDomainProgress();
             runnerPassCount = 0;
