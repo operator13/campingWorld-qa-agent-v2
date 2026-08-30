@@ -515,10 +515,7 @@ body::before {
    Section 3: Cost/Chart + Run History
    ============================================ */
 .section-history {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-  align-items: start;
+  display: block;
 }
 
 .chart-container {
