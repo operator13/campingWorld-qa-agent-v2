@@ -575,7 +575,9 @@
   }
 
   function clearTestRunner() {
-    // Broadcast clear to all connected devices
+    // Clear locally immediately
+    doClearRunner();
+    // Broadcast clear to all other connected devices
     fetch('/api/tests/clear', { method: 'POST' });
   }
 
