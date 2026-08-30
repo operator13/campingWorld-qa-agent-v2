@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -40,7 +41,59 @@ from qa_agent.state import QAState
 logger = logging.getLogger(__name__)
 
 _GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
+_REPORTS_DIR = Path(__file__).resolve().parent / "reports"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_THRESHOLD = 0.75
+
+
+def _git_commit_and_push_reports(agent: str, scorecard: dict) -> None:
+    """Auto-commit and push eval reports after each eval run."""
+    try:
+        score = 0.0
+        status = "UNKNOWN"
+        # Extract score from scorecard (different agents use different keys)
+        for key in [f"{agent}_accuracy", "triage_accuracy", "locator_quality"]:
+            if key in scorecard:
+                score = scorecard[key].get("score", 0.0)
+                break
+
+        passed = scorecard.get("passed")
+        if passed is None:
+            status = "BASELINE"
+        elif passed:
+            status = "PASS"
+        else:
+            status = "FAIL"
+
+        reports_path = str(_REPORTS_DIR / agent)
+
+        subprocess.run(
+            ["git", "add", reports_path],
+            cwd=str(_PROJECT_ROOT),
+            capture_output=True,
+            timeout=10,
+        )
+        subprocess.run(
+            ["git", "commit", "-m",
+             f"Eval report: {agent} {score*100:.1f}% {status}\n\n"
+             f"Run: {scorecard.get('eval_run_id', 'unknown')}\n"
+             f"Auto-committed by eval runner."],
+            cwd=str(_PROJECT_ROOT),
+            capture_output=True,
+            timeout=10,
+        )
+        result = subprocess.run(
+            ["git", "push"],
+            cwd=str(_PROJECT_ROOT),
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            logger.info("Eval report auto-pushed to GitHub")
+        else:
+            logger.warning("Git push failed: %s", result.stderr.decode()[:200])
+    except Exception as e:
+        logger.warning("Auto-commit failed (non-fatal): %s", e)
 
 
 def load_triage_scenarios(golden_path: Path | None = None) -> tuple[list[dict], int]:
@@ -218,6 +271,8 @@ async def run_triage_eval(
     report_path = scorecard_path.with_suffix(".md")
     report_path.write_text(report_md)
     logger.info("Report written to %s", report_path)
+
+    _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
 
     return scorecard
 
@@ -428,6 +483,8 @@ async def run_planner_eval(
     report_path = scorecard_path.with_suffix(".md")
     report_path.write_text(report_md)
     logger.info("Report written to %s", report_path)
+
+    _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
 
     return scorecard
 
@@ -664,6 +721,8 @@ async def run_healer_eval(
     healer_report_path.write_text(healer_report_md)
     logger.info("Report written to %s", healer_report_path)
 
+    _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
+
     return scorecard
 
 
@@ -853,6 +912,8 @@ async def run_generator_eval(
     report_path = scorecard_path.with_suffix(".md")
     report_path.write_text(report_md)
     logger.info("Generator report written to %s", report_path)
+
+    _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
 
     return scorecard
 
