@@ -8,7 +8,7 @@ Build an Eval Agent that creates thorough, automated evaluations for every agent
 
 ## Agents Under Evaluation
 
-| Agent | What It Does | Current Eval Coverage |
+| Agent / System | What It Does | Current Eval Coverage |
 |-------|-------------|----------------------|
 | **Design Reader** | Reads Figma designs → produces `ExpectedUI` spec | None |
 | **Planner** | ACs + UI spec → `TestCase[]` plan | AC Coverage ≥80% (keyword fuzzy match) |
@@ -18,6 +18,14 @@ Build an Eval Agent that creates thorough, automated evaluations for every agent
 | **Healer** | Repairs broken locators in POMs | None |
 | **Orchestrator** | Crawls site map, bulk-generates POM + tests | None |
 | **Memory System** | Markdown-based learning across runs | None |
+| **Human Review** | Routes uncertain triage decisions to humans for verdict | None |
+| **Defect Report** | Files Jira tickets for confirmed app defects | None |
+| **Intake (Jira)** | Extracts goal, ACs, app_url from Jira tickets | None |
+| **Intake (Figma)** | Extracts Figma frame references for design reader | None |
+| **Budget** | Tracks LLM token spend and enforces budget limits | None |
+| **PR Gate** | Surface that blocks/passes PRs based on test results | None |
+| **Observability** | Logs, metrics, and alerting for the pipeline | None |
+| **Weekly Review** | Summarizes weekly pipeline health and trends | None |
 
 ---
 
@@ -107,7 +115,7 @@ eval-agent/
 **Metrics:**
 | Metric | Threshold | Method |
 |--------|-----------|--------|
-| AC Coverage | ≥90% | Fuzzy keyword match of ACs in test steps |
+| AC Coverage | ≥90% | Fuzzy keyword match of ACs in test steps. *(Raised from 0.80 in `run_eval.py` to push quality higher.)* |
 | Flow Coverage | ≥80% | Critical flows checklist |
 | Duplicate Rate | ≤5% | Semantic similarity between test cases |
 | Priority Correctness | ≥85% | Smoke tags on correct tests |
@@ -130,8 +138,8 @@ eval-agent/
 **Metrics:**
 | Metric | Threshold | Method |
 |--------|-----------|--------|
-| Compile Success | 100% | `tsc --noEmit` |
-| Locator Quality | ≥80% | Semantic / total locators ratio |
+| Compile Success | 100% | `tsc --noEmit`. *(NEW capability — not yet in code. The orchestrator's `pom_validator.py` and `test_validator.py` exist but are regex-based. This eval requires augmenting them with real TypeScript compilation.)* |
+| Locator Quality | ≥80% | Semantic / total locators ratio. *(Raised from 0.70 in `run_eval.py` to push quality higher.)* |
 | POM Validity | 100% | Has class, constructor, Page param, navigate(), exports |
 | Test Validity | 100% | Has describe, test, beforeEach, ≥1 assertion per test |
 | Assertion Density | ≥1.5/test | Total assertions / total tests |
@@ -150,13 +158,14 @@ eval-agent/
 **Golden dataset:** 30+ failure scenarios with ground-truth labels:
 - 10 locator drift (element renamed, moved, removed)
 - 10 app defects (broken functionality, server errors, missing features)
-- 5 flaky/timing (network timeout, race condition)
-- 5 ambiguous (could be either — test confidence thresholds)
+- 10 unknown/ambiguous (network timeouts, race conditions, unclear root cause — the codebase maps `flaky` to `unknown`, so all non-deterministic and ambiguous cases use the `unknown` class)
+
+> **Note:** The code uses 3 classes: `locator_drift`, `app_defect`, `unknown`. There is no separate `flaky` class — timing/flaky failures are classified as `unknown`.
 
 **Metrics:**
 | Metric | Threshold | Method |
 |--------|-----------|--------|
-| Classification Accuracy | ≥85% | Correct class / total |
+| Classification Accuracy | ≥85% | Correct class / total. *(Raised from 0.75 in `run_eval.py` to push quality higher.)* |
 | Confidence Calibration | ECE ≤ 0.10 | Expected Calibration Error |
 | Overconfidence Rate | ≤10% | Wrong classifications with confidence ≥ 0.75 |
 | Memory Hit Rate | ≥60% | Similar past failure found when one exists |
@@ -219,7 +228,7 @@ eval-agent/
 **Metrics:**
 | Metric | Threshold | Method |
 |--------|-----------|--------|
-| Recall@3 | ≥70% | Correct past failure in top 3 similar results |
+| Recall@1 | ≥70% | Correct past failure returned by `find_similar_failure()`. *(Code returns a single match, not ranked results. To use Recall@3, the code would need updating to support ranked retrieval — this is a prerequisite.)* |
 | Stale Entry Rate | ≤5% | Entries past TTL / total entries |
 | Duplicate Rate | ≤3% | Semantic duplicates / total patterns |
 | Write Integrity | 100% | Concurrent write stress test |
@@ -246,6 +255,132 @@ eval-agent/
 | Defect Detection | ≥85% | True bugs caught / total bugs |
 | False Positive Rate | ≤10% | False bug reports / total reports |
 | Cycle Time p50 | ≤10 min | Median spec-to-green time |
+
+---
+
+### 9. Human Review Eval
+
+**What to measure:**
+- **Decision quality** — does the human review node correctly route `heal` vs `defect` verdicts?
+- **Wait time** — how long does the system wait for a human response?
+- **Decision consistency** — do similar failure patterns get consistent verdicts?
+- **Calibration feedback loop effectiveness** — do human corrections improve future triage confidence?
+
+**Golden dataset:** 15 failure scenarios with known correct verdicts (heal vs defect)
+
+**Metrics:**
+| Metric | Threshold | Method |
+|--------|-----------|--------|
+| Decision Quality | ≥90% | Correct verdict (heal/defect) vs ground truth |
+| Wait Time p95 | ≤30 min | 95th percentile time waiting for human response |
+| Decision Consistency | ≥85% | Same verdict for semantically similar failures |
+| Calibration Loop Effect | Positive | Triage confidence accuracy improves after N human corrections |
+
+---
+
+### 10. Defect Report Eval
+
+**What to measure:**
+- **Report quality** — does the Jira ticket contain actionable information (error, route, steps, screenshots)?
+- **Jira filing success rate** — does the API call succeed and return a ticket key?
+- **Deduplication accuracy** — are duplicate defects detected and linked rather than filed as new?
+- **Fingerprint uniqueness** — does each distinct defect get a unique fingerprint?
+
+**Golden dataset:** 10 defect scenarios (5 unique defects, 5 duplicates of existing defects)
+
+**Metrics:**
+| Metric | Threshold | Method |
+|--------|-----------|--------|
+| Report Completeness | ≥90% | Required fields (error, route, steps, screenshots) present |
+| Filing Success Rate | ≥95% | Jira API returns ticket key / total attempts |
+| Dedup Accuracy | ≥85% | Correctly identified duplicates / total duplicates |
+| Fingerprint Uniqueness | 100% | Distinct defects produce distinct fingerprints |
+
+---
+
+### 11. Intake Eval
+
+**What to measure:**
+- **AC extraction completeness (Jira)** — are all acceptance criteria extracted from Jira tickets?
+- **Figma ref extraction accuracy** — are Figma file references correctly parsed and frames identified?
+- **Field extraction (Jira)** — are goal, ACs, and app_url correctly extracted from various Jira ticket formats?
+- **MCP response handling (Figma)** — are Figma node counts and frames correctly interpreted?
+
+**Golden dataset:** 10 Jira tickets with manually annotated fields + 5 Figma file references with known frame counts
+
+**Metrics:**
+| Metric | Threshold | Method |
+|--------|-----------|--------|
+| AC Extraction Recall | ≥90% | Extracted ACs / total ACs in ticket |
+| AC Extraction Precision | ≥95% | Valid ACs / total extracted ACs |
+| Figma Ref Accuracy | ≥95% | Correct file ref + frame IDs / total |
+| Jira Field Coverage | ≥90% | goal + ACs + app_url extracted / total tickets with those fields |
+
+---
+
+### 12. Executor Eval
+
+**What to measure:**
+- **DOM snapshot capture** — does the executor return a usable DOM snapshot? (Currently returns `None` — this is a prerequisite)
+- **Test file writing success** — are POM and test files written to disk correctly?
+- **Playwright subprocess reliability** — does `npx playwright test` launch and return results consistently?
+- **Result parsing accuracy** — are pass/fail results and failed case names parsed correctly from Playwright JSON output?
+
+**Golden dataset:** 5 known test suites with expected pass/fail outcomes
+
+**Metrics:**
+| Metric | Threshold | Method |
+|--------|-----------|--------|
+| DOM Snapshot Captured | 100% | Non-None, non-empty snapshot returned. *(PREREQUISITE: currently returns None — must be implemented before this eval can run.)* |
+| File Write Success | 100% | Written files exist on disk and match expected content |
+| Subprocess Reliability | ≥95% | Playwright process exits with parseable output / total runs |
+| Result Parse Accuracy | ≥95% | Correctly parsed failed case names / total failed cases |
+
+---
+
+### 13. Budget Eval
+
+**What to measure:**
+- **Budget tracking accuracy** — does the budget system accurately track token spend across nodes?
+- **Cost estimation vs actual** — does estimated cost match actual Claude API usage?
+- **Budget exhaustion detection** — does the system correctly halt when budget is exceeded?
+
+**Metrics:**
+| Metric | Threshold | Method |
+|--------|-----------|--------|
+| Tracking Accuracy | ≥99% | Tracked tokens vs actual tokens from API responses |
+| Cost Estimation Error | ≤5% | |estimated - actual| / actual |
+| Exhaustion Detection | 100% | System halts when budget exceeded / total budget breaches |
+
+---
+
+### 14. PR Gate Eval
+
+**What to measure:**
+- **Gate decision quality** — does the PR gate correctly block failing runs and pass green runs?
+- **Confidence threshold correctness** — are borderline cases handled according to configured thresholds?
+- **Test results summary accuracy** — does the gate surface accurate pass/fail counts?
+
+**Golden dataset:** 10 PR scenarios (5 should pass, 5 should block) with known test outcomes
+
+**Metrics:**
+| Metric | Threshold | Method |
+|--------|-----------|--------|
+| Gate Decision Accuracy | ≥95% | Correct block/pass decision vs ground truth |
+| Threshold Adherence | 100% | Borderline cases match configured threshold behavior |
+| Summary Accuracy | 100% | Reported pass/fail counts match actual |
+
+---
+
+## Prerequisites
+
+The following code changes are needed before all evals can run:
+
+1. **Audit Trail must be built first (Phase AT1-AT4)** — evals depend on timing instrumentation, token tracking, and prompt versioning that the `@audit_node` decorator provides. No timing data is currently captured on any node.
+2. **Executor must capture DOM snapshots** — `_run_playwright_tests()` currently returns `None` for `dom_snapshot`. This blocks the Executor eval (DOM Snapshot Captured metric) and degrades Triage eval (C2 DOM evidence scoring always gets 0.0 without a snapshot).
+3. **Memory must support ranked retrieval for Recall@3** — `find_similar_failure()` returns a single match (`dict | None`). The Memory eval uses Recall@1 to match the current code. If ranked retrieval is desired, the code must be updated to return a ranked list.
+4. **Triage does not have a `flaky` class** — the code uses 3 classes: `locator_drift`, `app_defect`, `unknown`. The golden dataset uses `unknown` for timing/flaky/ambiguous cases.
+5. **Generator "Compile Success" requires `tsc`** — the existing `pom_validator.py` and `test_validator.py` in the orchestrator are regex-based. Real TypeScript compilation via `tsc --noEmit` is a new capability that must be added.
 
 ---
 

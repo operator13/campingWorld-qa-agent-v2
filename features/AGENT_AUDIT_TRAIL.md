@@ -148,6 +148,7 @@ A dual-format audit system that every agent node writes to automatically — mar
       "cost_usd": 0.012,
       "cache_hit": false,
       "errors": [],
+      "dom_snapshot": null,
       "input_state": {
         "goal": "Test checkout flow",
         "failed_cases": ["tc-checkout-01", "tc-checkout-04"],
@@ -173,6 +174,31 @@ A dual-format audit system that every agent node writes to automatically — mar
       "routing_decision": {
         "next_node": "healer",
         "reason": "confidence 0.82 >= CONF_SURE 0.75, class=locator_drift"
+      },
+      "guardrail_result": null
+    },
+    {
+      "node": "healer",
+      "timestamp": "2026-08-19T14:32:31Z",
+      "duration_ms": 20,
+      "model": null,
+      "prompt_version": null,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0,
+      "cache_hit": true,
+      "errors": [],
+      "dom_snapshot": null,
+      "input_state": {
+        "error": "TimeoutError on getByRole('button', {name: 'Submit'})"
+      },
+      "parsed_output": {
+        "fix_applied": "getByTestId('checkout-submit')",
+        "source": "cache"
+      },
+      "guardrail_result": {
+        "guardrail_passed": true,
+        "guardrail_rejected_diff": null
       }
     }
   ]
@@ -201,6 +227,10 @@ The `@audit_node` decorator:
 4. Records the parsed output + routing decision after the node returns
 5. Writes both markdown entry to AUDIT_TRAIL.md and JSON to audit_runs/
 6. If an exception occurs, records the error and re-raises
+
+### Orchestrator audit (outside LangGraph)
+
+> **Note:** The orchestrator (`qa_agent/orchestrator/orchestrator.py`) is a separate flow that does not use the LangGraph state machine. Its key functions — `generate_pom()` and `generate_tests()` — are standalone async functions, not graph nodes. To audit them, wrap these functions with the same `@audit_node` pattern adapted for standalone async functions (i.e., the decorator captures inputs/outputs/timing/tokens without requiring a `QAState` parameter). The popup dismissal, dynamic URL resolution, and crawl steps should also be instrumented.
 
 ### Token tracking integration
 
@@ -251,17 +281,22 @@ Each graph invocation gets a unique run ID (e.g. `run-47`) that links the audit 
 
 ## D. What Each Node Logs
 
-| Node | Special fields |
+| Node / System | Special fields |
 |------|---------------|
 | **Design Reader** | Figma ref, element count, flow count, raw Figma MCP response |
 | **Planner** | AC count, test case count, tags generated, volatile routes injected |
 | **Generator** | Page object count, spec file count, locator types used, known testids injected |
-| **Executor** | Pass/fail per test, route changes, fix verifications |
+| **Executor** | Pass/fail per test, route changes, fix verifications, **dom_snapshot** (PREREQUISITE: currently returns None — must be implemented for triage C2 scoring) |
 | **Triage** | Rubric breakdown (C1-C5), similar failure match, routing decision, raw classification |
-| **Healer** | Cache hit/miss, fix applied, guardrail result, diff produced |
+| **Healer** | Cache hit/miss, fix applied, guardrail result, diff produced, guardrail_passed: true/false, guardrail_rejected_diff: (if rejected, the diff that was blocked) |
 | **Human Review** | Decision (heal/defect), reasoning, time waiting for human |
 | **Defect Report** | Jira ticket key, fingerprint, dedup result |
 | **Metrics** | Run ID recorded, triage call ID recorded |
+| **Orchestrator** | Pages crawled, snapshot sizes, POM/test validation results, LLM token usage for generate_pom/generate_tests, popup dismissal results, dynamic URL resolution results |
+| **Intake (Jira)** | Jira ticket key, fields extracted (goal, ACs, app_url), API response time |
+| **Intake (Figma)** | Figma file ref, node count, frames extracted, MCP response time |
+| **Budget** | Budget checked, remaining budget, cost so far, budget exhausted flag |
+| **PR Gate** | Gate decision (pass/block), test results summary, confidence threshold |
 
 ---
 
