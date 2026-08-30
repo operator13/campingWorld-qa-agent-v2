@@ -942,16 +942,29 @@ body::before {
   }
 
   .domain-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 6px;
   }
 
   .domain-card {
-    padding: 10px;
+    padding: 8px;
   }
 
   .domain-score {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
+  }
+
+  .domain-name {
+    font-size: 0.5rem;
+  }
+
+  .domain-test-count {
+    font-size: 0.45rem;
+  }
+
+  .domain-status-badge {
+    font-size: 0.4rem;
+    padding: 1px 4px;
   }
 
   .eval-grid {
