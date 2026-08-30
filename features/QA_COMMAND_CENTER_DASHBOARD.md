@@ -401,13 +401,23 @@ qa-agent dashboard --stop             # docker compose down
 | 3 | Trend sparklines for health and eval scores |
 | 4 | Drill-down views (click domain → test details) |
 
-### Phase D5 — Polish & Comparison (~1 day)
+### Phase D5 — Visual Design: Cyberpunk-Futuristic UI (~2 days)
+| # | Task |
+|---|------|
+| 1 | Core theme: deep dark background (#0a0a0f), neon accent system |
+| 2 | Neon glow effects on cards, gauges, and charts |
+| 3 | Animated scan lines + grid background overlay |
+| 4 | Glassmorphism panels (frosted glass with backdrop-blur) |
+| 5 | Typography: mono/tech font (JetBrains Mono, Orbitron for headings) |
+| 6 | Micro-animations: card hover lifts, data pulse effects, typing counters |
+| 7 | Sound design (optional): subtle tick on test pass, alert on critical |
+
+### Phase D6 — Polish & Comparison (~1 day)
 | # | Task |
 |---|------|
 | 1 | Run comparison mode (select 2 runs, diff view) |
-| 2 | Dark/light theme |
-| 3 | Export (download scorecard as PDF or CSV) |
-| 4 | Mobile-responsive layout |
+| 2 | Export (download scorecard as PDF or CSV) |
+| 3 | Mobile-responsive layout |
 
 ---
 
@@ -621,6 +631,199 @@ No additional ports needed — WebSocket upgrades happen on the same HTTP port (
 ### Fallback: Polling Mode
 
 If the WebSocket reporter isn't configured (e.g., running tests on a different machine), the dashboard falls back to polling `/api/health/latest` every 5 seconds. The UI works identically — just with a slight delay instead of instant updates.
+
+---
+
+## Visual Design: Cyberpunk-Futuristic Aesthetic
+
+### Design Philosophy
+
+The dashboard should feel like a **mission control center from 2077** — dark, glowing, data-dense, and unmistakably futuristic. Think Blade Runner ops room meets Tony Stark's HUD. Every element should feel alive with data.
+
+### Color System
+
+```
+Background:     #0a0a0f (near-black with blue undertone)
+Surface:        #12121a (elevated panels)
+Card:           rgba(18, 18, 30, 0.8) + backdrop-blur (glassmorphism)
+Border:         rgba(0, 255, 200, 0.15) (subtle cyan glow)
+
+Primary Neon:   #00ffc8 (cyan-green — healthy, passing, success)
+Warning Neon:   #ffb800 (amber — degraded, warning)
+Danger Neon:    #ff003c (hot pink-red — critical, failing)
+Info Neon:      #00a8ff (electric blue — neutral data)
+Accent:         #b400ff (purple — healer/agent activity)
+
+Text Primary:   #e0e0e0 (light gray)
+Text Secondary: #7a7a8a (muted)
+Text Glow:      text-shadow: 0 0 10px currentColor (neon text effect)
+```
+
+### Glow Effects
+
+Every interactive element has a subtle neon glow:
+```css
+/* Card glow */
+.card {
+  background: rgba(18, 18, 30, 0.8);
+  border: 1px solid rgba(0, 255, 200, 0.15);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.05),
+              inset 0 0 20px rgba(0, 255, 200, 0.02);
+}
+
+/* Healthy domain card */
+.card.healthy {
+  border-color: rgba(0, 255, 200, 0.3);
+  box-shadow: 0 0 30px rgba(0, 255, 200, 0.1);
+}
+
+/* Critical domain card — pulses */
+.card.critical {
+  border-color: rgba(255, 0, 60, 0.5);
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 60, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(255, 0, 60, 0.3); }
+}
+```
+
+### Health Gauge (Radial, Animated)
+
+The main health gauge is a glowing SVG ring:
+- Cyan-green arc for healthy percentage
+- Dark gap for missing percentage
+- Animated on load: arc draws from 0% to current value over 1.5 seconds
+- Neon glow filter on the arc
+- Large percentage number in center with glow effect
+- Status text below: "HEALTHY" / "DEGRADED" / "CRITICAL" with matching color
+
+```
+        ╭━━━━━━━━━━━╮
+      ━━              ━━
+    ━━    98.7%          ━━
+   ━      HEALTHY          ━
+    ━━                   ━━
+      ━━              ━━
+        ╰━━━━━━━━━━━╯
+   (cyan-green arc with glow)
+```
+
+### Domain Cards (Glass Panels)
+
+Each domain card is a frosted glass panel:
+- Semi-transparent background with backdrop-blur
+- Left edge: thin color stripe (green/yellow/red based on status)
+- Domain name in tech font
+- Score in large neon-colored numbers
+- Mini progress bar below the score, glowing
+- ★ badge for critical purchase path domains
+- Hover: card lifts slightly (transform: translateY(-2px)), glow intensifies
+- Live test: cards flash with a brief pulse animation on each test pass/fail
+
+### Agent Score Cards
+
+Four horizontal cards in a row, each showing:
+- Agent icon (terminal/robot/wrench/shield glyph)
+- Agent name in Orbitron font
+- Score as a large glowing number
+- Sparkline chart with gradient fill (neon to transparent)
+- Trend indicator: animated up/down/stable arrow
+- Subtle scan-line overlay animation
+
+### Charts (Neon Data Viz)
+
+**Token cost chart:**
+- Dark background with grid lines in very faint cyan
+- Bars with gradient fill (dark base → neon top)
+- Hover: bar glows brighter, tooltip with glass effect
+- Y-axis labels in mono font
+
+**Triage timeline:**
+- Vertical timeline with glowing dots
+- Green dot = healed, amber = skipped, red = failed
+- Connecting line pulses when new events arrive
+- Each entry slides in with a brief animation
+
+### Background Effects
+
+```css
+/* Subtle grid overlay */
+.dashboard-bg {
+  background-color: #0a0a0f;
+  background-image:
+    linear-gradient(rgba(0, 255, 200, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 200, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Optional: slow-moving scan line */
+.scan-line {
+  position: fixed;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 200, 0.1), transparent);
+  animation: scan 8s linear infinite;
+}
+
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100vh; }
+}
+```
+
+### Typography
+
+```css
+/* Headings: Orbitron (futuristic, angular) */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+/* Data/code: JetBrains Mono */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+h1, h2, .score-value { font-family: 'Orbitron', sans-serif; }
+.data, .metric, code, .mono { font-family: 'JetBrains Mono', monospace; }
+```
+
+### Micro-Animations
+
+| Element | Animation | Trigger |
+|---------|-----------|---------|
+| Health gauge arc | Draw from 0% → value | Page load |
+| Score numbers | Count up from 0 | Page load |
+| Domain cards | Slide in staggered | Page load |
+| Test pass | Brief green pulse on domain card | WebSocket event |
+| Test fail | Red flash + shake on domain card | WebSocket event |
+| Triage event | Slide in from right | WebSocket event |
+| Heal complete | Green checkmark particle effect | WebSocket event |
+| Card hover | Lift + glow intensify | Mouse hover |
+| Sparkline | Draw left to right | Scroll into view |
+
+### Dashboard Header
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ◆ QA COMMAND CENTER               ◉ LIVE    08/30/2026 10:04 │
+│  ─────────────────────────────────────────────────────────────  │
+│  campingworld.com                    127 tests │ 14 domains    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- "QA COMMAND CENTER" in Orbitron, with subtle glow
+- "LIVE" indicator: green dot that pulses when WebSocket connected
+- Timestamp in mono font
+- Test/domain count as quick-reference stats
+
+### Responsive Breakpoints
+
+| Width | Layout |
+|-------|--------|
+| ≥1440px | Full 4-column grid, all panels visible |
+| 1024-1439px | 2-column grid, charts stack below |
+| 768-1023px | Single column, cards collapse to compact rows |
+| <768px | Mobile: stacked cards, gauge at top, tap to expand |
 
 ---
 
