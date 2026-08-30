@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-08-30T23:53:11.844989+00:00",
+  "run_id": "08_30_2026_23-52-53",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 6,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 6,
+  "trend": {
+    "delta": 0.0067,
+    "status": "stable",
+    "previous_score": 0.9933
+  },
+  "domains": [
+    {
+      "name": "Register",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "duration_ms": 50800,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
