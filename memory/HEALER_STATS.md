@@ -1,4 +1,4 @@
 # Healer Stats
 
 cache_hits: 0
-llm_calls: 64
+llm_calls: 214

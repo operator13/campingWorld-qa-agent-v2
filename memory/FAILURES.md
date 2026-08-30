@@ -32,6 +32,24 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /checkout
-- **Occurrences:** 30
+- **Occurrences:** 160
+- **Last seen:** 2026-08-30
+- **Stale after:** 2026-11-28
+
+## FP-005: TimeoutError: locator.fill: Timeout Nms exceeded. Call log: - waiting for getByL
+- **Signature:** `TimeoutError: locator.fill: Timeout Nms exceeded. Call log: - waiting for getByLabel('Quantity') - element is not stable`
+- **Class:** test_flake
+- **Resolution:** healed:timing_fix
+- **Routes:** /product
+- **Occurrences:** 10
+- **Last seen:** 2026-08-30
+- **Stale after:** 2026-11-28
+
+## FP-006: Error: locator.click: element is outside of the viewport - getByRole('button', {
+- **Signature:** `Error: locator.click: element is outside of the viewport - getByRole('button', { name: 'Load More' })`
+- **Class:** test_flake
+- **Resolution:** healed:timing_fix
+- **Routes:** /search
+- **Occurrences:** 10
 - **Last seen:** 2026-08-30
 - **Stale after:** 2026-11-28
