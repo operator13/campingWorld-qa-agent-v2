@@ -290,7 +290,7 @@ async def _execute_test_run(specs: list, workers: int, retries: int, heal: bool,
     # Build command
     cmd = ["npx", "playwright", "test", f"--workers={workers}", f"--retries={retries}"]
     if specs:
-        cmd.extend(specs)
+        cmd.extend([f"tests_generated/{s}" if not s.startswith("tests_generated/") else s for s in specs])
 
     await broadcast_to_dashboard(json.dumps({"event": "runner:start", "run_id": run_id, "specs": specs or ["all"]}))
 
