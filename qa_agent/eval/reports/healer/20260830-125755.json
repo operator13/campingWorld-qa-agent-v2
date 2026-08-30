@@ -1,0 +1,61 @@
+{
+  "eval_run_id": "eval-20260830-125755",
+  "agent": "healer",
+  "timestamp": "2026-08-30T12:57:55.271953+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 6,
+  "scenarios_skipped_expired": 0,
+  "healer_accuracy": {
+    "score": 1.0,
+    "correct": 6,
+    "total": 6,
+    "misses": []
+  },
+  "by_category": {
+    "locator_drift": {
+      "score": 1.0,
+      "correct": 10,
+      "total": 10
+    }
+  },
+  "thresholds": {
+    "healer_accuracy": 0.75
+  },
+  "passed": true,
+  "regression_vs_previous": {
+    "status": "first_run",
+    "severity": null,
+    "delta": 0.0,
+    "previous_score": null,
+    "current_score": 1.0,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  },
+  "assertion_integrity": {
+    "score": 1.0,
+    "clean": 6,
+    "violations": 0,
+    "total": 6,
+    "violation_routes": []
+  },
+  "diff_minimality": {
+    "score": 1.0,
+    "locator_changes": 12,
+    "non_locator_changes": 0,
+    "total_changes": 12
+  },
+  "fix_rate": {
+    "score": 1.0,
+    "correct": 10,
+    "total": 10
+  },
+  "recommendations": [
+    {
+      "priority": "low",
+      "category": "overall",
+      "finding": "All scenarios pass. Triage accuracy is above threshold.",
+      "action": "No action needed. Consider adding more challenging golden scenarios."
+    }
+  ]
+}

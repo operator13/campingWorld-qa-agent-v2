@@ -1,0 +1,106 @@
+{
+  "eval_run_id": "eval-20260830-120713",
+  "agent": "triage",
+  "timestamp": "2026-08-30T12:07:13.048250+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 30,
+  "scenarios_skipped_expired": 0,
+  "triage_accuracy": {
+    "score": 0.8333,
+    "correct": 25,
+    "total": 30,
+    "misses": [
+      {
+        "scenario": "app_defect_api_null_response",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.5,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "app_defect_http_403",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.5,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "app_defect_redirect_loop",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.5,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "unknown_js_error_ambiguous",
+        "expected_class": "unknown",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "unknown_hydration_error",
+        "expected_class": "unknown",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.05
+      }
+    ]
+  },
+  "by_category": {
+    "app_defect": {
+      "score": 0.75,
+      "correct": 9,
+      "total": 12
+    },
+    "locator_drift": {
+      "score": 1.0,
+      "correct": 10,
+      "total": 10
+    },
+    "unknown": {
+      "score": 0.75,
+      "correct": 6,
+      "total": 8
+    }
+  },
+  "thresholds": {
+    "triage_accuracy": 0.75
+  },
+  "passed": true,
+  "regression_vs_previous": {
+    "status": "improvement",
+    "severity": null,
+    "delta": 0.3333,
+    "previous_score": 0.5,
+    "current_score": 0.8333,
+    "new_failures": [],
+    "recovered": [
+      "locator_drift_button_renamed",
+      "locator_drift_checkbox_renamed",
+      "locator_drift_heading_renamed",
+      "locator_drift_img_alt_changed",
+      "locator_drift_label_text_change",
+      "locator_drift_link_renamed",
+      "locator_drift_placeholder_changed",
+      "locator_drift_select_option_removed",
+      "locator_drift_tab_renamed",
+      "locator_drift_testid_changed"
+    ],
+    "threshold_delta": 0.05
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "unknown",
+      "finding": "2 scenario(s) expected 'unknown' but triage returned 'app_defect': unknown_js_error_ambiguous, unknown_hydration_error.",
+      "action": "Add clearer 'unknown' vs 'app_defect' disambiguation examples to the triage prompt in qa_agent/prompts/TRIAGE.md."
+    },
+    {
+      "priority": "low",
+      "category": "improvement",
+      "finding": "10 scenario(s) recovered since previous run: locator_drift_button_renamed, locator_drift_checkbox_renamed, locator_drift_heading_renamed, locator_drift_img_alt_changed, locator_drift_label_text_change, locator_drift_link_renamed, locator_drift_placeholder_changed, locator_drift_select_option_removed, locator_drift_tab_renamed, locator_drift_testid_changed.",
+      "action": "No action needed \u2014 this is positive progress."
+    }
+  ]
+}

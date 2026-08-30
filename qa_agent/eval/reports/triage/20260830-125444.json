@@ -1,0 +1,149 @@
+{
+  "eval_run_id": "eval-20260830-125444",
+  "agent": "triage",
+  "timestamp": "2026-08-30T12:54:44.406548+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 30,
+  "scenarios_skipped_expired": 0,
+  "triage_accuracy": {
+    "score": 0.8333,
+    "correct": 25,
+    "total": 30,
+    "misses": [
+      {
+        "scenario": "app_defect_api_null_response",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.5,
+        "got_conf": 0.05,
+        "error": "TypeError: Cannot read properties of null (reading 'orderId')\n    at confirmOrder (checkout.js:42:18)\n    at async CheckoutPage.placeOrder",
+        "confidence_breakdown": {
+          "c1_error_type": 0.0,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.0,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.0,
+          "raw_score": 0.1,
+          "guards_applied": [],
+          "final_score": 0.1
+        },
+        "root_cause": "confidence_underrun"
+      },
+      {
+        "scenario": "app_defect_http_403",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.5,
+        "got_conf": 0.05,
+        "error": "net::ERR_FAILED 403 (Forbidden)\n\nFailed to load resource: the server responded with a status of 403\nURL: /api/user/profile",
+        "confidence_breakdown": {
+          "c1_error_type": 0.0,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.0,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.0,
+          "raw_score": 0.1,
+          "guards_applied": [],
+          "final_score": 0.1
+        },
+        "root_cause": "confidence_underrun"
+      },
+      {
+        "scenario": "app_defect_redirect_loop",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.5,
+        "got_conf": 0.05,
+        "error": "Error: page.goto: net::ERR_TOO_MANY_REDIRECTS\n\nURL: /checkout/payment\nThe page redirected too many times.",
+        "confidence_breakdown": {
+          "c1_error_type": 0.0,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.0,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.0,
+          "raw_score": 0.1,
+          "guards_applied": [],
+          "final_score": 0.1
+        },
+        "root_cause": "confidence_underrun"
+      },
+      {
+        "scenario": "unknown_js_error_ambiguous",
+        "expected_class": "unknown",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.05,
+        "error": "Error: page.evaluate: Evaluation failed: ReferenceError: trackEvent is not defined\n    at analytics.js:15:3",
+        "confidence_breakdown": {
+          "c1_error_type": 0.0,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.0,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.0,
+          "raw_score": 0.1,
+          "guards_applied": [],
+          "final_score": 0.1
+        },
+        "root_cause": "misclassification"
+      },
+      {
+        "scenario": "unknown_hydration_error",
+        "expected_class": "unknown",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.05,
+        "error": "Error: Hydration failed because the initial UI does not match what was rendered on the server.\nWarning: Expected server HTML to contain a matching <div> in <div>.",
+        "confidence_breakdown": {
+          "c1_error_type": 0.0,
+          "c2_dom_evidence": 0.0,
+          "c3_history_match": 0.0,
+          "c4_human_calibration": 0.1,
+          "c5_consistency": 0.0,
+          "raw_score": 0.1,
+          "guards_applied": [],
+          "final_score": 0.1
+        },
+        "root_cause": "misclassification"
+      }
+    ]
+  },
+  "by_category": {
+    "app_defect": {
+      "score": 0.75,
+      "correct": 9,
+      "total": 12
+    },
+    "locator_drift": {
+      "score": 1.0,
+      "correct": 10,
+      "total": 10
+    },
+    "unknown": {
+      "score": 0.75,
+      "correct": 6,
+      "total": 8
+    }
+  },
+  "thresholds": {
+    "triage_accuracy": 0.75
+  },
+  "passed": true,
+  "regression_vs_previous": {
+    "status": "stable",
+    "severity": null,
+    "delta": 0.0,
+    "previous_score": 0.8333,
+    "current_score": 0.8333,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "unknown",
+      "finding": "2 scenario(s) expected 'unknown' but triage returned 'app_defect': unknown_js_error_ambiguous, unknown_hydration_error.",
+      "action": "Add clearer 'unknown' vs 'app_defect' disambiguation examples to the triage prompt in qa_agent/prompts/TRIAGE.md."
+    }
+  ]
+}

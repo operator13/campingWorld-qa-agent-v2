@@ -1,0 +1,214 @@
+{
+  "eval_run_id": "eval-20260830-111601",
+  "agent": "triage",
+  "timestamp": "2026-08-30T11:16:01.634090+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 30,
+  "scenarios_skipped_expired": 0,
+  "triage_accuracy": {
+    "score": 0.2,
+    "correct": 6,
+    "total": 30,
+    "misses": [
+      {
+        "scenario": "locator_drift_button_renamed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.75,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_testid_changed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.75,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_label_text_change",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.75,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_link_renamed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.75,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_placeholder_changed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.74,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_heading_renamed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.75,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_tab_renamed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.75,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_img_alt_changed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.73,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_checkbox_renamed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.75,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "locator_drift_select_option_removed",
+        "expected_class": "locator_drift",
+        "got_class": "locator_drift",
+        "expected_conf_min": 0.74,
+        "got_conf": 0.65
+      },
+      {
+        "scenario": "app_defect_assertion_mismatch",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.8,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_http_500",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.85,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_http_503",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.82,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_assertion_wrong_price",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.8,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_text_content_wrong",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.79,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_nav_wrong_page",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.83,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_form_not_submitted",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.81,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_api_null_response",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.78,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "app_defect_http_403",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.8,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "app_defect_missing_cart_items",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.79,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_toast_message_wrong",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.77,
+        "got_conf": 0.4
+      },
+      {
+        "scenario": "app_defect_redirect_loop",
+        "expected_class": "app_defect",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.76,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "unknown_js_error_ambiguous",
+        "expected_class": "unknown",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.05
+      },
+      {
+        "scenario": "unknown_hydration_error",
+        "expected_class": "unknown",
+        "got_class": "app_defect",
+        "expected_conf_min": 0.0,
+        "got_conf": 0.05
+      }
+    ]
+  },
+  "by_category": {
+    "app_defect": {
+      "score": 0.0,
+      "correct": 0,
+      "total": 12
+    },
+    "locator_drift": {
+      "score": 0.0,
+      "correct": 0,
+      "total": 10
+    },
+    "unknown": {
+      "score": 0.75,
+      "correct": 6,
+      "total": 8
+    }
+  },
+  "thresholds": {
+    "triage_accuracy": 0.75
+  },
+  "passed": false,
+  "regression_vs_previous": {
+    "status": "stable",
+    "severity": null,
+    "delta": 0.0,
+    "previous_score": 0.2,
+    "current_score": 0.2,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  }
+}

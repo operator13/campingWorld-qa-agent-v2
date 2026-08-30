@@ -110,3 +110,7 @@
 | 2026-08-29 | / |  | unknown | 0.50 | defect |  |
 | 2026-08-29 | / |  | unknown | 0.50 | something_else |  |
 | 2026-08-29 | / |  | unknown | 0.50 | defect |  |
+| 2026-08-30 | / |  | unknown | 0.50 | heal |  |
+| 2026-08-30 | / |  | unknown | 0.50 | defect |  |
+| 2026-08-30 | / |  | unknown | 0.50 | something_else |  |
+| 2026-08-30 | / |  | unknown | 0.50 | defect |  |
