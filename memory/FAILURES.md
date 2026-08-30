@@ -32,7 +32,7 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /checkout
-- **Occurrences:** 160
+- **Occurrences:** 186
 - **Last seen:** 2026-08-30
 - **Stale after:** 2026-11-28
 
@@ -41,7 +41,7 @@
 - **Class:** test_flake
 - **Resolution:** healed:timing_fix
 - **Routes:** /product
-- **Occurrences:** 10
+- **Occurrences:** 12
 - **Last seen:** 2026-08-30
 - **Stale after:** 2026-11-28
 
@@ -50,6 +50,6 @@
 - **Class:** test_flake
 - **Resolution:** healed:timing_fix
 - **Routes:** /search
-- **Occurrences:** 10
+- **Occurrences:** 12
 - **Last seen:** 2026-08-30
 - **Stale after:** 2026-11-28
