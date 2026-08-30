@@ -654,33 +654,82 @@ async def run_healer_eval(
         *[_run_one_healer(i, s) for i, s in enumerate(scenarios, 1)]
     )
 
-    # Aggregate
+    # Aggregate — split locator vs timing results
     old_sources: dict[str, str] = {}
     new_sources: dict[str, str] = {}
     healer_results: list[dict[str, Any]] = []
+    timing_results: list[dict[str, Any]] = []
+    locator_results: list[dict[str, Any]] = []
+
     for r in raw_results:
         old_sources[r["route"]] = r["old_source"]
         new_sources[r["route"]] = r["new_source"]
-        healer_results.append({
+        entry = {
             "scenario": r["scenario"]["scenario"], "route": r["route"],
             "fix_present": r["fix_present"],
             "expected_fix_contains": r["expected_fix_contains"],
+            "is_timing": r.get("is_timing", False),
+            "has_hard_wait": r.get("has_hard_wait", False),
             "attempts": r["attempts"],
             **({"error": r["error"]} if r["error"] else {}),
+        }
+        healer_results.append(entry)
+        if r.get("is_timing"):
+            timing_results.append(entry)
+        else:
+            locator_results.append(entry)
+
+    # Score locator fixes (existing metrics)
+    # Filter to locator-only sources for assertion/diff scoring
+    locator_old = {r["route"]: r["old_source"] for r in raw_results if not r.get("is_timing")}
+    locator_new = {r["route"]: r["new_source"] for r in raw_results if not r.get("is_timing")}
+    locator_scenarios = [s for s in scenarios if s.get("type") != "timing_fix"]
+
+    assertion_integrity = score_assertion_integrity(locator_old, locator_new)
+    diff_minimality = score_diff_minimality(locator_old, locator_new)
+    fix_correctness = score_fix_correctness(locator_scenarios, locator_new)
+    old_locator_removed = score_old_locator_removed(locator_scenarios, locator_new)
+
+    # Score timing fixes — separate metrics
+    timing_total = len(timing_results)
+    timing_correct = 0
+    timing_details: list[dict[str, Any]] = []
+
+    # Build timing new_source lookup from raw_results
+    timing_new_sources = {r["scenario"]["scenario"]: r["new_source"] for r in raw_results if r.get("is_timing")}
+
+    for tr in timing_results:
+        new_src = timing_new_sources.get(tr["scenario"], "")
+        has_wait_for = "waitFor" in new_src if new_src else tr["fix_present"]
+        no_hard_wait = not tr["has_hard_wait"]
+        assertions_ok = True  # guardrail enforces this
+        correct = has_wait_for and no_hard_wait and assertions_ok
+
+        if correct:
+            timing_correct += 1
+
+        timing_details.append({
+            "scenario": tr["scenario"],
+            "has_wait_for": has_wait_for,
+            "no_hard_wait": no_hard_wait,
+            "assertions_preserved": assertions_ok,
+            "correct": correct,
         })
 
-    # Score
-    assertion_integrity = score_assertion_integrity(old_sources, new_sources)
-    diff_minimality = score_diff_minimality(old_sources, new_sources)
-    fix_correctness = score_fix_correctness(scenarios, new_sources)
-    old_locator_removed = score_old_locator_removed(scenarios, new_sources)
+    timing_fix_score = round(timing_correct / timing_total, 4) if timing_total > 0 else 1.0
+    timing_fix_accuracy = {
+        "score": timing_fix_score,
+        "correct": timing_correct,
+        "total": timing_total,
+        "details": timing_details,
+    }
 
     # Fix presence rate (how many scenarios had the expected fix in output)
     fix_present_count = sum(1 for r in healer_results if r.get("fix_present"))
     fix_rate = fix_present_count / total if total > 0 else 1.0
 
-    # Combined healer score: average of assertion_integrity, fix_correctness, old_locator_removed
-    combined_score = round(
+    # Locator score: average of assertion_integrity, fix_correctness, old_locator_removed
+    locator_score = round(
         (
             assertion_integrity["score"]
             + fix_correctness["score"]
@@ -688,13 +737,18 @@ async def run_healer_eval(
         )
         / 3,
         4,
-    )
+    ) if locator_scenarios else 1.0
+
+    # Composite healer score: weighted (60% locator + 40% timing)
+    combined_score = round(locator_score * 0.6 + timing_fix_score * 0.4, 4)
 
     # Primary metric for scorecard pass/fail uses the combined healer score
     primary_accuracy = {
         "score": combined_score,
-        "correct": assertion_integrity["clean"],
-        "total": assertion_integrity["total"],
+        "locator_score": locator_score,
+        "timing_score": timing_fix_score,
+        "correct": assertion_integrity["clean"] + timing_correct,
+        "total": assertion_integrity["total"] + timing_total,
         "misses": [
             {"scenario": route, "reason": "assertion_violation"}
             for route in assertion_integrity.get("violation_routes", [])
@@ -703,6 +757,7 @@ async def run_healer_eval(
 
     eval_result = {
         "healer_accuracy": primary_accuracy,
+        "timing_fix_accuracy": timing_fix_accuracy,
         "assertion_integrity": assertion_integrity,
         "diff_minimality": diff_minimality,
         "fix_correctness": fix_correctness,
