@@ -180,42 +180,45 @@ async def run_triage_eval(
     logger.info("Running triage eval: %d scenarios, threshold=%.2f, baseline=%s",
                 total, effective_threshold, baseline_mode)
 
-    # Run each scenario through triage
-    triage_results = []
+    # Run scenarios concurrently (max 5 parallel LLM calls)
+    import asyncio
+    semaphore = asyncio.Semaphore(5)
     memory = MemoryStore()
-    for i, scenario in enumerate(scenarios, 1):
-        state = build_synthetic_state(scenario)
-        logger.info("[%d/%d] %s", i, total, scenario["scenario"])
 
-        try:
-            result = await triage(state)
-            failure_class = result.get("failure_class", "unknown")
-            confidence = result.get("confidence", 0.0)
+    async def _run_one_triage(i: int, scenario: dict) -> dict:
+        async with semaphore:
+            state = build_synthetic_state(scenario)
+            logger.info("[%d/%d] %s", i, total, scenario["scenario"])
+            try:
+                result = await triage(state)
+                failure_class = result.get("failure_class", "unknown")
+                confidence = result.get("confidence", 0.0)
+                breakdown = score_confidence(
+                    error=scenario["error"],
+                    failure_class=failure_class,
+                    dom_snapshot=state.dom_snapshot,
+                    memory=memory,
+                )
+                return {
+                    "scenario": scenario["scenario"],
+                    "failure_class": failure_class,
+                    "confidence": confidence,
+                    "error": scenario["error"],
+                    "confidence_breakdown": breakdown.to_dict(),
+                }
+            except Exception as e:
+                logger.error("Scenario %s failed: %s", scenario["scenario"], e)
+                return {
+                    "scenario": scenario["scenario"],
+                    "failure_class": "error",
+                    "confidence": 0.0,
+                    "error": scenario.get("error", ""),
+                    "confidence_breakdown": None,
+                }
 
-            # Reconstruct confidence breakdown for diagnostics
-            breakdown = score_confidence(
-                error=scenario["error"],
-                failure_class=failure_class,
-                dom_snapshot=state.dom_snapshot,
-                memory=memory,
-            )
-
-            triage_results.append({
-                "scenario": scenario["scenario"],
-                "failure_class": failure_class,
-                "confidence": confidence,
-                "error": scenario["error"],
-                "confidence_breakdown": breakdown.to_dict(),
-            })
-        except Exception as e:
-            logger.error("Scenario %s failed: %s", scenario["scenario"], e)
-            triage_results.append({
-                "scenario": scenario["scenario"],
-                "failure_class": "error",
-                "confidence": 0.0,
-                "error": scenario.get("error", ""),
-                "confidence_breakdown": None,
-            })
+    triage_results = await asyncio.gather(
+        *[_run_one_triage(i, s) for i, s in enumerate(scenarios, 1)]
+    )
 
     # Build expected list for scorer
     expected = [
@@ -350,39 +353,68 @@ async def run_planner_eval(
         total, effective_threshold, baseline_mode,
     )
 
-    # Run each scenario through planner and score AC coverage + plan quality
+    # Run scenarios concurrently (max 5 parallel LLM calls)
+    import asyncio
+    semaphore = asyncio.Semaphore(5)
+
+    async def _run_one_planner(i: int, scenario: dict) -> dict:
+        async with semaphore:
+            state = QAState(
+                goal=scenario["goal"],
+                acceptance_criteria=scenario["acceptance_criteria"],
+            )
+            logger.info("[%d/%d] %s", i, total, scenario["scenario"])
+            try:
+                result = await planner(state)
+                test_cases = result.get("plan", [])
+                tc_dicts = [
+                    tc.model_dump() if hasattr(tc, "model_dump") else dict(tc)
+                    for tc in test_cases
+                ]
+                coverage = score_ac_coverage(scenario["acceptance_criteria"], tc_dicts)
+                quality = score_plan_quality(tc_dicts, scenario["acceptance_criteria"])
+                return {"scenario": scenario, "coverage": coverage, "quality": quality,
+                        "tc_dicts": tc_dicts, "error": None}
+            except Exception as e:
+                logger.error("Planner scenario %s failed: %s", scenario["scenario"], e)
+                return {"scenario": scenario, "coverage": None, "quality": None,
+                        "tc_dicts": [], "error": str(e)}
+
+    raw_results = await asyncio.gather(
+        *[_run_one_planner(i, s) for i, s in enumerate(scenarios, 1)]
+    )
+
+    # Aggregate results
     all_ac_covered = 0
     all_ac_total = 0
     all_misses: list[dict[str, Any]] = []
     all_quality_scores: list[float] = []
 
-    for i, scenario in enumerate(scenarios, 1):
-        state = QAState(
-            goal=scenario["goal"],
-            acceptance_criteria=scenario["acceptance_criteria"],
-        )
-        logger.info("[%d/%d] %s", i, total, scenario["scenario"])
-
-        try:
-            result = await planner(state)
-            test_cases = result.get("plan", [])
-
-            # Convert TestCase objects to dicts for the scorer
-            tc_dicts = [
-                tc.model_dump() if hasattr(tc, "model_dump") else dict(tc)
-                for tc in test_cases
-            ]
-
-            coverage = score_ac_coverage(scenario["acceptance_criteria"], tc_dicts)
+    for r in raw_results:
+        scenario = r["scenario"]
+        if r["error"]:
+            all_misses.append({
+                "scenario": scenario["scenario"],
+                "coverage_score": 0.0,
+                "expected_coverage_min": scenario.get("expected_ac_coverage_min", effective_threshold),
+                "test_count": 0,
+                "expected_test_count_min": scenario.get("expected_test_count_min", 1),
+                "uncovered_acs": scenario["acceptance_criteria"],
+                "root_cause": "planner_error",
+                "error": r["error"],
+            })
+            all_ac_total += len(scenario["acceptance_criteria"])
+            all_quality_scores.append(0.0)
+        else:
+            coverage = r["coverage"]
+            quality = r["quality"]
             coverage_score = coverage["score"]
             expected_min = scenario.get("expected_ac_coverage_min", effective_threshold)
             passed_scenario = coverage_score >= expected_min
-            test_count = len(tc_dicts)
+            test_count = len(r["tc_dicts"])
             expected_count_min = scenario.get("expected_test_count_min", 1)
 
-            quality = score_plan_quality(tc_dicts, scenario["acceptance_criteria"])
             all_quality_scores.append(quality["score"])
-
             all_ac_covered += coverage["covered"]
             all_ac_total += coverage["total"]
 
@@ -401,21 +433,6 @@ async def run_planner_eval(
                 elif test_count < expected_count_min:
                     miss_entry["root_cause"] = "insufficient_test_count"
                 all_misses.append(miss_entry)
-
-        except Exception as e:
-            logger.error("Planner scenario %s failed: %s", scenario["scenario"], e)
-            all_misses.append({
-                "scenario": scenario["scenario"],
-                "coverage_score": 0.0,
-                "expected_coverage_min": scenario.get("expected_ac_coverage_min", effective_threshold),
-                "test_count": 0,
-                "expected_test_count_min": scenario.get("expected_test_count_min", 1),
-                "uncovered_acs": scenario["acceptance_criteria"],
-                "root_cause": "planner_error",
-                "error": str(e),
-            })
-            all_ac_total += len(scenario["acceptance_criteria"])
-            all_quality_scores.append(0.0)
 
     # Aggregate score: combine AC coverage and plan quality equally
     ac_coverage_score = round(all_ac_covered / all_ac_total, 4) if all_ac_total > 0 else 1.0
@@ -587,46 +604,55 @@ async def run_healer_eval(
         total, effective_threshold, baseline_mode,
     )
 
-    # Collect old/new sources for scoring
+    # Run scenarios concurrently (max 5 parallel LLM calls)
+    import asyncio
+    semaphore = asyncio.Semaphore(5)
+
+    async def _run_one_healer(i: int, scenario: dict) -> dict:
+        async with semaphore:
+            state = _build_healer_state(scenario)
+            route = scenario["route"]
+            logger.info("[%d/%d] %s", i, total, scenario["scenario"])
+            try:
+                result = await healer(state)
+                patched = result.get("page_objects", {})
+                new_source = patched.get(route, scenario["old_source"])
+                expected_fix = scenario.get("expected_fix_contains", "")
+                return {
+                    "scenario": scenario, "route": route,
+                    "old_source": scenario["old_source"], "new_source": new_source,
+                    "fix_present": bool(expected_fix and expected_fix in new_source),
+                    "expected_fix_contains": expected_fix,
+                    "attempts": result.get("attempts", 0), "error": None,
+                }
+            except Exception as e:
+                logger.error("Healer scenario %s failed: %s", scenario["scenario"], e)
+                return {
+                    "scenario": scenario, "route": route,
+                    "old_source": scenario["old_source"], "new_source": scenario["old_source"],
+                    "fix_present": False,
+                    "expected_fix_contains": scenario.get("expected_fix_contains", ""),
+                    "attempts": 0, "error": str(e),
+                }
+
+    raw_results = await asyncio.gather(
+        *[_run_one_healer(i, s) for i, s in enumerate(scenarios, 1)]
+    )
+
+    # Aggregate
     old_sources: dict[str, str] = {}
     new_sources: dict[str, str] = {}
     healer_results: list[dict[str, Any]] = []
-
-    for i, scenario in enumerate(scenarios, 1):
-        state = _build_healer_state(scenario)
-        route = scenario["route"]
-        logger.info("[%d/%d] %s", i, total, scenario["scenario"])
-
-        try:
-            result = await healer(state)
-            patched_page_objects = result.get("page_objects", {})
-            new_source = patched_page_objects.get(route, scenario["old_source"])
-
-            old_sources[route] = scenario["old_source"]
-            new_sources[route] = new_source
-
-            expected_fix = scenario.get("expected_fix_contains", "")
-            fix_present = bool(expected_fix and expected_fix in new_source)
-
-            healer_results.append({
-                "scenario": scenario["scenario"],
-                "route": route,
-                "fix_present": fix_present,
-                "expected_fix_contains": expected_fix,
-                "attempts": result.get("attempts", 0),
-            })
-        except Exception as e:
-            logger.error("Healer scenario %s failed: %s", scenario["scenario"], e)
-            old_sources[route] = scenario["old_source"]
-            new_sources[route] = scenario["old_source"]
-            healer_results.append({
-                "scenario": scenario["scenario"],
-                "route": route,
-                "fix_present": False,
-                "expected_fix_contains": scenario.get("expected_fix_contains", ""),
-                "attempts": 0,
-                "error": str(e),
-            })
+    for r in raw_results:
+        old_sources[r["route"]] = r["old_source"]
+        new_sources[r["route"]] = r["new_source"]
+        healer_results.append({
+            "scenario": r["scenario"]["scenario"], "route": r["route"],
+            "fix_present": r["fix_present"],
+            "expected_fix_contains": r["expected_fix_contains"],
+            "attempts": r["attempts"],
+            **({"error": r["error"]} if r["error"] else {}),
+        })
 
     # Score
     assertion_integrity = score_assertion_integrity(old_sources, new_sources)
@@ -829,34 +855,39 @@ async def run_generator_eval(
         baseline_mode,
     )
 
+    # Run scenarios concurrently (max 5 parallel LLM calls)
+    import asyncio
+    semaphore = asyncio.Semaphore(5)
+
+    async def _run_one_generator(i: int, scenario: dict) -> dict:
+        async with semaphore:
+            state = _build_generator_state(scenario)
+            logger.info("[%d/%d] %s", i, total, scenario["scenario"])
+            try:
+                result = await generator(state)
+                po = result.get("page_objects", {})
+                tc = result.get("test_code", {})
+                return {"scenario": scenario["scenario"], "po": po, "tc": tc, "error": None}
+            except Exception as e:
+                logger.error("Generator scenario %s failed: %s", scenario["scenario"], e)
+                return {"scenario": scenario["scenario"], "po": {}, "tc": {}, "error": str(e)}
+
+    raw_results = await asyncio.gather(
+        *[_run_one_generator(i, s) for i, s in enumerate(scenarios, 1)]
+    )
+
     all_page_objects: dict[str, str] = {}
     all_test_code: dict[str, str] = {}
     scenario_results: list[dict[str, Any]] = []
-
-    for i, scenario in enumerate(scenarios, 1):
-        state = _build_generator_state(scenario)
-        logger.info("[%d/%d] %s", i, total, scenario["scenario"])
-
-        try:
-            result = await generator(state)
-            po = result.get("page_objects", {})
-            tc = result.get("test_code", {})
-            all_page_objects.update(po)
-            all_test_code.update(tc)
-            scenario_results.append({
-                "scenario": scenario["scenario"],
-                "page_objects_count": len(po),
-                "test_files_count": len(tc),
-                "error": None,
-            })
-        except Exception as e:
-            logger.error("Generator scenario %s failed: %s", scenario["scenario"], e)
-            scenario_results.append({
-                "scenario": scenario["scenario"],
-                "page_objects_count": 0,
-                "test_files_count": 0,
-                "error": str(e),
-            })
+    for r in raw_results:
+        all_page_objects.update(r["po"])
+        all_test_code.update(r["tc"])
+        scenario_results.append({
+            "scenario": r["scenario"],
+            "page_objects_count": len(r["po"]),
+            "test_files_count": len(r["tc"]),
+            "error": r["error"],
+        })
 
     # Score all accumulated outputs
     locator_result = score_locator_quality(all_page_objects)

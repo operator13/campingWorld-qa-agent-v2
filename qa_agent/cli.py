@@ -315,11 +315,44 @@ async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None
     supported = ["triage", "planner", "generator", "healer", "all"]
 
     if agent == "all":
+        import asyncio as _aio
         mode = "BASELINE" if baseline else "EVAL"
-        print(f"=== QA Agent · {mode} (all agents) ===\n")
-        for a in ["triage", "planner", "generator", "healer"]:
+        print(f"=== QA Agent · {mode} (all agents — parallel) ===\n")
+
+        agents = ["triage", "planner", "generator", "healer"]
+        agent_config_all = {
+            "triage": (run_triage_eval, "triage_accuracy", "Triage Accuracy"),
+            "planner": (run_planner_eval, "planner_accuracy", "AC Coverage"),
+            "generator": (run_generator_eval, "generator_accuracy", "Locator Quality"),
+            "healer": (run_healer_eval, "healer_accuracy", "Healer Accuracy"),
+        }
+
+        async def _run_one(a: str):
+            run_fn = agent_config_all[a][0]
+            if a == "generator":
+                return a, await run_fn(baseline_mode=baseline)
+            return a, await run_fn(baseline_mode=baseline, threshold=threshold)
+
+        results = await _aio.gather(*[_run_one(a) for a in agents])
+
+        # Print results sequentially for readable output
+        for a, scorecard in results:
+            _, accuracy_key, label_name = agent_config_all[a]
             print(f"\n{'='*50}")
-            await _eval_run(a, baseline, threshold)
+            print(f"  {a.upper()}")
+            if a == "generator":
+                for key in ["locator_quality", "pom_validity", "test_validity"]:
+                    data = scorecard.get(key, {})
+                    print(f"    {key}: {data.get('score', 0)*100:.1f}%")
+            else:
+                acc = scorecard.get(accuracy_key, {})
+                print(f"    {label_name}: {acc.get('score', 0)*100:.1f}%")
+            passed = scorecard.get("passed")
+            status = "BASELINE" if passed is None else ("PASS" if passed else "FAIL")
+            print(f"    Status: {status}")
+
+        print(f"\n{'='*50}")
+        print("All evals complete.")
         return
 
     mode = "BASELINE" if baseline else "EVAL"
