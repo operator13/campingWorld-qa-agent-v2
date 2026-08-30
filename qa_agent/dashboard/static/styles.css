@@ -838,18 +838,16 @@ body::before {
   }
 
   .runner-top-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
 
   .runner-options {
-    display: contents;
-  }
-
-  .runner-actions {
-    display: contents;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
   }
 
   .runner-option-label {
@@ -861,9 +859,15 @@ body::before {
     padding: 3px 7px;
   }
 
+  .runner-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
   .runner-btn {
-    font-size: 0.45rem;
-    padding: 5px 8px;
+    font-size: 0.5rem;
+    padding: 6px 12px;
     letter-spacing: 0;
   }
 
