@@ -97,6 +97,14 @@ _FLAKE_ERROR_PATTERNS = [
     re.compile(r"element is outside of the viewport", re.I),
 ]
 
+# Assertion failures that look like timing issues — content hasn't loaded yet
+# e.g., count() returns 0 because async content hasn't rendered
+_ASYNC_CONTENT_ASSERTION_PATTERNS = [
+    re.compile(r"toBeGreaterThan.*Expected:.*>.*0.*Received:\s*0", re.S | re.I),
+    re.compile(r"toHaveCount.*Expected:.*\d+.*Received:\s*0", re.S | re.I),
+    re.compile(r"\.count\(\).*expect.*Received:\s*0", re.S | re.I),
+]
+
 _TIMEOUT_PATTERN = re.compile(r"TimeoutError|Timeout.*exceeded", re.I)
 _NO_ELEMENT_PATTERN = re.compile(r"no element matching|0 elements", re.I)
 
@@ -113,6 +121,11 @@ def detect_failure_class_hint(error: str) -> str:
     defect_match = any(p.search(error) for p in _DEFECT_ERROR_PATTERNS)
     flake_match = any(p.search(error) for p in _FLAKE_ERROR_PATTERNS)
     has_no_element = bool(_NO_ELEMENT_PATTERN.search(error))
+
+    # Check if this looks like an assertion failure caused by async content not loading
+    async_content_flake = any(p.search(error) for p in _ASYNC_CONTENT_ASSERTION_PATTERNS)
+    if async_content_flake:
+        return "test_flake"
 
     if defect_match and not drift_match:
         return "app_defect"
@@ -137,8 +150,13 @@ def score_c1_error_type(error: str) -> float:
     drift_match = any(p.search(error) for p in _DRIFT_ERROR_PATTERNS)
     defect_match = any(p.search(error) for p in _DEFECT_ERROR_PATTERNS)
     flake_match = any(p.search(error) for p in _FLAKE_ERROR_PATTERNS)
+    async_content_flake = any(p.search(error) for p in _ASYNC_CONTENT_ASSERTION_PATTERNS)
     is_timeout = bool(_TIMEOUT_PATTERN.search(error))
     has_no_element = bool(_NO_ELEMENT_PATTERN.search(error))
+
+    # Async content assertion (count=0 when content hasn't loaded) → flake
+    if async_content_flake:
+        return 0.3
 
     if drift_match and defect_match:
         return 0.1  # conflicting signals — ambiguous
