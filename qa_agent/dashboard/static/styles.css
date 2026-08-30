@@ -859,15 +859,25 @@ body::before {
     padding: 3px 7px;
   }
 
-  .runner-actions {
+  .runner-card {
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+  }
+
+  .runner-actions {
+    order: 99;
+    display: flex;
     gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
   }
 
   .runner-btn {
-    font-size: 0.5rem;
-    padding: 6px 12px;
+    flex: 1;
+    text-align: center;
+    font-size: 0.55rem;
+    padding: 10px 12px;
     letter-spacing: 0;
   }
 
