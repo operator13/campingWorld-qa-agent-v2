@@ -155,13 +155,24 @@ def score_triage_accuracy(
         if class_match and conf_ok:
             correct += 1
         else:
-            misses.append({
+            miss = {
                 "scenario": exp["scenario"],
                 "expected_class": exp["expected_class"],
                 "got_class": result.get("failure_class"),
                 "expected_conf_min": exp.get("expected_confidence_min"),
                 "got_conf": result.get("confidence"),
-            })
+            }
+            # Pass through diagnostic context if available
+            if result.get("error"):
+                miss["error"] = result["error"]
+            if result.get("confidence_breakdown"):
+                miss["confidence_breakdown"] = result["confidence_breakdown"]
+            # Determine root cause
+            if miss["got_class"] != miss["expected_class"]:
+                miss["root_cause"] = "misclassification"
+            else:
+                miss["root_cause"] = "confidence_underrun"
+            misses.append(miss)
 
     score = correct / len(expected)
     return {

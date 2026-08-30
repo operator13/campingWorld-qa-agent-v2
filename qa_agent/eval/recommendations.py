@@ -215,15 +215,45 @@ def format_report_markdown(scorecard: dict[str, Any]) -> str:
     if misses:
         lines.append("## Misses Detail")
         lines.append("")
-        lines.append("| Scenario | Expected | Got | Expected Conf | Got Conf |")
-        lines.append("|----------|----------|-----|---------------|----------|")
         for m in misses:
-            lines.append(
-                f"| {m.get('scenario', '?')} | {m.get('expected_class', '?')} | "
-                f"{m.get('got_class', '?')} | {m.get('expected_conf_min', '?')} | "
-                f"{m.get('got_conf', '?')} |"
-            )
-        lines.append("")
+            scenario = m.get("scenario", "unknown")
+            root_cause = m.get("root_cause", "unknown")
+            expected = m.get("expected_class", "?")
+            got = m.get("got_class", "?")
+            expected_conf = m.get("expected_conf_min", "?")
+            got_conf = m.get("got_conf", "?")
+
+            lines.append(f"### {scenario}")
+            lines.append("")
+            lines.append(f"- **Root cause:** {root_cause}")
+            lines.append(f"- **Expected class:** {expected} | **Got:** {got}")
+            lines.append(f"- **Expected confidence:** >={expected_conf} | **Got:** {got_conf}")
+
+            # Error message
+            error = m.get("error")
+            if error:
+                truncated = error[:300] + "..." if len(error) > 300 else error
+                lines.append(f"- **Error message:**")
+                lines.append(f"  ```")
+                lines.append(f"  {truncated}")
+                lines.append(f"  ```")
+
+            # Confidence breakdown
+            breakdown = m.get("confidence_breakdown")
+            if breakdown:
+                lines.append(f"- **Confidence breakdown:**")
+                lines.append(f"  - C1 (error type): {breakdown.get('c1_error_type', '?')}")
+                lines.append(f"  - C2 (DOM evidence): {breakdown.get('c2_dom_evidence', '?')}")
+                lines.append(f"  - C3 (history match): {breakdown.get('c3_history_match', '?')}")
+                lines.append(f"  - C4 (human calibration): {breakdown.get('c4_human_calibration', '?')}")
+                lines.append(f"  - C5 (consistency): {breakdown.get('c5_consistency', '?')}")
+                lines.append(f"  - Raw score: {breakdown.get('raw_score', '?')}")
+                guards = breakdown.get("guards_applied", [])
+                if guards:
+                    lines.append(f"  - Guards applied: {', '.join(guards)}")
+                lines.append(f"  - Final score: {breakdown.get('final_score', '?')}")
+
+            lines.append("")
 
     return "\n".join(lines)
 

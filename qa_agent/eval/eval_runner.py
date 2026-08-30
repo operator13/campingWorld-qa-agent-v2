@@ -12,10 +12,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from qa_agent.confidence import score_confidence
 from qa_agent.eval.recommendations import generate_recommendations, format_report_markdown
 from qa_agent.eval.regression import detect_regression
 from qa_agent.eval.run_eval import score_triage_accuracy
 from qa_agent.eval.scorecard import build_scorecard, load_latest_scorecard, save_scorecard
+from qa_agent.memory import MemoryStore
 from qa_agent.nodes.triage import triage
 from qa_agent.schemas.models import RunResult
 from qa_agent.state import QAState
@@ -112,16 +114,30 @@ async def run_triage_eval(
 
     # Run each scenario through triage
     triage_results = []
+    memory = MemoryStore()
     for i, scenario in enumerate(scenarios, 1):
         state = build_synthetic_state(scenario)
         logger.info("[%d/%d] %s", i, total, scenario["scenario"])
 
         try:
             result = await triage(state)
+            failure_class = result.get("failure_class", "unknown")
+            confidence = result.get("confidence", 0.0)
+
+            # Reconstruct confidence breakdown for diagnostics
+            breakdown = score_confidence(
+                error=scenario["error"],
+                failure_class=failure_class,
+                dom_snapshot=state.dom_snapshot,
+                memory=memory,
+            )
+
             triage_results.append({
                 "scenario": scenario["scenario"],
-                "failure_class": result.get("failure_class", "unknown"),
-                "confidence": result.get("confidence", 0.0),
+                "failure_class": failure_class,
+                "confidence": confidence,
+                "error": scenario["error"],
+                "confidence_breakdown": breakdown.to_dict(),
             })
         except Exception as e:
             logger.error("Scenario %s failed: %s", scenario["scenario"], e)
@@ -129,6 +145,8 @@ async def run_triage_eval(
                 "scenario": scenario["scenario"],
                 "failure_class": "error",
                 "confidence": 0.0,
+                "error": scenario.get("error", ""),
+                "confidence_breakdown": None,
             })
 
     # Build expected list for scorer
