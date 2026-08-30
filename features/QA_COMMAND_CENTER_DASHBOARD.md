@@ -383,16 +383,25 @@ qa-agent dashboard --stop             # docker compose down
 | 4 | Agent eval scorecard (4 cards with sparklines) |
 | 5 | Run history table |
 
-### Phase D3 — Charts & Interactivity (~2 days)
+### Phase D3 — Live Streaming (~2 days)
+| # | Task |
+|---|------|
+| 1 | Playwright custom WebSocket reporter (`ws-reporter.ts`) |
+| 2 | FastAPI WebSocket hub (test events → browser broadcast) |
+| 3 | Browser-side WebSocket client (live DOM updates on test events) |
+| 4 | Live health gauge recalculation as each test completes |
+| 5 | Triage event streaming (classify/heal events in real-time) |
+| 6 | Fallback polling mode when WebSocket reporter not configured |
+
+### Phase D4 — Charts & Interactivity (~2 days)
 | # | Task |
 |---|------|
 | 1 | Cost/token stacked bar chart (Chart.js) |
 | 2 | Triage activity timeline |
 | 3 | Trend sparklines for health and eval scores |
-| 4 | Auto-refresh (poll every 30s for live updates) |
-| 5 | Drill-down views (click domain → test details) |
+| 4 | Drill-down views (click domain → test details) |
 
-### Phase D4 — Polish & Comparison (~1 day)
+### Phase D5 — Polish & Comparison (~1 day)
 | # | Task |
 |---|------|
 | 1 | Run comparison mode (select 2 runs, diff view) |
@@ -402,14 +411,216 @@ qa-agent dashboard --stop             # docker compose down
 
 ---
 
-## Data Refresh Strategy
+## Live Streaming Architecture
 
-The dashboard reads files from disk on each API request — no database, no cache, no stale data. When tests run or evals complete, their reports are written to disk and the dashboard picks them up on the next request.
+The dashboard provides **real-time streaming** — you see each test pass/fail as it happens, not after the run completes.
 
-For live monitoring during a test run:
-- Dashboard polls `/api/health/latest` every 30 seconds
-- When a new health report appears (different timestamp), the UI refreshes
-- No WebSocket needed — simple polling is sufficient for update frequency
+### How It Works
+
+```
+┌──────────────┐     WebSocket      ┌──────────────────┐
+│  Playwright   │ ──────────────────→│  Dashboard Server │
+│  Test Runner  │   test events      │  (FastAPI)        │
+│               │   {test, status,   │                   │
+│  npx pw test  │    duration, err}  │  Broadcasts to    │
+│               │                    │  all connected    │
+│               │                    │  browsers via WS  │
+└──────────────┘                    └────────┬─────────┘
+                                             │ WebSocket
+                                             ▼
+                                    ┌──────────────────┐
+                                    │  Browser          │
+                                    │  Dashboard UI     │
+                                    │                   │
+                                    │  Tests animate    │
+                                    │  in real-time     │
+                                    └──────────────────┘
+```
+
+### Three Event Streams
+
+**Stream 1: Test Execution (live)**
+- Playwright custom reporter sends events via WebSocket as each test completes
+- Events: `test:start`, `test:pass`, `test:fail`, `test:skip`, `run:start`, `run:end`
+- Dashboard updates domain cards and health gauge in real-time
+- Failed tests flash red immediately
+
+**Stream 2: Triage Activity (live)**
+- When self-healing fires after a failed run, triage events stream to the dashboard
+- Events: `triage:start`, `triage:classify`, `heal:start`, `heal:complete`, `rerun:start`, `rerun:result`
+- Dashboard shows the triage timeline populating in real-time
+
+**Stream 3: Eval Runs (live)**
+- When `qa-agent eval run` executes, scenario results stream to the dashboard
+- Events: `eval:start`, `eval:scenario`, `eval:complete`
+- Agent accuracy cards update as each scenario scores
+
+### Playwright Custom Reporter
+
+A custom Playwright reporter sends WebSocket events to the dashboard server:
+
+```typescript
+// qa_agent/dashboard/ws-reporter.ts
+import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
+
+class DashboardReporter implements Reporter {
+  private ws: WebSocket;
+
+  onBegin(config, suite) {
+    this.ws = new WebSocket('ws://localhost:8080/ws/tests');
+    this.ws.send(JSON.stringify({
+      event: 'run:start',
+      totalTests: suite.allTests().length,
+      timestamp: Date.now(),
+    }));
+  }
+
+  onTestEnd(test: TestCase, result: TestResult) {
+    this.ws.send(JSON.stringify({
+      event: result.status === 'passed' ? 'test:pass' : 'test:fail',
+      title: test.title,
+      suite: test.parent.title,
+      file: test.location.file,
+      duration: result.duration,
+      error: result.errors?.[0]?.message || null,
+      timestamp: Date.now(),
+    }));
+  }
+
+  onEnd(result) {
+    this.ws.send(JSON.stringify({
+      event: 'run:end',
+      status: result.status,
+      duration: result.duration,
+      timestamp: Date.now(),
+    }));
+    this.ws.close();
+  }
+}
+export default DashboardReporter;
+```
+
+Register in `playwright.config.ts`:
+```typescript
+reporter: [
+  ['./qa_agent/dashboard/ws-reporter.ts'],  // live streaming
+  ['html', { ... }],
+  ['json', { ... }],
+  ['list'],
+],
+```
+
+### Server-Side WebSocket Hub (FastAPI)
+
+```python
+# In server.py
+from fastapi import WebSocket, WebSocketDisconnect
+
+connected_browsers: list[WebSocket] = []
+
+@app.websocket("/ws/dashboard")
+async def dashboard_ws(websocket: WebSocket):
+    """Browser connects here to receive live updates."""
+    await websocket.accept()
+    connected_browsers.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # keep-alive
+    except WebSocketDisconnect:
+        connected_browsers.remove(websocket)
+
+@app.websocket("/ws/tests")
+async def test_events_ws(websocket: WebSocket):
+    """Playwright reporter connects here to send test events."""
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Broadcast to all connected browsers
+            for browser in connected_browsers:
+                await browser.send_text(data)
+    except WebSocketDisconnect:
+        pass
+```
+
+### Browser-Side Live Updates
+
+```javascript
+// In app.js
+const ws = new WebSocket('ws://localhost:8080/ws/dashboard');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  
+  switch (data.event) {
+    case 'run:start':
+      showRunningBanner(data.totalTests);
+      break;
+    case 'test:pass':
+      updateDomainCard(data.suite, 'pass');
+      incrementPassCount();
+      break;
+    case 'test:fail':
+      updateDomainCard(data.suite, 'fail');
+      flashDomainRed(data.suite);
+      addToFailureFeed(data);
+      break;
+    case 'run:end':
+      hideRunningBanner();
+      recalculateHealthScore();
+      break;
+    case 'triage:classify':
+      addToTriageFeed(data);
+      break;
+    case 'heal:complete':
+      showHealAnimation(data);
+      break;
+  }
+};
+```
+
+### What You See in Real-Time
+
+1. **Run starts** → banner appears: "Running 127 tests..."
+2. **Each test completes** → domain card updates instantly:
+   - Green flash on pass
+   - Red flash + error toast on fail
+   - Pass counter increments live
+   - Health gauge recalculates after each test
+3. **Run ends** → banner shows final score, health report saves
+4. **If failures** → triage timeline starts populating:
+   - "Triaging cart.spec.ts:28..." 
+   - "→ locator_drift (0.82)"
+   - "Healing CartPage.ts..."
+   - "→ Fixed ✓"
+5. **Re-run starts** → "Re-running 1 healed spec..."
+6. **Re-run passes** → domain card flips from red to green
+
+### Docker Compose Update for WebSocket
+
+```yaml
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: qa_agent/dashboard/Dockerfile
+    ports:
+      - "8080:8080"    # HTTP + WebSocket on same port
+    volumes:
+      - ./health-reports:/data/health:ro
+      - ./qa_agent/eval/reports:/data/eval:ro
+      - ./memory/audit_runs:/data/audit:ro
+      - ./test-results:/data/test-results:ro
+    environment:
+      - DATA_DIR=/data
+    restart: unless-stopped
+```
+
+No additional ports needed — WebSocket upgrades happen on the same HTTP port (8080).
+
+### Fallback: Polling Mode
+
+If the WebSocket reporter isn't configured (e.g., running tests on a different machine), the dashboard falls back to polling `/api/health/latest` every 5 seconds. The UI works identically — just with a slight delay instead of instant updates.
 
 ---
 
