@@ -335,6 +335,14 @@
             break;
           case 'runner:start':
             setRunnerState('running');
+            document.getElementById('runner-log').innerHTML = '';
+            document.getElementById('runner-log-container').style.display = 'block';
+            document.getElementById('btn-run-selected').style.display = 'none';
+            document.getElementById('btn-run-all').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'inline-block';
+            resetDomainProgress();
+            runnerPassCount = 0;
+            runnerFailCount = 0;
             break;
           case 'runner:log':
             appendRunnerLog(data.line);
