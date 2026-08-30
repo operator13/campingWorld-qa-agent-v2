@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "product.spec.ts",
+      "test_title": "primary product image is visible",
+      "failure_class": "unknown",
+      "confidence": 0.55,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-30T20:29:13.695980+00:00"
+}
