@@ -248,7 +248,9 @@ def rerun_healed_specs(specs: list[str], output_dir: Path | None = None) -> int:
 
 
 async def run_self_healing(results_json_path: Path) -> dict[str, Any]:
-    """Full self-healing flow: parse → triage → heal → re-run."""
+    """Full self-healing flow: parse → triage → heal → re-run → save report."""
+    from datetime import datetime, timezone
+
     print("\n=== Self-Healing: Triaging failures ===")
 
     failures = parse_failures(results_json_path)
@@ -270,7 +272,96 @@ async def run_self_healing(results_json_path: Path) -> dict[str, Any]:
         if summary["healed_files"]:
             _git_commit_healed(summary["healed_files"])
 
+    # Save triage report alongside health reports
+    timestamp = datetime.now(tz=timezone.utc).strftime("%m_%d_%Y_%H-%M-%S")
+    summary["timestamp"] = datetime.now(tz=timezone.utc).isoformat()
+    _save_triage_report(summary, timestamp)
+
     return summary
+
+
+def _save_triage_report(summary: dict[str, Any], timestamp: str) -> None:
+    """Save triage report as JSON and markdown to health-reports/."""
+    reports_dir = _PROJECT_ROOT / "health-reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    # JSON
+    json_path = reports_dir / f"{timestamp}-triage.json"
+    json_path.write_text(json.dumps(summary, indent=2, default=str))
+
+    # Markdown
+    md_path = reports_dir / f"{timestamp}-triage.md"
+    md_path.write_text(_format_triage_markdown(summary))
+
+    # Git commit the report
+    try:
+        subprocess.run(
+            ["git", "add", str(json_path), str(md_path)],
+            cwd=str(_PROJECT_ROOT), capture_output=True, timeout=10,
+        )
+        subprocess.run(
+            ["git", "commit", "-m",
+             f"Triage report: {summary['triaged']} triaged, {summary['healed']} healed"],
+            cwd=str(_PROJECT_ROOT), capture_output=True, timeout=10,
+        )
+        subprocess.run(
+            ["git", "push"],
+            cwd=str(_PROJECT_ROOT), capture_output=True, timeout=30,
+        )
+        logger.info("Triage report pushed to GitHub")
+    except Exception as e:
+        logger.warning("Triage report git push failed: %s", e)
+
+    print(f"\n  Triage report saved: health-reports/{timestamp}-triage.json")
+    print(f"  Triage report saved: health-reports/{timestamp}-triage.md")
+
+
+def _format_triage_markdown(summary: dict[str, Any]) -> str:
+    """Format triage summary as human-readable markdown."""
+    lines = [
+        "# Triage Report",
+        "",
+        f"**Timestamp:** {summary.get('timestamp', 'unknown')}",
+        f"**Triaged:** {summary['triaged']}",
+        f"**Healed:** {summary['healed']}",
+        f"**App Defects:** {summary.get('app_defects', 0)}",
+        f"**Unknown:** {summary.get('unknown', 0)}",
+        "",
+    ]
+
+    if summary.get("healed_files"):
+        lines.append("## Healed Files")
+        lines.append("")
+        for f in summary["healed_files"]:
+            lines.append(f"- `{f}`")
+        lines.append("")
+
+    if summary.get("rerun_passed") is not None:
+        status = "PASSED" if summary["rerun_passed"] else "FAILED"
+        lines.append(f"## Re-run Result: {status}")
+        lines.append("")
+
+    details = summary.get("details", [])
+    if details:
+        lines.append("## Failure Details")
+        lines.append("")
+        for d in details:
+            healed_tag = " (HEALED)" if d.get("healed") else ""
+            lines.append(f"### {d['spec_file']} — \"{d['test_title']}\"{healed_tag}")
+            lines.append("")
+            lines.append(f"- **Classification:** {d['failure_class']}")
+            lines.append(f"- **Confidence:** {d['confidence']:.2f}")
+            if d["failure_class"] == "locator_drift" and d.get("healed"):
+                lines.append(f"- **Action:** Auto-healed by healer agent")
+            elif d["failure_class"] == "app_defect":
+                lines.append(f"- **Action:** Skipped — app defect, not a locator issue")
+            elif d["failure_class"] == "locator_drift" and not d.get("healed"):
+                lines.append(f"- **Action:** Skipped — confidence below threshold ({d['confidence']:.2f} < 0.75)")
+            else:
+                lines.append(f"- **Action:** Skipped — needs human review")
+            lines.append("")
+
+    return "\n".join(lines)
 
 
 def _git_commit_healed(healed_files: list[str]) -> None:
