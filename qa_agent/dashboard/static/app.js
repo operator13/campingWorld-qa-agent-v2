@@ -361,7 +361,8 @@
             document.getElementById('btn-run-selected').style.display = 'inline-block';
             document.getElementById('btn-run-all').style.display = 'inline-block';
             document.getElementById('btn-stop').style.display = 'none';
-            setTimeout(() => { refreshAllData(); setRunnerState('idle'); }, 3000);
+            document.getElementById('btn-clear').style.display = 'inline-block';
+            refreshAllData();
             break;
           case 'runner:healing':
             setRunnerState('healing');
@@ -518,6 +519,24 @@
     if (btnStop) {
       btnStop.addEventListener('click', () => stopTestRun());
     }
+
+    const btnClear = document.getElementById('btn-clear');
+    if (btnClear) {
+      btnClear.addEventListener('click', () => clearTestRunner());
+    }
+  }
+
+  function clearTestRunner() {
+    document.getElementById('runner-log').innerHTML = '';
+    document.getElementById('runner-log-container').style.display = 'none';
+    document.getElementById('btn-run-selected').style.display = 'inline-block';
+    document.getElementById('btn-run-all').style.display = 'inline-block';
+    document.getElementById('btn-stop').style.display = 'none';
+    document.getElementById('btn-clear').style.display = 'none';
+    resetDomainProgress();
+    runnerPassCount = 0;
+    runnerFailCount = 0;
+    setRunnerState('idle');
   }
 
   async function startTestRun(runAll) {

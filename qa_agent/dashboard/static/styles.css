@@ -1074,6 +1074,25 @@ body::before {
   letter-spacing: 2px;
 }
 
+.runner-btn-clear {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.5rem;
+  padding: 3px 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+  margin-right: 8px;
+}
+
+.runner-btn-clear:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
 .runner-card {
   background: var(--bg-card);
   backdrop-filter: blur(12px);
