@@ -200,11 +200,18 @@
       const badgeClass = passed ? 'badge-pass' : 'badge-fail';
       const badgeText = passed ? 'PASS' : 'FAIL';
 
+      const tokens = data.tokens != null ? formatNumber(data.tokens) : '--';
+      const cost = data.cost != null ? '$' + data.cost.toFixed(4) : '--';
+
       return `
         <div class="eval-card" data-agent="${agent}">
           <div class="eval-agent-name">${agent.toUpperCase()}</div>
           <div class="eval-score ${scoreClass}">${score.toFixed(1)}%</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
+          <div class="eval-cost-row">
+            <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
+            <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
+          </div>
         </div>
       `;
     }).join('');
