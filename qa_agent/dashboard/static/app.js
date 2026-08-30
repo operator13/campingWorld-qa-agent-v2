@@ -273,8 +273,13 @@
         : status === 'degraded' ? 'status-degraded'
         : 'status-critical';
 
+      const clickable = run.has_report && run.run_id;
+      const rowClass = clickable ? 'clickable-row' : '';
+      const rowClick = clickable ? `onclick="window.open('/report/${run.run_id}', '_blank')"` : '';
+      const cursor = clickable ? 'style="cursor:pointer;"' : '';
+
       return `
-        <tr>
+        <tr class="${rowClass}" ${rowClick} ${cursor} title="${clickable ? 'Click to view report' : ''}">
           <td>${ts}</td>
           <td>${total}</td>
           <td class="status-healthy">${passed}</td>

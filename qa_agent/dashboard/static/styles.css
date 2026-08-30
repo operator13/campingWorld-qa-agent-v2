@@ -655,6 +655,11 @@ body::before {
   background: rgba(0, 255, 200, 0.03);
 }
 
+.run-table tbody tr.clickable-row:hover {
+  background: rgba(0, 255, 200, 0.08);
+  box-shadow: inset 0 0 20px rgba(0, 255, 200, 0.05);
+}
+
 .run-table .row-healthy td {
   border-left: none;
 }

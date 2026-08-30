@@ -187,18 +187,35 @@ async def health_history() -> JSONResponse:
         data = _read_json(f)
         if not data or not isinstance(data, dict):
             continue
+        run_id = data.get("run_id") or f.stem
+        has_report = (TEST_RESULTS_DIR / run_id / "html-report" / "index.html").exists()
         results.append(
             {
-                "run_id": data.get("run_id"),
+                "run_id": run_id,
                 "timestamp": data.get("timestamp"),
                 "overall_score": data.get("overall_score"),
                 "overall_status": data.get("overall_status"),
                 "total_passed": data.get("total_passed"),
                 "total_failed": data.get("total_failed"),
                 "total_tests": data.get("total_tests"),
+                "has_report": has_report,
             }
         )
     return JSONResponse(content=results)
+
+
+# ---------------------------------------------------------------------------
+# Test report serving
+# ---------------------------------------------------------------------------
+
+
+@app.get("/report/{run_id}")
+async def serve_report(run_id: str) -> FileResponse:
+    """Serve the Playwright HTML report for a given run."""
+    report_file = TEST_RESULTS_DIR / run_id / "html-report" / "index.html"
+    if not report_file.exists():
+        return JSONResponse({"error": "Report not found"}, status_code=404)
+    return FileResponse(str(report_file), media_type="text/html")
 
 
 # ---------------------------------------------------------------------------
