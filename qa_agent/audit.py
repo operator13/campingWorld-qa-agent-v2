@@ -154,11 +154,27 @@ class AuditStore:
         input_tokens = usage.get("input_tokens", 0) if isinstance(usage, dict) else 0
         output_tokens = usage.get("output_tokens", 0) if isinstance(usage, dict) else 0
 
+        # Also check response_metadata.usage (langchain-anthropic fallback)
+        if input_tokens == 0 and output_tokens == 0 and isinstance(meta, dict):
+            meta_usage = meta.get("usage", {})
+            if isinstance(meta_usage, dict):
+                input_tokens = meta_usage.get("input_tokens", 0)
+                output_tokens = meta_usage.get("output_tokens", 0)
+
         cls._current_node_llm_calls.append({
             "model": model or meta.get("model", None),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
         })
+
+        # Accumulate run-level totals immediately (for eval runs that
+        # don't go through record_node_end → _consume_llm_calls)
+        if input_tokens > 0 or output_tokens > 0:
+            from qa_agent.config import estimate_cost
+            cost = estimate_cost(model or "claude-sonnet-4-6", input_tokens, output_tokens)
+            cls._run_total_input_tokens += input_tokens
+            cls._run_total_output_tokens += output_tokens
+            cls._run_total_cost += cost
 
     @classmethod
     def _consume_llm_calls(cls) -> dict[str, Any]:
@@ -176,10 +192,7 @@ class AuditStore:
         model = calls[0]["model"]  # Use the model from the first call
         cost = estimate_cost(model or "claude-sonnet-4-6", total_in, total_out)
 
-        # Accumulate run-level totals
-        cls._run_total_input_tokens += total_in
-        cls._run_total_output_tokens += total_out
-        cls._run_total_cost += cost
+        # Run-level totals already accumulated in record_llm_call()
 
         return {
             "model": model,
