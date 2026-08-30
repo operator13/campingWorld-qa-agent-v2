@@ -1,0 +1,92 @@
+[
+  {
+    "scenario": "button_submit_renamed",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\n  - waiting for getByRole('button', { name: 'Submit' })",
+    "route": "/checkout",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class CheckoutPage {\n  readonly submitBtn: Locator;\n  constructor(page: Page) {\n    this.submitBtn = page.getByRole('button', { name: 'Submit' });\n  }\n  async navigate() { await this.page.goto('/checkout'); }\n  async submit() { await this.submitBtn.click(); }\n}",
+    "dom_snippet": "<button>Place Order</button>",
+    "expected_fix_contains": "Place Order",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "testid_changed",
+    "error": "TimeoutError: locator.fill: Timeout 30000ms exceeded.\n  - waiting for getByTestId('checkout-email')",
+    "route": "/checkout",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class CheckoutPage {\n  readonly emailInput: Locator;\n  constructor(page: Page) {\n    this.emailInput = page.getByTestId('checkout-email');\n  }\n  async fillEmail(email: string) { await this.emailInput.fill(email); }\n}",
+    "dom_snippet": "<input data-testid=\"email-field\" type=\"email\" placeholder=\"Enter email\" />",
+    "expected_fix_contains": "email-field",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "label_changed",
+    "error": "TimeoutError: locator.fill: Timeout 30000ms exceeded.\n  - waiting for getByLabel('Email address')",
+    "route": "/login",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class LoginPage {\n  readonly emailInput: Locator;\n  constructor(page: Page) {\n    this.emailInput = page.getByLabel('Email address');\n  }\n  async fillEmail(email: string) { await this.emailInput.fill(email); }\n}",
+    "dom_snippet": "<label for=\"email\">Email</label><input id=\"email\" type=\"email\" />",
+    "expected_fix_contains": "Email",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "link_renamed",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\n  - waiting for getByRole('link', { name: 'My Account' })",
+    "route": "/header",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class HeaderPage {\n  readonly accountLink: Locator;\n  constructor(page: Page) {\n    this.accountLink = page.getByRole('link', { name: 'My Account' });\n  }\n  async goToAccount() { await this.accountLink.click(); }\n}",
+    "dom_snippet": "<nav><a href=\"/account\">Account Settings</a></nav>",
+    "expected_fix_contains": "Account Settings",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "heading_renamed",
+    "error": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.\n  - waiting for getByRole('heading', { name: 'Shopping Cart' })",
+    "route": "/cart",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class CartPage {\n  readonly heading: Locator;\n  constructor(page: Page) {\n    this.heading = page.getByRole('heading', { name: 'Shopping Cart' });\n  }\n  async waitForPage() { await this.heading.waitFor(); }\n}",
+    "dom_snippet": "<h1>Your Cart</h1>",
+    "expected_fix_contains": "Your Cart",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "checkbox_renamed",
+    "error": "TimeoutError: locator.check: Timeout 30000ms exceeded.\n  - waiting for getByRole('checkbox', { name: 'I agree to terms' })",
+    "route": "/checkout",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class CheckoutPage {\n  readonly termsCheckbox: Locator;\n  constructor(page: Page) {\n    this.termsCheckbox = page.getByRole('checkbox', { name: 'I agree to terms' });\n  }\n  async acceptTerms() { await this.termsCheckbox.check(); }\n}",
+    "dom_snippet": "<input type=\"checkbox\" id=\"terms\" /><label for=\"terms\">Accept Terms and Conditions</label>",
+    "expected_fix_contains": "Accept Terms and Conditions",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "input_placeholder_changed",
+    "error": "TimeoutError: locator.fill: Timeout 30000ms exceeded.\n  - waiting for getByPlaceholder('Search products...')",
+    "route": "/search",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class SearchPage {\n  readonly searchInput: Locator;\n  constructor(page: Page) {\n    this.searchInput = page.getByPlaceholder('Search products...');\n  }\n  async search(query: string) { await this.searchInput.fill(query); }\n}",
+    "dom_snippet": "<input type=\"search\" placeholder=\"Search for camping gear\" />",
+    "expected_fix_contains": "Search for camping gear",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "select_renamed",
+    "error": "TimeoutError: locator.selectOption: Timeout 30000ms exceeded.\n  - waiting for getByRole('combobox', { name: 'Sort By' })",
+    "route": "/products",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class ProductsPage {\n  readonly sortSelect: Locator;\n  constructor(page: Page) {\n    this.sortSelect = page.getByRole('combobox', { name: 'Sort By' });\n  }\n  async sortBy(value: string) { await this.sortSelect.selectOption(value); }\n}",
+    "dom_snippet": "<label for=\"sort\">Order By</label><select id=\"sort\" aria-label=\"Order By\"><option>Price</option></select>",
+    "expected_fix_contains": "Order By",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "image_alt_changed",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\n  - waiting for getByAltText('Product thumbnail')",
+    "route": "/products",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class ProductsPage {\n  readonly productImage: Locator;\n  constructor(page: Page) {\n    this.productImage = page.getByAltText('Product thumbnail');\n  }\n  async clickImage() { await this.productImage.click(); }\n}",
+    "dom_snippet": "<img src=\"/images/tent.jpg\" alt=\"Camping tent product image\" />",
+    "expected_fix_contains": "Camping tent product image",
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "element_moved_to_different_role",
+    "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\n  - waiting for getByRole('button', { name: 'Remove item' })",
+    "route": "/cart",
+    "old_source": "import { type Page, type Locator } from '@playwright/test';\n\nexport class CartPage {\n  readonly removeItemBtn: Locator;\n  constructor(page: Page) {\n    this.removeItemBtn = page.getByRole('button', { name: 'Remove item' });\n  }\n  async removeItem() { await this.removeItemBtn.click(); }\n}",
+    "dom_snippet": "<a href=\"#\" role=\"link\" aria-label=\"Delete item\">Delete item</a>",
+    "expected_fix_contains": "Delete item",
+    "valid_until": "2027-06-01"
+  }
+]

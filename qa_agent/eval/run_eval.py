@@ -4,6 +4,8 @@ Metrics:
   - AC coverage: does every acceptance criterion map to at least one test case?
   - Locator quality: role/testid preferred over brittle CSS selectors
   - Triage accuracy: did Triage classify seeded failures correctly?
+  - Assertion integrity: did Healer avoid modifying assertions?
+  - Diff minimality: did Healer restrict changes to locator-related lines?
 
 Can be run standalone: python -m qa_agent.eval.run_eval
 """
@@ -15,6 +17,8 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+
+from qa_agent.nodes.healer import validate_healer_diff, AssertionGuardError
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 
@@ -129,6 +133,105 @@ def score_locator_quality(page_objects: dict[str, str]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# POM Validity
+# ---------------------------------------------------------------------------
+
+def score_pom_validity(page_objects: dict[str, str]) -> dict[str, Any]:
+    """Score: what fraction of page objects are structurally valid TypeScript POMs?
+
+    Checks each POM source for:
+    - Has a class declaration
+    - Has constructor(page: Page)
+    - Has a navigate() method
+    - Has an export statement
+    - Uses Locator type
+    """
+    if not page_objects:
+        return {"score": 1.0, "valid": 0, "total": 0, "invalid": []}
+
+    _class_re = re.compile(r"\bclass\s+\w+")
+    _constructor_re = re.compile(r"\bconstructor\s*\(\s*page\s*:\s*Page\b")
+    _navigate_re = re.compile(r"\bnavigate\s*\(")
+    _export_re = re.compile(r"\bexport\b")
+    _locator_re = re.compile(r"\bLocator\b")
+
+    checks = [
+        ("class_declaration", _class_re),
+        ("constructor_page", _constructor_re),
+        ("navigate_method", _navigate_re),
+        ("export_statement", _export_re),
+        ("locator_type", _locator_re),
+    ]
+
+    valid = 0
+    invalid: list[dict[str, Any]] = []
+
+    for route, source in page_objects.items():
+        failed = [name for name, pattern in checks if not pattern.search(source)]
+        if not failed:
+            valid += 1
+        else:
+            invalid.append({"route": route, "failed_checks": failed})
+
+    total = len(page_objects)
+    score = valid / total if total > 0 else 1.0
+    return {
+        "score": round(score, 4),
+        "valid": valid,
+        "total": total,
+        "invalid": invalid,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Test Validity
+# ---------------------------------------------------------------------------
+
+def score_test_validity(test_code: dict[str, str]) -> dict[str, Any]:
+    """Score: what fraction of test spec files are structurally valid?
+
+    Checks each spec file for:
+    - Has test.describe( or describe( block
+    - Has test( blocks
+    - Has beforeEach(
+    - Has at least 1 expect( assertion
+    """
+    if not test_code:
+        return {"score": 1.0, "valid": 0, "total": 0, "invalid": []}
+
+    _describe_re = re.compile(r"\btest\.describe\s*\(|\bdescribe\s*\(")
+    _test_block_re = re.compile(r"\btest\s*\(")
+    _before_each_re = re.compile(r"\bbeforeEach\s*\(")
+    _expect_re = re.compile(r"\bexpect\s*\(")
+
+    checks = [
+        ("describe_block", _describe_re),
+        ("test_block", _test_block_re),
+        ("before_each", _before_each_re),
+        ("expect_assertion", _expect_re),
+    ]
+
+    valid = 0
+    invalid: list[dict[str, Any]] = []
+
+    for filename, source in test_code.items():
+        failed = [name for name, pattern in checks if not pattern.search(source)]
+        if not failed:
+            valid += 1
+        else:
+            invalid.append({"file": filename, "failed_checks": failed})
+
+    total = len(test_code)
+    score = valid / total if total > 0 else 1.0
+    return {
+        "score": round(score, 4),
+        "valid": valid,
+        "total": total,
+        "invalid": invalid,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Triage Accuracy
 # ---------------------------------------------------------------------------
 
@@ -211,6 +314,110 @@ def run_full_eval(
         "ac_coverage": ac,
         "locator_quality": locator,
         "triage_accuracy": triage,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Healer: Assertion Integrity
+# ---------------------------------------------------------------------------
+
+def score_assertion_integrity(
+    old_sources: dict[str, str],
+    new_sources: dict[str, str],
+) -> dict[str, Any]:
+    """Score: what fraction of routes have no assertion modifications?
+
+    For each route present in new_sources, call validate_healer_diff(old, new).
+    If AssertionGuardError is raised, that route is a violation.
+    Score = routes without violations / total routes scored.
+    """
+    routes = list(new_sources.keys())
+    if not routes:
+        return {"score": 1.0, "clean": 0, "violations": 0, "total": 0, "violation_routes": []}
+
+    violation_routes: list[str] = []
+    for route in routes:
+        old = old_sources.get(route, "")
+        new = new_sources[route]
+        try:
+            validate_healer_diff(old, new)
+        except AssertionGuardError:
+            violation_routes.append(route)
+
+    clean = len(routes) - len(violation_routes)
+    score = clean / len(routes)
+    return {
+        "score": round(score, 4),
+        "clean": clean,
+        "violations": len(violation_routes),
+        "total": len(routes),
+        "violation_routes": violation_routes,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Healer: Diff Minimality
+# ---------------------------------------------------------------------------
+
+_LOCATOR_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"getByRole\s*\("),
+    re.compile(r"getByTestId\s*\("),
+    re.compile(r"getByText\s*\("),
+    re.compile(r"getByLabel\s*\("),
+    re.compile(r"getByPlaceholder\s*\("),
+    re.compile(r"getByAltText\s*\("),
+    re.compile(r"\blocator\s*\("),
+    re.compile(r"\.waitFor\s*\("),
+    re.compile(r"\.scrollIntoViewIfNeeded\s*\("),
+    re.compile(r"\btimeout\b"),
+]
+
+
+def _is_locator_line(line: str) -> bool:
+    """Return True if the line contains a locator or wait pattern."""
+    return any(p.search(line) for p in _LOCATOR_PATTERNS)
+
+
+def score_diff_minimality(
+    old_sources: dict[str, str],
+    new_sources: dict[str, str],
+) -> dict[str, Any]:
+    """Score: what fraction of changed lines are locator-related?
+
+    Compare old vs new line by line for each route. Count lines that
+    differ (present in one but not the other). Of those changed lines,
+    count how many contain a locator pattern.
+
+    Score = locator-related changed lines / total changed lines.
+    Returns 1.0 if there are no changes at all.
+    """
+    total_changed = 0
+    locator_changed = 0
+
+    for route, new_src in new_sources.items():
+        old_src = old_sources.get(route, "")
+        old_lines = set(old_src.splitlines())
+        new_lines = set(new_src.splitlines())
+
+        # Lines added or removed
+        changed = old_lines.symmetric_difference(new_lines)
+        for line in changed:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            total_changed += 1
+            if _is_locator_line(stripped):
+                locator_changed += 1
+
+    if total_changed == 0:
+        return {"score": 1.0, "locator_changes": 0, "non_locator_changes": 0, "total_changes": 0}
+
+    score = locator_changed / total_changed
+    return {
+        "score": round(score, 4),
+        "locator_changes": locator_changed,
+        "non_locator_changes": total_changed - locator_changed,
+        "total_changes": total_changed,
     }
 
 

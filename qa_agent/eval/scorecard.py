@@ -21,9 +21,21 @@ def build_scorecard(
     baseline_mode: bool,
     thresholds: dict[str, float],
     regression_report: dict[str, Any] | None = None,
+    accuracy_key: str = "triage_accuracy",
 ) -> dict[str, Any]:
-    """Assemble the final scorecard dict from raw eval results."""
-    accuracy = eval_result.get("triage_accuracy", {})
+    """Assemble the final scorecard dict from raw eval results.
+
+    Args:
+        eval_result: Raw eval output containing accuracy metrics.
+        run_id: Unique identifier for this eval run.
+        agent: Name of the agent being evaluated (e.g. 'triage', 'planner').
+        baseline_mode: If True, no pass/fail judgment is made.
+        thresholds: Dict of metric_name -> threshold float.
+        regression_report: Optional regression comparison from a prior run.
+        accuracy_key: The key in eval_result that holds the primary accuracy
+            metric (defaults to 'triage_accuracy' for backward compatibility).
+    """
+    accuracy = eval_result.get(accuracy_key, {})
     misses = accuracy.get("misses", [])
     score = accuracy.get("score", 0.0)
 
@@ -31,7 +43,7 @@ def build_scorecard(
     by_category = _compute_category_breakdown(eval_result.get("scenarios", []), misses)
 
     # Pass/fail determination
-    passed = None if baseline_mode else (score >= thresholds.get("triage_accuracy", 0.75))
+    passed = None if baseline_mode else (score >= thresholds.get(accuracy_key, 0.75))
 
     return {
         "eval_run_id": run_id,
@@ -40,7 +52,10 @@ def build_scorecard(
         "baseline_mode": baseline_mode,
         "scenarios_total": accuracy.get("total", 0),
         "scenarios_skipped_expired": eval_result.get("skipped_expired", 0),
-        "triage_accuracy": {
+        # Primary accuracy metric — stored under the caller-supplied key so
+        # both triage ("triage_accuracy") and planner ("planner_accuracy")
+        # scorecards use a consistent structure.
+        accuracy_key: {
             "score": round(score, 4),
             "correct": accuracy.get("correct", 0),
             "total": accuracy.get("total", 0),

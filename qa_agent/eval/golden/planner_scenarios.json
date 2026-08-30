@@ -1,0 +1,72 @@
+[
+  {
+    "scenario": "checkout_flow",
+    "goal": "Test the checkout flow",
+    "acceptance_criteria": [
+      "User can add items to the cart",
+      "User can enter shipping address",
+      "User can select a payment method",
+      "User sees order summary before confirming",
+      "User sees order confirmation after placing order"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "search_and_filter",
+    "goal": "Test the product search and filtering functionality",
+    "acceptance_criteria": [
+      "User can search for products by keyword",
+      "Search results display matching products",
+      "User can filter results by category",
+      "User can sort results by price",
+      "Empty search results show a helpful message"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "auth_login",
+    "goal": "Test user authentication and login",
+    "acceptance_criteria": [
+      "User can log in with valid email and password",
+      "Invalid credentials show an error message",
+      "User can request a password reset",
+      "User is redirected to the dashboard after login",
+      "Session persists across page refreshes"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "product_browsing",
+    "goal": "Test product detail page browsing",
+    "acceptance_criteria": [
+      "Product name and description are displayed",
+      "Product images are visible and can be cycled",
+      "Price is shown correctly",
+      "User can select product variants such as size or color",
+      "Related products are shown at the bottom of the page"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "cart_management",
+    "goal": "Test shopping cart management",
+    "acceptance_criteria": [
+      "User can add a product to the cart",
+      "User can update the quantity of a cart item",
+      "User can remove an item from the cart",
+      "Cart total updates when quantity changes",
+      "Cart persists when the user navigates away and returns"
+    ],
+    "expected_test_count_min": 4,
+    "expected_ac_coverage_min": 0.80,
+    "valid_until": "2027-06-01"
+  }
+]

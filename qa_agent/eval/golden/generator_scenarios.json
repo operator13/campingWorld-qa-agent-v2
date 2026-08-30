@@ -1,0 +1,86 @@
+[
+  {
+    "scenario": "checkout_page",
+    "goal": "Generate tests for checkout",
+    "plan": [
+      {
+        "id": "tc-1",
+        "title": "User can fill checkout form",
+        "feature": "checkout",
+        "route": "/checkout",
+        "steps": ["Navigate to /checkout", "Fill email field with test@example.com", "Fill name field"],
+        "expected": ["Form accepts input", "Email field contains test@example.com"],
+        "tags": ["@checkout"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-2",
+        "title": "User can submit order",
+        "feature": "checkout",
+        "route": "/checkout",
+        "steps": ["Navigate to /checkout", "Fill email", "Click Submit button"],
+        "expected": ["Confirmation page is displayed", "URL contains /confirmation"],
+        "tags": ["@smoke", "@checkout"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.70,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "login_page",
+    "goal": "Generate tests for user login",
+    "plan": [
+      {
+        "id": "tc-3",
+        "title": "User can log in with valid credentials",
+        "feature": "login",
+        "route": "/login",
+        "steps": ["Navigate to /login", "Fill username with user@example.com", "Fill password", "Click Login"],
+        "expected": ["User is redirected to dashboard", "Welcome message is visible"],
+        "tags": ["@smoke", "@login"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-4",
+        "title": "Login shows error for invalid credentials",
+        "feature": "login",
+        "route": "/login",
+        "steps": ["Navigate to /login", "Fill username with bad@example.com", "Fill wrong password", "Click Login"],
+        "expected": ["Error message is displayed", "User remains on login page"],
+        "tags": ["@login", "@validation"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.70,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "product_search",
+    "goal": "Generate tests for product search functionality",
+    "plan": [
+      {
+        "id": "tc-5",
+        "title": "User can search for a product",
+        "feature": "search",
+        "route": "/search",
+        "steps": ["Navigate to /search", "Type 'camping tent' in search box", "Press Enter or click Search"],
+        "expected": ["Search results are displayed", "Results contain relevant products"],
+        "tags": ["@search"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-6",
+        "title": "Search with no results shows empty state",
+        "feature": "search",
+        "route": "/search",
+        "steps": ["Navigate to /search", "Type 'xyznonexistentproduct' in search box", "Press Enter"],
+        "expected": ["No results message is displayed"],
+        "tags": ["@search", "@edge-case"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.70,
+    "valid_until": "2027-06-01"
+  }
+]

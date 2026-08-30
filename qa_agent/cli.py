@@ -271,24 +271,41 @@ async def _crawl(
 
 async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None:
     """Run eval for the specified agent."""
-    from qa_agent.eval.eval_runner import run_triage_eval
+    from qa_agent.eval.eval_runner import (
+        run_generator_eval, run_healer_eval, run_planner_eval, run_triage_eval,
+    )
+
+    supported = ["triage", "planner", "generator", "healer", "all"]
+
+    if agent == "all":
+        mode = "BASELINE" if baseline else "EVAL"
+        print(f"=== QA Agent · {mode} (all agents) ===\n")
+        for a in ["triage", "planner", "generator", "healer"]:
+            print(f"\n{'='*50}")
+            await _eval_run(a, baseline, threshold)
+        return
 
     mode = "BASELINE" if baseline else "EVAL"
     print(f"=== QA Agent · {mode} ({agent}) ===\n")
 
-    if agent != "triage":
-        print(f"[ERROR] Agent '{agent}' eval not yet implemented. Only 'triage' is supported.")
+    agent_config = {
+        "triage": (run_triage_eval, "triage_accuracy", "Triage Accuracy"),
+        "planner": (run_planner_eval, "planner_accuracy", "AC Coverage"),
+        "generator": (run_generator_eval, "generator_accuracy", "Locator Quality"),
+        "healer": (run_healer_eval, "healer_accuracy", "Healer Accuracy"),
+    }
+
+    if agent not in agent_config:
+        print(f"[ERROR] Agent '{agent}' not supported. Choose from: {', '.join(supported)}")
         sys.exit(1)
 
-    scorecard = await run_triage_eval(
-        baseline_mode=baseline,
-        threshold=threshold,
-    )
+    run_fn, accuracy_key, label_name = agent_config[agent]
+    scorecard = await run_fn(baseline_mode=baseline, threshold=threshold)
 
     # Print results
-    accuracy = scorecard["triage_accuracy"]
+    accuracy = scorecard[accuracy_key]
     thresholds = scorecard["thresholds"]
-    threshold_val = thresholds.get("triage_accuracy", 0.75)
+    threshold_val = thresholds.get(accuracy_key, 0.75)
 
     print(f"Scenarios: {scorecard['scenarios_total']} loaded, "
           f"{scorecard['scenarios_skipped_expired']} skipped (expired)")
@@ -302,7 +319,7 @@ async def _eval_run(agent: str, baseline: bool, threshold: float | None) -> None
     else:
         status = "FAIL"
 
-    print(f"Triage Accuracy:  {accuracy['score'] * 100:.1f}%  "
+    print(f"{label_name}:  {accuracy['score'] * 100:.1f}%  "
           f"(threshold: {threshold_val * 100:.1f}%)  {status}")
 
     # Category breakdown
@@ -411,7 +428,7 @@ def main() -> None:
         "--agent",
         type=str,
         default="triage",
-        help="Agent to evaluate (default: triage)",
+        help="Agent to evaluate: triage, planner, generator, healer, or all (default: triage)",
     )
     parser.add_argument(
         "--threshold",

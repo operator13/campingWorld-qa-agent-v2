@@ -7,8 +7,15 @@ from unittest.mock import AsyncMock, patch
 
 from qa_agent.eval.eval_runner import (
     build_synthetic_state,
+    load_healer_scenarios,
+    load_planner_scenarios,
     load_triage_scenarios,
 )
+from qa_agent.eval.run_eval import (
+    score_assertion_integrity,
+    score_diff_minimality,
+)
+from qa_agent.schemas.models import TestCase
 from qa_agent.eval.recommendations import (
     generate_recommendations,
     format_report_markdown,
@@ -522,3 +529,870 @@ class TestFormatReportMarkdown:
         }
         md = format_report_markdown(scorecard)
         assert "## Recommendations" not in md
+
+
+# ---------------------------------------------------------------------------
+# Planner golden data tests
+# ---------------------------------------------------------------------------
+
+class TestPlannerScenarios:
+
+    def test_loads_5_scenarios(self):
+        scenarios, skipped = load_planner_scenarios()
+        assert len(scenarios) == 5
+        assert skipped == 0
+
+    def test_categories_present(self):
+        scenarios, _ = load_planner_scenarios()
+        scenario_names = {s["scenario"] for s in scenarios}
+        assert "checkout_flow" in scenario_names
+        assert "search_and_filter" in scenario_names
+        assert "auth_login" in scenario_names
+        assert "product_browsing" in scenario_names
+        assert "cart_management" in scenario_names
+
+    def test_all_scenarios_have_required_fields(self):
+        scenarios, _ = load_planner_scenarios()
+        required = {"scenario", "goal", "acceptance_criteria", "expected_ac_coverage_min"}
+        for s in scenarios:
+            missing = required - s.keys()
+            assert not missing, f"Scenario {s.get('scenario')} missing fields: {missing}"
+
+    def test_acceptance_criteria_are_nonempty(self):
+        scenarios, _ = load_planner_scenarios()
+        for s in scenarios:
+            assert len(s["acceptance_criteria"]) >= 2, (
+                f"Scenario {s['scenario']} needs at least 2 ACs"
+            )
+
+    def test_coverage_thresholds_are_reasonable(self):
+        scenarios, _ = load_planner_scenarios()
+        for s in scenarios:
+            threshold = s["expected_ac_coverage_min"]
+            assert 0.5 <= threshold <= 1.0, (
+                f"Scenario {s['scenario']} has suspicious threshold: {threshold}"
+            )
+
+    def test_skips_expired_scenarios(self, tmp_path):
+        golden = [
+            {
+                "scenario": "expired_planner",
+                "goal": "test goal",
+                "acceptance_criteria": ["AC 1"],
+                "expected_ac_coverage_min": 0.80,
+                "valid_until": "2020-01-01",
+            },
+            {
+                "scenario": "valid_planner",
+                "goal": "test goal",
+                "acceptance_criteria": ["AC 1"],
+                "expected_ac_coverage_min": 0.80,
+                "valid_until": "2099-01-01",
+            },
+        ]
+        path = tmp_path / "planner_golden.json"
+        path.write_text(json.dumps(golden))
+
+        scenarios, skipped = load_planner_scenarios(path)
+        assert len(scenarios) == 1
+        assert skipped == 1
+        assert scenarios[0]["scenario"] == "valid_planner"
+
+    def test_skips_invalid_scenarios(self, tmp_path):
+        golden = [{"goal": "missing scenario and coverage fields"}]
+        path = tmp_path / "bad_planner.json"
+        path.write_text(json.dumps(golden))
+
+        scenarios, skipped = load_planner_scenarios(path)
+        assert len(scenarios) == 0
+        assert skipped == 1
+
+
+# ---------------------------------------------------------------------------
+# Planner eval integration tests (mocked planner)
+# ---------------------------------------------------------------------------
+
+def _make_mock_planner_result(n_cases: int = 3) -> dict:
+    """Build a planner result dict with n_cases TestCase objects."""
+    cases = [
+        TestCase(
+            id=f"tc-{i}",
+            title=f"Test case {i}",
+            feature="checkout",
+            route="/checkout",
+            steps=[f"Navigate to /checkout", f"Perform action {i}"],
+            expected=[f"Expected outcome {i}"],
+            tags=["@smoke"],
+        )
+        for i in range(1, n_cases + 1)
+    ]
+    return {"plan": cases}
+
+
+class TestPlannerEvalIntegration:
+
+    @pytest.mark.asyncio
+    async def test_run_planner_eval_all_pass(self, tmp_path):
+        """Mock planner returns test cases covering all ACs — all scenarios pass."""
+        scenarios = [
+            {
+                "scenario": "checkout_flow",
+                "goal": "Test the checkout flow",
+                "acceptance_criteria": [
+                    "User can add items to the cart",
+                    "User sees order confirmation",
+                ],
+                "expected_test_count_min": 1,
+                "expected_ac_coverage_min": 0.50,
+            },
+        ]
+
+        async def mock_planner(state):
+            return {
+                "plan": [
+                    TestCase(
+                        id="tc-1",
+                        title="User can add items to the cart and see order confirmation",
+                        feature="checkout",
+                        route="/checkout",
+                        steps=["Navigate to /checkout", "Add item to cart", "Submit order"],
+                        expected=["Order confirmation is displayed after adding items to cart"],
+                        tags=["@smoke"],
+                    )
+                ]
+            }
+
+        with patch("qa_agent.eval.eval_runner.planner", side_effect=mock_planner):
+            from qa_agent.eval.eval_runner import run_planner_eval
+            scorecard = await run_planner_eval(
+                scenarios=scenarios,
+                baseline_mode=False,
+                threshold=0.50,
+                reports_dir=tmp_path,
+            )
+
+        assert scorecard["agent"] == "planner"
+        assert "planner_accuracy" in scorecard
+        assert scorecard["planner_accuracy"]["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_run_planner_eval_miss_recorded(self, tmp_path):
+        """Mock planner returns empty plan — scenario is flagged as a miss."""
+        scenarios = [
+            {
+                "scenario": "auth_login",
+                "goal": "Test user authentication",
+                "acceptance_criteria": [
+                    "User can log in with valid email and password",
+                    "Invalid credentials show an error message",
+                ],
+                "expected_test_count_min": 2,
+                "expected_ac_coverage_min": 0.80,
+            },
+        ]
+
+        async def mock_planner(state):
+            return {"plan": []}
+
+        with patch("qa_agent.eval.eval_runner.planner", side_effect=mock_planner):
+            from qa_agent.eval.eval_runner import run_planner_eval
+            scorecard = await run_planner_eval(
+                scenarios=scenarios,
+                baseline_mode=False,
+                threshold=0.80,
+                reports_dir=tmp_path,
+            )
+
+        pa = scorecard["planner_accuracy"]
+        assert pa["total"] == 1
+        assert len(pa["misses"]) == 1
+        assert pa["misses"][0]["scenario"] == "auth_login"
+
+    @pytest.mark.asyncio
+    async def test_run_planner_eval_baseline_mode(self, tmp_path):
+        """Baseline mode sets passed=None regardless of score."""
+        scenarios = [
+            {
+                "scenario": "cart_management",
+                "goal": "Test cart management",
+                "acceptance_criteria": ["User can add a product to the cart"],
+                "expected_test_count_min": 1,
+                "expected_ac_coverage_min": 0.80,
+            },
+        ]
+
+        async def mock_planner(state):
+            return {
+                "plan": [
+                    TestCase(
+                        id="tc-1",
+                        title="User can add a product to the cart",
+                        feature="cart",
+                        route="/cart",
+                        steps=["Navigate to product page", "Click Add to Cart"],
+                        expected=["Product appears in cart"],
+                        tags=["@smoke"],
+                    )
+                ]
+            }
+
+        with patch("qa_agent.eval.eval_runner.planner", side_effect=mock_planner):
+            from qa_agent.eval.eval_runner import run_planner_eval
+            scorecard = await run_planner_eval(
+                scenarios=scenarios,
+                baseline_mode=True,
+                reports_dir=tmp_path,
+            )
+
+        assert scorecard["passed"] is None
+        assert scorecard["baseline_mode"] is True
+        assert scorecard["agent"] == "planner"
+
+
+# ---------------------------------------------------------------------------
+# Healer golden data tests
+# ---------------------------------------------------------------------------
+
+class TestHealerScenarios:
+
+    def test_loads_10_scenarios(self):
+        scenarios, skipped = load_healer_scenarios()
+        assert len(scenarios) == 10
+        assert skipped == 0
+
+    def test_all_scenarios_have_required_fields(self):
+        scenarios, _ = load_healer_scenarios()
+        required = {"scenario", "error", "route", "old_source", "dom_snippet"}
+        for s in scenarios:
+            missing = required - s.keys()
+            assert not missing, f"Scenario {s.get('scenario')} missing fields: {missing}"
+
+    def test_all_scenarios_have_expected_fix(self):
+        scenarios, _ = load_healer_scenarios()
+        for s in scenarios:
+            assert "expected_fix_contains" in s, (
+                f"Scenario {s['scenario']} missing expected_fix_contains"
+            )
+            assert s["expected_fix_contains"], (
+                f"Scenario {s['scenario']} has empty expected_fix_contains"
+            )
+
+    def test_skips_expired_scenarios(self, tmp_path):
+        golden = [
+            {
+                "scenario": "expired_healer",
+                "error": "TimeoutError",
+                "route": "/checkout",
+                "old_source": "page.getByRole('button', { name: 'Old' })",
+                "dom_snippet": "<button>New</button>",
+                "expected_fix_contains": "New",
+                "valid_until": "2020-01-01",
+            },
+            {
+                "scenario": "valid_healer",
+                "error": "TimeoutError",
+                "route": "/cart",
+                "old_source": "page.getByRole('button', { name: 'Old' })",
+                "dom_snippet": "<button>Updated</button>",
+                "expected_fix_contains": "Updated",
+                "valid_until": "2099-01-01",
+            },
+        ]
+        path = tmp_path / "healer_golden.json"
+        path.write_text(json.dumps(golden))
+
+        scenarios, skipped = load_healer_scenarios(path)
+        assert len(scenarios) == 1
+        assert skipped == 1
+        assert scenarios[0]["scenario"] == "valid_healer"
+
+    def test_skips_invalid_scenarios(self, tmp_path):
+        golden = [{"scenario": "bad_healer", "error": "timeout"}]  # missing required fields
+        path = tmp_path / "bad_healer.json"
+        path.write_text(json.dumps(golden))
+
+        scenarios, skipped = load_healer_scenarios(path)
+        assert len(scenarios) == 0
+        assert skipped == 1
+
+
+# ---------------------------------------------------------------------------
+# Assertion integrity scorer tests
+# ---------------------------------------------------------------------------
+
+class TestAssertionIntegrity:
+
+    def test_scores_1_when_no_assertion_changes(self):
+        old = {
+            "/checkout": (
+                "this.submitBtn = page.getByRole('button', { name: 'Submit' });\n"
+                "await expect(page).toHaveURL('/checkout');\n"
+            )
+        }
+        new = {
+            "/checkout": (
+                "this.submitBtn = page.getByRole('button', { name: 'Place Order' });\n"
+                "await expect(page).toHaveURL('/checkout');\n"
+            )
+        }
+        result = score_assertion_integrity(old, new)
+        assert result["score"] == 1.0
+        assert result["violations"] == 0
+        assert result["clean"] == 1
+
+    def test_scores_0_when_assertion_modified(self):
+        old = {
+            "/checkout": (
+                "this.submitBtn = page.getByRole('button', { name: 'Submit' });\n"
+                "await expect(page).toHaveURL('/checkout');\n"
+            )
+        }
+        new = {
+            "/checkout": (
+                "this.submitBtn = page.getByRole('button', { name: 'Place Order' });\n"
+                "await expect(page).toHaveURL('/confirmation');\n"  # assertion changed
+            )
+        }
+        result = score_assertion_integrity(old, new)
+        assert result["score"] == 0.0
+        assert result["violations"] == 1
+        assert "/checkout" in result["violation_routes"]
+
+    def test_empty_sources_returns_perfect_score(self):
+        result = score_assertion_integrity({}, {})
+        assert result["score"] == 1.0
+        assert result["total"] == 0
+
+    def test_multiple_routes_partial_violations(self):
+        old = {
+            "/checkout": "await expect(page).toHaveURL('/checkout');\n",
+            "/cart": "await expect(cart).toBeVisible();\n",
+        }
+        new = {
+            "/checkout": "await expect(page).toHaveURL('/checkout');\n",  # unchanged — clean
+            "/cart": "await expect(cart).toBeHidden();\n",  # assertion changed — violation
+        }
+        result = score_assertion_integrity(old, new)
+        assert result["violations"] == 1
+        assert result["clean"] == 1
+        assert result["score"] == pytest.approx(0.5)
+
+
+# ---------------------------------------------------------------------------
+# Diff minimality scorer tests
+# ---------------------------------------------------------------------------
+
+class TestDiffMinimality:
+
+    def test_scores_1_when_only_locator_changed(self):
+        old = {"/checkout": "this.btn = page.getByRole('button', { name: 'Submit' });\n"}
+        new = {"/checkout": "this.btn = page.getByRole('button', { name: 'Place Order' });\n"}
+        result = score_diff_minimality(old, new)
+        assert result["score"] == 1.0
+        assert result["non_locator_changes"] == 0
+
+    def test_scores_less_than_1_when_non_locator_changed(self):
+        old = {
+            "/checkout": (
+                "this.btn = page.getByRole('button', { name: 'Submit' });\n"
+                "readonly title = 'Checkout';\n"
+            )
+        }
+        new = {
+            "/checkout": (
+                "this.btn = page.getByRole('button', { name: 'Place Order' });\n"
+                "readonly title = 'Order';\n"  # non-locator line changed
+            )
+        }
+        result = score_diff_minimality(old, new)
+        assert result["score"] < 1.0
+        assert result["non_locator_changes"] > 0
+
+    def test_no_changes_returns_perfect_score(self):
+        source = "this.btn = page.getByRole('button', { name: 'Submit' });\n"
+        old = {"/checkout": source}
+        new = {"/checkout": source}
+        result = score_diff_minimality(old, new)
+        assert result["score"] == 1.0
+        assert result["total_changes"] == 0
+
+    def test_testid_change_counts_as_locator(self):
+        old = {"/login": "this.input = page.getByTestId('old-email');\n"}
+        new = {"/login": "this.input = page.getByTestId('new-email');\n"}
+        result = score_diff_minimality(old, new)
+        assert result["score"] == 1.0
+
+    def test_waitfor_change_counts_as_locator(self):
+        old = {"/cart": "await this.heading.waitFor({ timeout: 5000 });\n"}
+        new = {"/cart": "await this.heading.waitFor({ timeout: 10000 });\n"}
+        result = score_diff_minimality(old, new)
+        assert result["score"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Healer eval integration tests (mocked healer)
+# ---------------------------------------------------------------------------
+
+_MOCK_OLD_SOURCE = (
+    "import { type Page, type Locator } from '@playwright/test';\n\n"
+    "export class CheckoutPage {\n"
+    "  readonly submitBtn: Locator;\n"
+    "  constructor(page: Page) {\n"
+    "    this.submitBtn = page.getByRole('button', { name: 'Submit' });\n"
+    "  }\n"
+    "  async navigate() { await this.page.goto('/checkout'); }\n"
+    "  async submit() { await this.submitBtn.click(); }\n"
+    "}"
+)
+
+_MOCK_NEW_SOURCE = (
+    "import { type Page, type Locator } from '@playwright/test';\n\n"
+    "export class CheckoutPage {\n"
+    "  readonly submitBtn: Locator;\n"
+    "  constructor(page: Page) {\n"
+    "    this.submitBtn = page.getByRole('button', { name: 'Place Order' });\n"
+    "  }\n"
+    "  async navigate() { await this.page.goto('/checkout'); }\n"
+    "  async submit() { await this.submitBtn.click(); }\n"
+    "}"
+)
+
+
+class TestHealerEvalIntegration:
+
+    @pytest.mark.asyncio
+    async def test_run_healer_eval_records_fix_present(self, tmp_path):
+        """Mock healer returns a fixed source containing expected_fix_contains text."""
+        scenarios = [
+            {
+                "scenario": "button_submit_renamed",
+                "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\n  - waiting for getByRole('button', { name: 'Submit' })",
+                "route": "/checkout",
+                "old_source": _MOCK_OLD_SOURCE,
+                "dom_snippet": "<button>Place Order</button>",
+                "expected_fix_contains": "Place Order",
+                "valid_until": "2099-06-01",
+            }
+        ]
+
+        async def mock_healer(state):
+            return {
+                "page_objects": {"/checkout": _MOCK_NEW_SOURCE},
+                "attempts": 1,
+            }
+
+        with patch("qa_agent.eval.eval_runner.healer", side_effect=mock_healer):
+            from qa_agent.eval.eval_runner import run_healer_eval
+            scorecard = await run_healer_eval(
+                scenarios=scenarios,
+                baseline_mode=False,
+                threshold=0.75,
+                reports_dir=tmp_path,
+            )
+
+        assert scorecard["agent"] == "healer"
+        assert "assertion_integrity" in scorecard
+        assert "diff_minimality" in scorecard
+        assert "fix_rate" in scorecard
+        assert scorecard["fix_rate"]["correct"] == 1
+        assert scorecard["assertion_integrity"]["violations"] == 0
+
+    @pytest.mark.asyncio
+    async def test_run_healer_eval_baseline_mode(self, tmp_path):
+        """Baseline mode sets passed=None regardless of score."""
+        scenarios = [
+            {
+                "scenario": "testid_changed",
+                "error": "TimeoutError: locator.fill: Timeout 30000ms exceeded.\n  - waiting for getByTestId('checkout-email')",
+                "route": "/checkout",
+                "old_source": "this.emailInput = page.getByTestId('checkout-email');\n",
+                "dom_snippet": "<input data-testid=\"email-field\" type=\"email\" />",
+                "expected_fix_contains": "email-field",
+                "valid_until": "2099-06-01",
+            }
+        ]
+
+        async def mock_healer(state):
+            return {
+                "page_objects": {"/checkout": "this.emailInput = page.getByTestId('email-field');\n"},
+                "attempts": 1,
+            }
+
+        with patch("qa_agent.eval.eval_runner.healer", side_effect=mock_healer):
+            from qa_agent.eval.eval_runner import run_healer_eval
+            scorecard = await run_healer_eval(
+                scenarios=scenarios,
+                baseline_mode=True,
+                reports_dir=tmp_path,
+            )
+
+        assert scorecard["passed"] is None
+        assert scorecard["baseline_mode"] is True
+        assert scorecard["agent"] == "healer"
+
+
+# ---------------------------------------------------------------------------
+# Executor parsing unit tests
+# ---------------------------------------------------------------------------
+
+from qa_agent.nodes.executor import _parse_failed_cases
+
+
+class TestExecutorParsing:
+
+    def test_parse_failed_cases_with_playwright_json(self):
+        """Parse actual Playwright JSON reporter output format."""
+        pw_json = {
+            "suites": [
+                {
+                    "specs": [
+                        {
+                            "title": "fills checkout form",
+                            "tests": [{"status": "unexpected"}],
+                        },
+                        {
+                            "title": "submits order",
+                            "tests": [{"status": "expected"}],
+                        },
+                    ]
+                }
+            ]
+        }
+        import json
+        output = json.dumps(pw_json)
+        failed = _parse_failed_cases(output)
+        assert "fills checkout form" in failed
+        assert "submits order" not in failed
+
+    def test_parse_failed_cases_with_empty_output(self):
+        """Empty string returns empty list without error."""
+        failed = _parse_failed_cases("")
+        assert failed == []
+
+    def test_parse_failed_cases_with_malformed_json(self):
+        """Malformed JSON falls back to line-based FAIL detection."""
+        output = "FAIL  tests/checkout.spec.ts\n  FAIL  some other line with FAIL\n  passed test"
+        failed = _parse_failed_cases(output)
+        assert len(failed) >= 1
+        assert any("FAIL" in f for f in failed)
+
+    def test_parse_failed_cases_all_passing(self):
+        """All passing specs produce empty failed list."""
+        import json
+        pw_json = {
+            "suites": [
+                {
+                    "specs": [
+                        {"title": "test passes", "tests": [{"status": "expected"}]},
+                    ]
+                }
+            ]
+        }
+        failed = _parse_failed_cases(json.dumps(pw_json))
+        assert failed == []
+
+    def test_parse_failed_cases_multiple_suites(self):
+        """Failed cases are collected across multiple suites."""
+        import json
+        pw_json = {
+            "suites": [
+                {
+                    "specs": [
+                        {"title": "checkout fails", "tests": [{"status": "unexpected"}]},
+                    ]
+                },
+                {
+                    "specs": [
+                        {"title": "login fails", "tests": [{"status": "unexpected"}]},
+                        {"title": "search passes", "tests": [{"status": "expected"}]},
+                    ]
+                },
+            ]
+        }
+        failed = _parse_failed_cases(json.dumps(pw_json))
+        assert "checkout fails" in failed
+        assert "login fails" in failed
+        assert "search passes" not in failed
+        assert len(failed) == 2
+
+
+# ---------------------------------------------------------------------------
+# Generator scorer unit tests
+# ---------------------------------------------------------------------------
+
+from qa_agent.eval.run_eval import score_pom_validity, score_test_validity
+
+
+class TestPomValidity:
+
+    VALID_POM = (
+        "import { type Page, type Locator } from '@playwright/test';\n"
+        "export class CheckoutPage {\n"
+        "  private emailInput: Locator;\n"
+        "  constructor(page: Page) {\n"
+        "    this.emailInput = page.getByTestId('checkout-email');\n"
+        "  }\n"
+        "  async navigate() { await this.page.goto('/checkout'); }\n"
+        "}\n"
+    )
+
+    INVALID_POM = (
+        "// just a comment\n"
+        "const x = 1;\n"
+    )
+
+    def test_valid_pom_scores_1_0(self):
+        result = score_pom_validity({"/checkout": self.VALID_POM})
+        assert result["score"] == 1.0
+        assert result["valid"] == 1
+        assert result["total"] == 1
+        assert result["invalid"] == []
+
+    def test_invalid_pom_scores_0_0(self):
+        result = score_pom_validity({"/checkout": self.INVALID_POM})
+        assert result["score"] == 0.0
+        assert result["valid"] == 0
+        assert result["total"] == 1
+        assert len(result["invalid"]) == 1
+
+    def test_empty_page_objects_scores_1_0(self):
+        result = score_pom_validity({})
+        assert result["score"] == 1.0
+        assert result["total"] == 0
+
+    def test_mixed_poms_partial_score(self):
+        result = score_pom_validity({
+            "/checkout": self.VALID_POM,
+            "/login": self.INVALID_POM,
+        })
+        assert result["score"] == 0.5
+        assert result["valid"] == 1
+        assert result["total"] == 2
+
+    def test_invalid_pom_reports_failed_checks(self):
+        result = score_pom_validity({"/checkout": self.INVALID_POM})
+        invalid = result["invalid"][0]
+        assert "failed_checks" in invalid
+        assert len(invalid["failed_checks"]) > 0
+
+
+class TestTestValidity:
+
+    VALID_SPEC = (
+        "import { test, expect } from '@playwright/test';\n"
+        "test.describe('Checkout', () => {\n"
+        "  test.beforeEach(async ({ page }) => { await page.goto('/checkout'); });\n"
+        "  test('fills form', async ({ page }) => {\n"
+        "    await expect(page.getByRole('textbox')).toBeVisible();\n"
+        "  });\n"
+        "});\n"
+    )
+
+    INVALID_SPEC = (
+        "// empty spec file\n"
+        "const setup = () => {};\n"
+    )
+
+    def test_valid_spec_scores_1_0(self):
+        result = score_test_validity({"checkout.spec.ts": self.VALID_SPEC})
+        assert result["score"] == 1.0
+        assert result["valid"] == 1
+        assert result["total"] == 1
+        assert result["invalid"] == []
+
+    def test_invalid_spec_scores_0_0(self):
+        result = score_test_validity({"checkout.spec.ts": self.INVALID_SPEC})
+        assert result["score"] == 0.0
+        assert result["valid"] == 0
+        assert result["total"] == 1
+        assert len(result["invalid"]) == 1
+
+    def test_empty_test_code_scores_1_0(self):
+        result = score_test_validity({})
+        assert result["score"] == 1.0
+        assert result["total"] == 0
+
+    def test_mixed_specs_partial_score(self):
+        result = score_test_validity({
+            "checkout.spec.ts": self.VALID_SPEC,
+            "empty.spec.ts": self.INVALID_SPEC,
+        })
+        assert result["score"] == 0.5
+        assert result["valid"] == 1
+        assert result["total"] == 2
+
+    def test_invalid_spec_reports_failed_checks(self):
+        result = score_test_validity({"bad.spec.ts": self.INVALID_SPEC})
+        invalid = result["invalid"][0]
+        assert "failed_checks" in invalid
+        assert len(invalid["failed_checks"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# Generator golden scenarios loading tests
+# ---------------------------------------------------------------------------
+
+class TestGeneratorScenarios:
+
+    def test_loads_scenarios(self):
+        from qa_agent.eval.eval_runner import load_generator_scenarios
+        scenarios, skipped = load_generator_scenarios()
+        assert len(scenarios) == 3
+        assert skipped == 0
+
+    def test_each_scenario_has_required_fields(self):
+        from qa_agent.eval.eval_runner import load_generator_scenarios
+        scenarios, _ = load_generator_scenarios()
+        for s in scenarios:
+            assert "scenario" in s
+            assert "goal" in s
+            assert "plan" in s
+            assert len(s["plan"]) >= 1
+
+    def test_skips_expired_scenarios(self, tmp_path):
+        import json
+        from qa_agent.eval.eval_runner import load_generator_scenarios
+        data = [
+            {
+                "scenario": "expired",
+                "goal": "old goal",
+                "plan": [{"id": "tc-1", "title": "t", "feature": "f",
+                           "route": "/r", "steps": [], "expected": []}],
+                "valid_until": "2020-01-01",
+            },
+            {
+                "scenario": "active",
+                "goal": "active goal",
+                "plan": [{"id": "tc-2", "title": "t", "feature": "f",
+                           "route": "/r", "steps": [], "expected": []}],
+                "valid_until": "2099-01-01",
+            },
+        ]
+        path = tmp_path / "gen_scenarios.json"
+        path.write_text(json.dumps(data))
+        scenarios, skipped = load_generator_scenarios(path)
+        assert len(scenarios) == 1
+        assert skipped == 1
+        assert scenarios[0]["scenario"] == "active"
+
+    def test_skips_invalid_scenarios(self, tmp_path):
+        import json
+        from qa_agent.eval.eval_runner import load_generator_scenarios
+        data = [{"bad_field": "no scenario or goal or plan"}]
+        path = tmp_path / "bad_scenarios.json"
+        path.write_text(json.dumps(data))
+        scenarios, skipped = load_generator_scenarios(path)
+        assert len(scenarios) == 0
+        assert skipped == 1
+
+
+# ---------------------------------------------------------------------------
+# Generator eval integration tests (mocked generator)
+# ---------------------------------------------------------------------------
+
+_MOCK_POM = (
+    "import { type Page, type Locator } from '@playwright/test';\n"
+    "export class CheckoutPage {\n"
+    "  private emailInput: Locator;\n"
+    "  constructor(page: Page) {\n"
+    "    this.emailInput = page.getByTestId('checkout-email');\n"
+    "  }\n"
+    "  async navigate() { await this.page.goto('/checkout'); }\n"
+    "}\n"
+)
+
+_MOCK_SPEC = (
+    "import { test, expect } from '@playwright/test';\n"
+    "test.describe('Checkout', () => {\n"
+    "  test.beforeEach(async ({ page }) => {});\n"
+    "  test('fills form', async () => { await expect(true).toBeTruthy(); });\n"
+    "});\n"
+)
+
+_MOCK_GENERATOR_RETURN = {
+    "page_objects": {"/checkout": _MOCK_POM},
+    "test_code": {"checkout.spec.ts": _MOCK_SPEC},
+}
+
+
+class TestGeneratorEvalIntegration:
+
+    @pytest.mark.asyncio
+    async def test_run_generator_eval_passes_with_valid_output(self, tmp_path):
+        """Mocked generator returning valid POM + spec should produce a passing scorecard."""
+        scenarios = [
+            {
+                "scenario": "checkout_page",
+                "goal": "Generate tests for checkout",
+                "plan": [
+                    {
+                        "id": "tc-1",
+                        "title": "User can fill checkout form",
+                        "feature": "checkout",
+                        "route": "/checkout",
+                        "steps": ["Navigate to /checkout", "Fill email"],
+                        "expected": ["Form accepts input"],
+                        "tags": ["@checkout"],
+                        "source": "jira",
+                    }
+                ],
+                "valid_until": "2027-06-01",
+            }
+        ]
+
+        async def mock_generator(state):
+            return _MOCK_GENERATOR_RETURN
+
+        with patch("qa_agent.eval.eval_runner.generator", side_effect=mock_generator):
+            from qa_agent.eval.eval_runner import run_generator_eval
+            scorecard = await run_generator_eval(
+                scenarios=scenarios,
+                baseline_mode=False,
+                locator_threshold=0.70,
+                pom_threshold=0.80,
+                test_threshold=0.80,
+                reports_dir=tmp_path,
+            )
+
+        assert scorecard["agent"] == "generator"
+        assert scorecard["locator_quality"]["score"] >= 0.70
+        assert scorecard["pom_validity"]["score"] == 1.0
+        assert scorecard["test_validity"]["score"] == 1.0
+        assert scorecard["passed"] is True
+
+    @pytest.mark.asyncio
+    async def test_run_generator_eval_baseline_mode_no_pass_fail(self, tmp_path):
+        """Baseline mode should set passed=None regardless of scores."""
+        scenarios = [
+            {
+                "scenario": "checkout_page",
+                "goal": "Generate tests for checkout",
+                "plan": [
+                    {
+                        "id": "tc-1",
+                        "title": "User can fill checkout form",
+                        "feature": "checkout",
+                        "route": "/checkout",
+                        "steps": ["Navigate to /checkout"],
+                        "expected": ["Form is visible"],
+                        "tags": [],
+                        "source": "jira",
+                    }
+                ],
+            }
+        ]
+
+        async def mock_generator(state):
+            return _MOCK_GENERATOR_RETURN
+
+        from qa_agent.eval import eval_runner
+        with patch.object(eval_runner, "generator", side_effect=mock_generator):
+            scorecard = await eval_runner.run_generator_eval(
+                scenarios=scenarios,
+                baseline_mode=True,
+                reports_dir=tmp_path,
+            )
+
+        assert scorecard["passed"] is None
+        assert scorecard["baseline_mode"] is True
+        assert scorecard["agent"] == "generator"
