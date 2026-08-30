@@ -174,43 +174,36 @@ async def audit_summary() -> JSONResponse:
         return JSONResponse(content={"total_runs": 0, "total_tokens": 0, "total_cost": 0.0, "per_node_averages": {}})
 
     total_runs = 0
-    total_tokens = 0
+    total_input_tokens = 0
+    total_output_tokens = 0
     total_cost = 0.0
-    node_totals: dict[str, dict[str, float]] = {}
-    node_counts: dict[str, int] = {}
+    runs_list: list[dict[str, Any]] = []
 
     for f in files:
         data = _read_json(f)
         if not data or not isinstance(data, dict):
             continue
         total_runs += 1
-        total_tokens += (data.get("total_input_tokens") or 0) + (data.get("total_output_tokens") or 0)
-        total_cost += data.get("estimated_cost_usd") or 0.0
-
-        # Per-node aggregation — expects a dict like {"node_name": {"input_tokens": N, ...}}
-        nodes: dict[str, Any] = data.get("nodes") or {}
-        for node_name, node_data in nodes.items():
-            if not isinstance(node_data, dict):
-                continue
-            if node_name not in node_totals:
-                node_totals[node_name] = {}
-                node_counts[node_name] = 0
-            node_counts[node_name] += 1
-            for k, v in node_data.items():
-                if isinstance(v, (int, float)):
-                    node_totals[node_name][k] = node_totals[node_name].get(k, 0.0) + v
-
-    per_node_averages: dict[str, dict[str, float]] = {}
-    for node_name, totals in node_totals.items():
-        count = node_counts[node_name]
-        per_node_averages[node_name] = {k: v / count for k, v in totals.items()}
+        inp = data.get("total_input_tokens") or 0
+        out = data.get("total_output_tokens") or 0
+        cost = data.get("estimated_cost_usd") or 0.0
+        total_input_tokens += inp
+        total_output_tokens += out
+        total_cost += cost
+        runs_list.append({
+            "run_id": data.get("run_id", f.stem),
+            "total_input_tokens": inp,
+            "total_output_tokens": out,
+            "estimated_cost_usd": round(cost, 6),
+        })
 
     return JSONResponse(
         content={
             "total_runs": total_runs,
-            "total_tokens": total_tokens,
+            "total_input_tokens": total_input_tokens,
+            "total_output_tokens": total_output_tokens,
             "total_cost": round(total_cost, 6),
-            "per_node_averages": per_node_averages,
+            "runs": runs_list,
         }
     )
 
