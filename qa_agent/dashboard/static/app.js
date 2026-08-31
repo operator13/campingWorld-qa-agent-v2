@@ -257,7 +257,7 @@
       if (!data || data.score === null) {
         return `
           <div class="eval-card" data-agent="${agent}">
-            <div class="eval-agent-name">${agent.toUpperCase()} <span class="eval-info-icon">i</span></div>
+            <div class="eval-agent-name">${agent.toUpperCase()}</div>
             <div class="eval-score">--</div>
             <span class="eval-badge">NO DATA</span>
             ${tooltip}
@@ -276,7 +276,7 @@
 
       return `
         <div class="eval-card" data-agent="${agent}">
-          <div class="eval-agent-name">${agent.toUpperCase()} <span class="eval-info-icon">i</span></div>
+          <div class="eval-agent-name">${agent.toUpperCase()}</div>
           <div class="eval-score ${scoreClass}">${score.toFixed(1)}%</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
           <div class="eval-cost-row">
