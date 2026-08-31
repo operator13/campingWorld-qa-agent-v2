@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-08-31T23:23:13.128509+00:00",
+  "run_id": "08_31_2026_23-22-41",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 14,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 14,
+  "trend": {
+    "delta": 0.0714,
+    "status": "improving",
+    "previous_score": 0.9286
+  },
+  "domains": [
+    {
+      "name": "Nav",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "total": 14,
+      "duration_ms": 84807,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
