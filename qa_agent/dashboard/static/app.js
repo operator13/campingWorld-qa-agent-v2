@@ -7,6 +7,7 @@
 
   let wsConnected = false;
   let evalRunning = false;
+  let domainsLocked = false;
   let costChart = null;
   let runnerTestCount = 0, runnerPassCount = 0, runnerFailCount = 0;
 
@@ -66,6 +67,8 @@
     fetch('/api/tests/lastrun').then(r => r.json()).then(data => {
       const lines = data.log || [];
       if (lines.length === 0) return;
+      domainsLocked = true;
+      document.getElementById('runner-domain-list').classList.add('domains-locked');
 
       // Show log output
       const logEl = document.getElementById('runner-log');
@@ -649,6 +652,8 @@
             refreshAllData();
             break;
           case 'runner:start':
+            domainsLocked = true;
+            document.getElementById('runner-domain-list').classList.add('domains-locked');
             setRunnerState('running');
             document.getElementById('runner-log').innerHTML = '';
             document.getElementById('runner-log-container').style.display = 'block';
@@ -851,8 +856,9 @@
         </div>
       `).join('');
 
-      // Click row to toggle selection
+      // Click row to toggle selection (disabled during/after test run)
       list.addEventListener('click', (e) => {
+        if (domainsLocked) return;
         const row = e.target.closest('.domain-row');
         if (!row) return;
         row.classList.toggle('selected');
@@ -910,6 +916,8 @@
   }
 
   function doClearRunner() {
+    domainsLocked = false;
+    document.getElementById('runner-domain-list').classList.remove('domains-locked');
     document.getElementById('runner-log').innerHTML = '';
     document.getElementById('runner-log-container').style.display = 'none';
     document.getElementById('btn-run-selected').style.display = 'inline-block';

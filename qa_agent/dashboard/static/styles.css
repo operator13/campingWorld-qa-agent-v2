@@ -1550,6 +1550,11 @@ body::before {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.runner-domain-list.domains-locked .domain-row {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
 .domain-row {
   display: flex;
   justify-content: space-between;
