@@ -1,0 +1,184 @@
+{
+  "eval_run_id": "eval-20260831-154953",
+  "agent": "planner",
+  "timestamp": "2026-08-31T15:49:53.386420+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 8,
+  "scenarios_skipped_expired": 0,
+  "planner_accuracy": {
+    "score": 0.0,
+    "correct": 0,
+    "total": 8,
+    "misses": [
+      {
+        "scenario": "checkout_flow",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "User can add items to the cart",
+          "User can enter shipping address",
+          "User can select a payment method",
+          "User sees order summary before confirming",
+          "User sees order confirmation after placing order"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6Ex4tcbQgLN7Y6fUCQ'}"
+      },
+      {
+        "scenario": "search_and_filter",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "User can search for products by keyword",
+          "Search results display matching products",
+          "User can filter results by category",
+          "User can sort results by price",
+          "Empty search results show a helpful message"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6Ex39pVgo4MKTF9wtp'}"
+      },
+      {
+        "scenario": "auth_login",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "User can log in with valid email and password",
+          "Invalid credentials show an error message",
+          "User can request a password reset",
+          "User is redirected to the dashboard after login",
+          "Session persists across page refreshes"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6ExHHnXmdTBJLGn6i6'}"
+      },
+      {
+        "scenario": "product_browsing",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "Product name and description are displayed",
+          "Product images are visible and can be cycled",
+          "Price is shown correctly",
+          "User can select product variants such as size or color",
+          "Related products are shown at the bottom of the page"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6ExLm8gB4kWwu3FvNk'}"
+      },
+      {
+        "scenario": "cart_management",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "User can add a product to the cart",
+          "User can update the quantity of a cart item",
+          "User can remove an item from the cart",
+          "Cart total updates when quantity changes",
+          "Cart persists when the user navigates away and returns"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6Ex6sVijiWy33q6WNh'}"
+      },
+      {
+        "scenario": "payment_error_handling",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "System shows error when payment fails due to insufficient funds",
+          "Invalid card number shows inline validation message",
+          "Expired card shows specific expiry error message",
+          "User can retry payment after a failed transaction",
+          "Successful payment clears the cart and redirects to confirmation"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6Exd8GTrSK7rtiZtvb'}"
+      },
+      {
+        "scenario": "coupon_checkout_multistep",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "User adds item to cart, views cart summary, applies a valid coupon code, and proceeds to checkout",
+          "Applying an invalid coupon code shows a descriptive error message",
+          "Discount amount is correctly reflected in the order total after coupon is applied",
+          "Removing an applied coupon restores the original order total",
+          "Checkout cannot be completed when coupon field is left with an unsubmitted invalid code"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6Exc8nEVGDkLw9VEjw'}"
+      },
+      {
+        "scenario": "email_validation_and_access_control",
+        "coverage_score": 0.0,
+        "expected_coverage_min": 0.8,
+        "test_count": 0,
+        "expected_test_count_min": 4,
+        "uncovered_acs": [
+          "Invalid email format shows a validation message on the registration form",
+          "Empty email field prevents form submission and shows required field error",
+          "Unauthorized users are denied access to protected account pages",
+          "Valid email with correct password grants access to the user dashboard",
+          "Account lockout occurs after repeated failed login attempts with wrong credentials"
+        ],
+        "root_cause": "planner_error",
+        "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ceb6Exk57NsNWkGX8iout'}"
+      }
+    ]
+  },
+  "by_category": {
+    "planner": {
+      "score": 0.0,
+      "correct": 0,
+      "total": 8
+    }
+  },
+  "thresholds": {
+    "planner_accuracy": 0.75
+  },
+  "passed": false,
+  "regression_vs_previous": {
+    "status": "stable",
+    "severity": null,
+    "delta": 0.0,
+    "previous_score": 0.0,
+    "current_score": 0.0,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  },
+  "token_usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "cost_usd": 0.0
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "overall",
+      "finding": "Overall accuracy 0.0% is below threshold 75.0% (gap: 75.0%). 8 of 8 scenarios missed.",
+      "action": "Address the confidence and classification issues above to close the gap."
+    },
+    {
+      "priority": "high",
+      "category": "planner",
+      "finding": "Category 'planner' has 0% accuracy (8 scenarios, all missed).",
+      "action": "Systematic issue \u2014 review triage behavior for planner error patterns."
+    }
+  ]
+}
