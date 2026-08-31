@@ -1424,8 +1424,8 @@ body::before {
 }
 
 .runner-btn-clear:hover:not(:disabled) {
-  background: rgba(0, 255, 200, 0.1);
-  box-shadow: 0 0 12px rgba(0, 255, 200, 0.2);
+  background: rgba(0, 255, 200, 0.2);
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
 }
 
 .runner-btn-clear:active:not(:disabled) {
