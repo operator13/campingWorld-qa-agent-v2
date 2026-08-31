@@ -357,16 +357,226 @@ Retrospective Agent produces recommendation
              Notify user
 ```
 
-### Safety Rails
+### Safety Rails & Rollback Plan
+
+Every approved change goes through a **verify → commit → test → confirm OR rollback** cycle. No change is permanent until tests prove it's safe.
+
+#### Surgical Fix Approval Flow (Detailed)
+
+```
+User clicks [✓ APPROVE]
+        │
+        ▼
+   1. Save rollback point
+      └─ git stash current state (if dirty)
+      └─ record current HEAD commit hash as ROLLBACK_SHA
+        │
+        ▼
+   2. Apply the code change
+      └─ write the diff to the target file
+      └─ git add + commit: "Retro fix: {title}"
+      └─ NEW_SHA = current HEAD
+        │
+        ▼
+   3. Run affected tests
+      └─ if change is in confidence.py → run triage eval
+      └─ if change is in healer.py → run healer eval
+      └─ if change is in tests_generated/ → run that spec file
+      └─ if change is in playwright.config.ts → run full test suite
+        │
+        ▼
+   4. Evaluate results
+      ├── Tests pass + eval score stable or improved?
+      │     └─ ✅ CONFIRMED — push to remote
+      │     └─ Dashboard: "Applied: {title} — tests passed ✓"
+      │     └─ Record in RETROSPECTIVE.md as: applied, verified
+      │
+      ├── Eval score dropped?
+      │     └─ ⚠ REGRESSION DETECTED
+      │     └─ git revert NEW_SHA (creates revert commit, preserves history)
+      │     └─ Dashboard: "Reverted: {title} — eval score dropped from X to Y"
+      │     └─ Record in RETROSPECTIVE.md as: reverted, reason
+      │
+      └── Tests fail / crash?
+            └─ 🚨 CATASTROPHIC FAILURE
+            └─ git reset --hard ROLLBACK_SHA (hard reset to safe state)
+            └─ git push --force-with-lease (safe force push)
+            └─ Dashboard: "Emergency rollback: {title} — tests crashed"
+            └─ Record in RETROSPECTIVE.md as: emergency_rollback, error
+            └─ Recommendation auto-rejected (added to suppression list)
+```
+
+#### Rollback Levels
+
+| Level | Trigger | Action | Reversible? |
+|-------|---------|--------|-------------|
+| **Level 1: Revert** | Eval score drops but tests still run | `git revert` (clean revert commit) | Yes — revert of revert |
+| **Level 2: Hard Reset** | Tests crash, process hangs, or server error | `git reset --hard ROLLBACK_SHA` | Yes — reflog has history |
+| **Level 3: Restore Backup** | Multiple files corrupted, git state broken | Restore from pre-approval stash | Yes — stash preserved |
+
+#### Safety Guards
 
 | Guard | What It Prevents |
 |-------|-----------------|
-| **Eval gate** | Surgical fixes are auto-reverted if eval score drops after applying |
-| **Git backup** | Every change is a new commit — easy to revert |
-| **Suppression list** | Rejected recommendations aren't suggested again |
-| **Human checkpoint** | Nothing is applied without explicit APPROVE click |
+| **Pre-flight snapshot** | `ROLLBACK_SHA` saved before any change — always have a safe point |
+| **Eval gate** | Changes reverted if eval score drops by any amount |
+| **Test gate** | Changes hard-reset if tests crash or timeout |
 | **Scope limit** | Surgical fixes limited to 5 lines max — anything larger requires a build spec |
-| **File allowlist** | Only files in `qa_agent/`, `memory/`, `tests_generated/` can be modified |
+| **File allowlist** | Only files in `qa_agent/`, `memory/`, `tests_generated/`, `playwright.config.ts` can be modified |
+| **Human checkpoint** | Nothing is applied without explicit APPROVE click |
+| **Suppression on crash** | If a fix causes catastrophic failure, it's auto-rejected and never suggested again |
+| **Force push guard** | Only uses `--force-with-lease` (fails if remote has new commits from others) |
+
+### Full Dashboard Visual — Approval Screen
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  QA COMMAND CENTER                                              ● LIVE  UTC     │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌─────────────┐   DOMAIN STATUS                                                │
+│  │ SYSTEM      │   ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐      │
+│  │ HEALTH      │   │★Cart ││★Chkt ││★Sign ││ Nav  ││ Home ││Search│      │
+│  │   92.9%     │   │ 100% ││ 100% ││ 100% ││92.9% ││ 100% ││ 100% │      │
+│  │ DEGRADED    │   └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘      │
+│  └─────────────┘                                                                │
+│                                                                                  │
+├────────────── AGENT EVALUATION ──────────────────────────── [▶ EVAL ALL] ────────┤
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌────────────────┐ │
+│  │ TRIAGE   [▶ RUN]│ │ PLANNER  [▶ RUN]│ │ GENERATOR[▶ RUN]│ │ HEALER [▶ RUN]│ │
+│  │    85.7%  PASS  │ │   100.0%  PASS  │ │   100.0%  PASS  │ │  96.0%  PASS  │ │
+│  │ 271K   $1.31   │ │  79K   $0.90   │ │  24K   $0.18   │ │ 122K   $0.66  │ │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘ └────────────────┘ │
+│                                                                                  │
+├────────────── RETROSPECTIVE ─────────────────── Last run: 2h ago ── [▶ RUN] ────┤
+│                                                                                  │
+│  7 findings  •  3 high  •  2 medium  •  2 low  •  9 recommendations            │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │  ⚡ HIGH — Add beforeEach timeout to flake patterns                       │  │
+│  │                                                                            │  │
+│  │  File: qa_agent/confidence.py:92                                          │  │
+│  │  Change: Add re.compile(r"beforeEach.*Timeout", re.I) to                 │  │
+│  │          _FLAKE_ERROR_PATTERNS list                                        │  │
+│  │  Type: Surgical fix (1 line)                                              │  │
+│  │  Evidence: 5 beforeEach timeouts in last 7 days, all unhealed            │  │
+│  │                                                                            │  │
+│  │  ┌─── Proposed Diff ──────────────────────────────────────────────────┐   │  │
+│  │  │  _FLAKE_ERROR_PATTERNS = [                                        │   │  │
+│  │  │      re.compile(r"scrollIntoViewIfNeeded.*Timeout", re.I),        │   │  │
+│  │  │      re.compile(r"locator\.(click|fill|type).*Timeout", re.I),    │   │  │
+│  │  │      re.compile(r"element is not visible", re.I),                 │   │  │
+│  │  │      re.compile(r"element is not stable", re.I),                  │   │  │
+│  │  │      re.compile(r"element is outside of the viewport", re.I),     │   │  │
+│  │  │  +   re.compile(r"beforeEach.*Timeout", re.I),                    │   │  │
+│  │  │  ]                                                                 │   │  │
+│  │  └────────────────────────────────────────────────────────────────────┘   │  │
+│  │                                                                            │  │
+│  │  After approval: runs triage eval → must pass ≥ 75% → else auto-revert  │  │
+│  │                                                                            │  │
+│  │              [✓ APPROVE]    [✕ REJECT]    [✎ MODIFY]                      │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │  ⚡ HIGH — rv-parts.spec.ts may need removal (failing 3 days)             │  │
+│  │                                                                            │  │
+│  │  Type: Structural change — needs investigation                            │  │
+│  │  Evidence: /rv-parts page returns 404 since 2026-08-29                    │  │
+│  │  Impact: Persistent false failure dragging health score to 96.4%          │  │
+│  │                                                                            │  │
+│  │  This change is too complex for auto-apply. GENERATE SPEC will create    │  │
+│  │  a build spec in /features/ with investigation steps and options.         │  │
+│  │                                                                            │  │
+│  │           [📝 GENERATE SPEC]    [✕ REJECT]    [✎ MODIFY]                  │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │  ◉ MED — Normalize URLs in error signature matching                       │  │
+│  │                                                                            │  │
+│  │  File: qa_agent/memory.py:normalize_error()                               │  │
+│  │  Type: Surgical fix (3 lines)                                             │  │
+│  │  Evidence: C3 scoring misses because URLs differ between runs             │  │
+│  │                                                                            │  │
+│  │              [✓ APPROVE]    [✕ REJECT]    [✎ MODIFY]                      │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  [VIEW FULL REPORT]                                                              │
+│                                                                                  │
+├────────────── Approval Status Banners (appear during/after approval) ────────────┤
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │  ✅ Applied: "Add beforeEach timeout to flake patterns"                   │  │
+│  │     confidence.py updated → triage eval: 87.1% PASS (was 85.7%)  ✓      │  │
+│  │     Committed: abc1234                                          [DISMISS]│  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │  ⚠ Reverted: "Normalize URLs in error matching"                          │  │
+│  │     memory.py updated → triage eval: 71.2% FAIL (was 85.7%)  ✕          │  │
+│  │     Auto-reverted to: def4567                                 [DISMISS]  │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │  📝 Spec Generated: "rv-parts.spec.ts investigation"                      │  │
+│  │     Saved to: features/retro-20260831-rv-parts-removal.md     [DISMISS]  │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐  │
+│  │  🚨 Emergency Rollback: "Modify triage prompt structure"                  │  │
+│  │     Tests crashed after applying change                                    │  │
+│  │     Hard reset to: 789abcd — all changes reverted              [DISMISS] │  │
+│  │     This recommendation has been auto-rejected                            │  │
+│  └────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+├────────────── TEST RUNNER + RUN HISTORY (existing, unchanged) ───────────────────┤
+│  ...                                                                             │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Approval In Progress State
+
+While a surgical fix is being verified, the recommendation card shows live progress:
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│  ⚡ HIGH — Add beforeEach timeout to flake patterns                       │
+│                                                                            │
+│  ● APPLYING...                                                            │
+│                                                                            │
+│  Step 1: Apply code change ✓                                             │
+│  Step 2: Git commit ✓                                                    │
+│  Step 3: Running triage eval...  ◌  12/35 (34%)                         │
+│          ████████████░░░░░░░░░░░░░░░░░░░░░                               │
+│  Step 4: Evaluate results — waiting                                      │
+│                                                                            │
+│                                                          [■ CANCEL]      │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Mobile View (iPhone)
+
+On iPhone, recommendations stack vertically with compact action buttons:
+
+```
+┌─────────────────────────────────┐
+│ RETROSPECTIVE        [▶ RUN]   │
+│ 7 findings • 3 high            │
+│                                 │
+│ ⚡ Add beforeEach timeout      │
+│   confidence.py:92 (1 line)    │
+│   [✓] [✕] [✎]                 │
+│                                 │
+│ ⚡ rv-parts.spec.ts removal    │
+│   Structural change             │
+│   [📝] [✕] [✎]                │
+│                                 │
+│ ◉ Normalize URL matching       │
+│   memory.py (3 lines)          │
+│   [✓] [✕] [✎]                 │
+│                                 │
+│ [VIEW FULL REPORT]              │
+└─────────────────────────────────┘
+```
 
 ### Trigger Options
 
