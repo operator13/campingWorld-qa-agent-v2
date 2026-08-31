@@ -259,20 +259,114 @@ Recommendations feed back into the agent memory system:
 A new section on the dashboard between Agent Evaluation and Test Runner:
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  RETROSPECTIVE                        Last run: 2 hours ago  [▶ RUN]│
-│                                                                      │
-│  7 findings  •  3 high priority  •  9 recommendations               │
-│                                                                      │
-│  ⚡ [HIGH] Add beforeEach timeout to flake patterns                 │
-│  ⚡ [HIGH] Increase navigation timeout to 60s                       │
-│  ⚡ [HIGH] rv-parts.spec.ts may need removal (failing 3 days)       │
-│  ◉ [MED]  Deprioritize Healer Strategy D                           │
-│  ◉ [MED]  Normalize URLs in error matching                         │
-│                                                                      │
-│  [VIEW FULL REPORT]                                                  │
-└──────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  RETROSPECTIVE                               Last run: 2 hours ago  [▶ RUN]│
+│                                                                              │
+│  7 findings  •  3 high priority  •  9 recommendations                       │
+│                                                                              │
+│  ⚡ [HIGH] Add beforeEach timeout to flake patterns                         │
+│     confidence.py:92 — add regex to _FLAKE_ERROR_PATTERNS                   │
+│     Type: Surgical fix (1 line)                                              │
+│                                          [✓ APPROVE] [✕ REJECT] [✎ MODIFY] │
+│  ─────────────────────────────────────────────────────────────────────────── │
+│  ⚡ [HIGH] Increase navigation timeout to 60s                               │
+│     playwright.config.ts — change timeout: 30000 → 60000                    │
+│     Type: Surgical fix (1 line)                                              │
+│                                          [✓ APPROVE] [✕ REJECT] [✎ MODIFY] │
+│  ─────────────────────────────────────────────────────────────────────────── │
+│  ⚡ [HIGH] rv-parts.spec.ts may need removal (failing 3 days)               │
+│     Type: Structural change — needs investigation                            │
+│                                  [📝 GENERATE SPEC] [✕ REJECT] [✎ MODIFY] │
+│  ─────────────────────────────────────────────────────────────────────────── │
+│  ◉ [MED]  Deprioritize Healer Strategy D                                   │
+│     HEALER.md — update strategy guidance                                     │
+│     Type: Structural change — needs build spec                               │
+│                                  [📝 GENERATE SPEC] [✕ REJECT] [✎ MODIFY] │
+│  ─────────────────────────────────────────────────────────────────────────── │
+│  ◉ [MED]  Normalize URLs in error matching                                  │
+│     memory.py:normalize_error() — strip URL paths before comparison          │
+│     Type: Surgical fix (3 lines)                                             │
+│                                          [✓ APPROVE] [✕ REJECT] [✎ MODIFY] │
+│                                                                              │
+│  [VIEW FULL REPORT]                                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Recommendation Types & Actions
+
+Each recommendation is classified into one of two types, which determines the available actions:
+
+| Type | Criteria | APPROVE Does | Example |
+|------|----------|-------------|---------|
+| **Surgical fix** | 1-5 line code change, specific file/line, low risk | Auto-applies the code change, commits to git, re-runs affected eval | Add regex to `_FLAKE_ERROR_PATTERNS` |
+| **Structural change** | Multi-file, architectural, or needs investigation | Generates a build spec in `/features/retro-{id}.md` for later implementation | Redesign Healer Strategy D |
+
+### Action Button Behavior
+
+**[✓ APPROVE] — for surgical fixes:**
+1. Server applies the exact code change (file, line, old → new)
+2. Commits to git with message: `Retro fix: {recommendation title}`
+3. Re-runs the affected agent's eval to verify no regression
+4. Broadcasts result via WebSocket: "Applied: {title} — eval passed/failed"
+5. If eval fails → auto-reverts the change, notifies user
+6. Records in `memory/RETROSPECTIVE.md` as applied
+
+**[📝 GENERATE SPEC] — for structural changes:**
+1. Retrospective Agent generates a detailed build spec using LLM
+2. Saves to `/features/retro-{timestamp}-{slug}.md`
+3. Commits to git with message: `Build spec: {recommendation title} (from retrospective)`
+4. Dashboard shows: "Build spec created: features/retro-..."
+5. Records in `memory/RETROSPECTIVE.md` as spec_generated
+
+**[✕ REJECT]:**
+1. Records the rejection with optional reason in `memory/RETROSPECTIVE.md`
+2. Agent won't suggest the same recommendation again (suppression)
+3. Useful for: "this is intentional behavior, not a bug"
+
+**[✎ MODIFY]:**
+1. Opens the recommendation detail in an editable text area
+2. User can adjust the proposed change before approving
+3. For surgical fixes: edit the code diff
+4. For structural changes: edit the spec outline before generation
+
+### Approval Flow Diagram
+
+```
+Retrospective Agent produces recommendation
+        │
+        ├── Surgical fix (1-5 lines)?
+        │         │
+        │    [✓ APPROVE]              [✕ REJECT]           [✎ MODIFY]
+        │         │                       │                      │
+        │    Apply code change       Record rejection       Edit proposed change
+        │    Git commit              Add to suppression     Then APPROVE or REJECT
+        │    Re-run eval             list
+        │         │
+        │    Eval passed?
+        │    ├── Yes → Done, recorded as applied
+        │    └── No → Auto-revert, notify user
+        │
+        └── Structural change (complex)?
+                  │
+             [📝 GENERATE SPEC]       [✕ REJECT]           [✎ MODIFY]
+                  │                       │                      │
+             LLM generates            Record rejection       Edit spec outline
+             build spec               Add to suppression     Then GENERATE or REJECT
+             Save to /features/
+             Git commit
+             Notify user
+```
+
+### Safety Rails
+
+| Guard | What It Prevents |
+|-------|-----------------|
+| **Eval gate** | Surgical fixes are auto-reverted if eval score drops after applying |
+| **Git backup** | Every change is a new commit — easy to revert |
+| **Suppression list** | Rejected recommendations aren't suggested again |
+| **Human checkpoint** | Nothing is applied without explicit APPROVE click |
+| **Scope limit** | Surgical fixes limited to 5 lines max — anything larger requires a build spec |
+| **File allowlist** | Only files in `qa_agent/`, `memory/`, `tests_generated/` can be modified |
 
 ### Trigger Options
 
@@ -343,14 +437,30 @@ A new section on the dashboard between Agent Evaluation and Test Runner:
 | 3 | VIEW FULL REPORT opens detailed findings panel |
 | 4 | Real-time update via `retrospective:complete` WebSocket event |
 
-### Phase RA5 — Auto-Apply Recommendations (Future)
+### Phase RA5 — Approval Mechanism + Auto-Apply (~1 day)
 
 | # | Task |
 |---|------|
-| 1 | Propose code diffs for each recommendation |
-| 2 | APPROVE/REJECT buttons on dashboard |
-| 3 | Auto-apply approved changes, commit, re-run affected evals |
-| 4 | Track applied vs rejected in memory for learning |
+| 1 | Server: `POST /api/retro/{id}/approve` — apply surgical fix, commit, re-run eval |
+| 2 | Server: `POST /api/retro/{id}/generate-spec` — LLM generates build spec, saves to `/features/` |
+| 3 | Server: `POST /api/retro/{id}/reject` — record rejection + suppression |
+| 4 | Server: `POST /api/retro/{id}/modify` — accept modified diff/outline, then apply or generate |
+| 5 | Server: Auto-revert surgical fix if eval score drops after applying |
+| 6 | Frontend: APPROVE / GENERATE SPEC / REJECT / MODIFY buttons per recommendation |
+| 7 | Frontend: Editable text area for MODIFY action |
+| 8 | Frontend: Status feedback — "Applying...", "Eval passed", "Reverted — eval failed" |
+| 9 | WebSocket: `retro:applied`, `retro:reverted`, `retro:spec_generated`, `retro:rejected` events |
+| 10 | Memory: Track all decisions in `memory/RETROSPECTIVE.md` for future suppression + learning |
+
+### Phase RA6 — Build Spec Generation (~0.5 day)
+
+| # | Task |
+|---|------|
+| 1 | LLM prompt for generating build specs from retrospective findings |
+| 2 | Template: Context, Problem, Solution, Files to Modify, Build Phases, Success Criteria |
+| 3 | Save to `/features/retro-{timestamp}-{slug}.md` |
+| 4 | Include evidence from the retrospective analysis (data, charts, examples) |
+| 5 | Git commit + push the generated spec |
 
 ---
 
