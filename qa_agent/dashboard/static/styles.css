@@ -1515,9 +1515,10 @@ body::before {
 }
 
 .runner-btn-run {
-  background: transparent;
-  border: 1px solid rgba(0, 255, 200, 0.3);
+  background: rgba(0, 255, 200, 0.12);
+  border: 1px solid var(--neon-cyan);
   color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0, 255, 200, 0.08);
 }
 
 .runner-btn-primary {
