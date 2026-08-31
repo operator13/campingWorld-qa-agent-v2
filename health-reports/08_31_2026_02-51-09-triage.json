@@ -1,0 +1,25 @@
+{
+  "triaged": 2,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 2,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "sign-in.spec.ts",
+      "test_title": "forgot password link is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.25,
+      "healed": false
+    },
+    {
+      "spec_file": "sign-in.spec.ts",
+      "test_title": "keep me signed in checkbox is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-31T02:51:09.988384+00:00"
+}
