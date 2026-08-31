@@ -1411,14 +1411,15 @@ body::before {
 
 .runner-btn-clear {
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.5rem;
-  padding: 3px 10px;
-  border-radius: 3px;
+  font-size: 0.55rem;
+  padding: 6px 14px;
+  border-radius: 4px;
   border: 1px solid var(--neon-cyan);
-  background: transparent;
+  background: rgba(0, 255, 200, 0.12);
   color: var(--neon-cyan);
   cursor: pointer;
   letter-spacing: 1px;
+  box-shadow: 0 0 12px rgba(0, 255, 200, 0.08);
   transition: all 0.2s;
   margin-right: 8px;
 }
