@@ -1414,9 +1414,9 @@ body::before {
   font-size: 0.5rem;
   padding: 3px 10px;
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--neon-cyan);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--neon-cyan);
   cursor: pointer;
   letter-spacing: 1px;
   transition: all 0.2s;
@@ -1431,18 +1431,8 @@ body::before {
 .runner-btn-clear:disabled {
   opacity: 0.3;
   cursor: not-allowed;
-}
-
-.runner-btn-clear.clear-highlight {
-  border-color: var(--neon-cyan);
-  color: var(--neon-cyan);
-  box-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
-  animation: clear-pulse 2s ease-in-out infinite;
-}
-
-@keyframes clear-pulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 200, 0.2); }
-  50% { box-shadow: 0 0 18px rgba(0, 255, 200, 0.4); }
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
 }
 
 .runner-card {

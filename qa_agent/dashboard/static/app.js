@@ -658,7 +658,6 @@
             document.getElementById('btn-run-all').style.display = 'inline-block';
             document.getElementById('btn-stop').style.display = 'none';
             document.getElementById('btn-clear').disabled = false;
-            document.getElementById('btn-clear').classList.add('clear-highlight');
             refreshAllData();
             break;
           case 'runner:healing':
@@ -668,7 +667,6 @@
           case 'runner:healed':
             setRunnerState('complete');
             document.getElementById('btn-clear').disabled = false;
-            document.getElementById('btn-clear').classList.add('clear-highlight');
             document.getElementById('btn-run-selected').style.display = 'inline-block';
             document.getElementById('btn-run-all').style.display = 'inline-block';
             document.getElementById('btn-stop').style.display = 'none';
@@ -883,7 +881,6 @@
     document.getElementById('btn-run-selected').style.display = 'inline-block';
     document.getElementById('btn-run-all').style.display = 'inline-block';
     document.getElementById('btn-stop').style.display = 'none';
-    document.getElementById('btn-clear').classList.remove('clear-highlight');
     /* btn-clear always visible */
     resetDomainProgress();
     runnerPassCount = 0;
