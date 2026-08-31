@@ -1,0 +1,284 @@
+{
+  "eval_run_id": "eval-20260831-154932",
+  "agent": "healer",
+  "timestamp": "2026-08-31T15:49:32.304853+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 15,
+  "scenarios_skipped_expired": 0,
+  "healer_accuracy": {
+    "score": 0.22,
+    "correct": 10,
+    "total": 15,
+    "misses": [],
+    "locator_score": 0.3667,
+    "timing_score": 0.0
+  },
+  "by_category": {
+    "locator_drift": {
+      "score": 1.0,
+      "correct": 10,
+      "total": 10
+    },
+    "test_flake": {
+      "score": 1.0,
+      "correct": 5,
+      "total": 5
+    }
+  },
+  "thresholds": {
+    "healer_accuracy": 0.75
+  },
+  "passed": false,
+  "regression_vs_previous": {
+    "status": "regression",
+    "severity": "major",
+    "delta": -0.22,
+    "previous_score": 0.44,
+    "current_score": 0.22,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.05
+  },
+  "assertion_integrity": {
+    "score": 1.0,
+    "clean": 10,
+    "violations": 0,
+    "total": 10,
+    "violation_routes": []
+  },
+  "diff_minimality": {
+    "score": 1.0,
+    "locator_changes": 0,
+    "non_locator_changes": 0,
+    "total_changes": 0
+  },
+  "fix_correctness": {
+    "score": 0.1,
+    "correct": 1,
+    "total": 10,
+    "misses": [
+      {
+        "scenario": "button_submit_renamed",
+        "expected": "Place Order",
+        "found": false
+      },
+      {
+        "scenario": "testid_changed",
+        "expected": "email-field",
+        "found": false
+      },
+      {
+        "scenario": "link_renamed",
+        "expected": "Account Settings",
+        "found": false
+      },
+      {
+        "scenario": "heading_renamed",
+        "expected": "Your Cart",
+        "found": false
+      },
+      {
+        "scenario": "checkbox_renamed",
+        "expected": "Accept Terms and Conditions",
+        "found": false
+      },
+      {
+        "scenario": "input_placeholder_changed",
+        "expected": "Search for camping gear",
+        "found": false
+      },
+      {
+        "scenario": "select_renamed",
+        "expected": "Order By",
+        "found": false
+      },
+      {
+        "scenario": "image_alt_changed",
+        "expected": "Camping tent product image",
+        "found": false
+      },
+      {
+        "scenario": "element_moved_to_different_role",
+        "expected": "Delete item",
+        "found": false
+      }
+    ]
+  },
+  "old_locator_removed": {
+    "score": 0.0,
+    "removed": 0,
+    "still_present": 10,
+    "total": 10,
+    "failures": [
+      {
+        "scenario": "button_submit_renamed",
+        "old_locator": "getByRole('button', { name: 'Submit' })"
+      },
+      {
+        "scenario": "testid_changed",
+        "old_locator": "getByTestId('checkout-email')"
+      },
+      {
+        "scenario": "label_changed",
+        "old_locator": "getByLabel('Email address')"
+      },
+      {
+        "scenario": "link_renamed",
+        "old_locator": "getByRole('link', { name: 'My Account' })"
+      },
+      {
+        "scenario": "heading_renamed",
+        "old_locator": "getByRole('heading', { name: 'Shopping Cart' })"
+      },
+      {
+        "scenario": "checkbox_renamed",
+        "old_locator": "getByRole('checkbox', { name: 'I agree to terms' })"
+      },
+      {
+        "scenario": "input_placeholder_changed",
+        "old_locator": "getByPlaceholder('Search products...')"
+      },
+      {
+        "scenario": "select_renamed",
+        "old_locator": "getByRole('combobox', { name: 'Sort By' })"
+      },
+      {
+        "scenario": "image_alt_changed",
+        "old_locator": "getByAltText('Product thumbnail')"
+      },
+      {
+        "scenario": "element_moved_to_different_role",
+        "old_locator": "getByRole('button', { name: 'Remove item' })"
+      }
+    ]
+  },
+  "fix_rate": {
+    "score": 0.0,
+    "correct": 0,
+    "total": 15
+  },
+  "timing_fix_accuracy": {
+    "score": 0.0,
+    "correct": 0,
+    "total": 5,
+    "details": [
+      {
+        "scenario": "timing_scroll_before_visible",
+        "has_wait_for": false,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": false
+      },
+      {
+        "scenario": "timing_click_before_visible",
+        "has_wait_for": false,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": false
+      },
+      {
+        "scenario": "timing_fill_not_stable",
+        "has_wait_for": false,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": false
+      },
+      {
+        "scenario": "timing_element_outside_viewport",
+        "has_wait_for": false,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": false
+      },
+      {
+        "scenario": "timing_network_dependent_content",
+        "has_wait_for": false,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": false
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "scenario": "button_submit_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "testid_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "label_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "link_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "heading_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "checkbox_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "input_placeholder_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "select_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "image_alt_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "element_moved_to_different_role",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "timing_scroll_before_visible",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_click_before_visible",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_fill_not_stable",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_element_outside_viewport",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_network_dependent_content",
+      "category": "test_flake"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "cost_usd": 0.0
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "overall",
+      "finding": "Overall accuracy 22.0% is below threshold 75.0% (gap: 53.0%). 0 of 15 scenarios missed.",
+      "action": "Address the confidence and classification issues above to close the gap."
+    },
+    {
+      "priority": "high",
+      "category": "regression",
+      "finding": "Major regression detected: score dropped 22.0% from 44.0% to 22.0%.",
+      "action": "Investigate recent prompt, model, or memory changes that may have caused the drop."
+    }
+  ]
+}
