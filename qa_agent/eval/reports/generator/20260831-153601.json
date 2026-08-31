@@ -1,0 +1,73 @@
+{
+  "eval_run_id": "eval-generator-20260831-153601",
+  "agent": "generator",
+  "timestamp": "2026-08-31T15:36:01.257286+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 3,
+  "scenarios_skipped_expired": 0,
+  "locator_quality": {
+    "score": 1.0,
+    "good": 16,
+    "brittle": 0,
+    "total": 16
+  },
+  "pom_validity": {
+    "score": 1.0,
+    "valid": 3,
+    "total": 3,
+    "invalid": []
+  },
+  "test_validity": {
+    "score": 1.0,
+    "valid": 3,
+    "total": 3,
+    "invalid": []
+  },
+  "import_correctness": {
+    "score": 1.0,
+    "correct": 3,
+    "total": 3,
+    "errors": []
+  },
+  "thresholds": {
+    "locator_quality": 0.85,
+    "pom_validity": 0.8,
+    "test_validity": 0.8,
+    "import_correctness": 0.9
+  },
+  "passed": true,
+  "scenario_results": [
+    {
+      "scenario": "checkout_page",
+      "page_objects_count": 1,
+      "test_files_count": 1,
+      "error": null
+    },
+    {
+      "scenario": "login_page",
+      "page_objects_count": 1,
+      "test_files_count": 1,
+      "error": null
+    },
+    {
+      "scenario": "product_search",
+      "page_objects_count": 1,
+      "test_files_count": 1,
+      "error": null
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 3791,
+    "output_tokens": 2209,
+    "total_tokens": 6000,
+    "cost_usd": 0.044508
+  },
+  "recommendations": [
+    {
+      "priority": "low",
+      "category": "overall",
+      "finding": "All generator metrics pass. Generated code quality is above all thresholds.",
+      "action": "No action needed. Consider adding more complex golden scenarios."
+    }
+  ]
+}
