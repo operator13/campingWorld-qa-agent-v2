@@ -341,6 +341,40 @@
     if (costRow) costRow.style.display = 'none';
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) tooltip.style.display = 'none';
+    // Add progress bar
+    if (!card.querySelector('.eval-progress-container')) {
+      const progHtml = `
+        <div class="eval-progress-container">
+          <div class="eval-progress-bar"><div class="eval-progress-fill" style="width:0%"></div></div>
+          <div class="eval-progress-text">0%</div>
+        </div>
+      `;
+      const scoreParent = scoreEl ? scoreEl.parentNode : card;
+      scoreEl.insertAdjacentHTML('afterend', progHtml);
+    }
+  }
+
+  function updateEvalProgress(agent, current, total) {
+    const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+    if (!card) return;
+    const pct = Math.round((current / total) * 100);
+    const fill = card.querySelector('.eval-progress-fill');
+    const text = card.querySelector('.eval-progress-text');
+    if (fill) fill.style.width = pct + '%';
+    if (text) text.textContent = current + '/' + total + ' (' + pct + '%)';
+  }
+
+  function _restoreEvalCard(card) {
+    const btn = card.querySelector('.eval-run-btn');
+    if (btn) btn.style.display = '';
+    const badge = card.querySelector('.eval-badge');
+    if (badge) badge.style.display = '';
+    const costRow = card.querySelector('.eval-cost-row');
+    if (costRow) costRow.style.display = '';
+    const tooltip = card.querySelector('.eval-tooltip');
+    if (tooltip) tooltip.style.display = '';
+    const prog = card.querySelector('.eval-progress-container');
+    if (prog) prog.remove();
   }
 
   function setEvalCardComplete(agent) {
@@ -349,14 +383,7 @@
     card.classList.remove('eval-running');
     card.classList.add('eval-complete-flash');
     setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
-    const btn = card.querySelector('.eval-run-btn');
-    if (btn) btn.style.display = '';
-    const badge = card.querySelector('.eval-badge');
-    if (badge) badge.style.display = '';
-    const costRow = card.querySelector('.eval-cost-row');
-    if (costRow) costRow.style.display = '';
-    const tooltip = card.querySelector('.eval-tooltip');
-    if (tooltip) tooltip.style.display = '';
+    _restoreEvalCard(card);
   }
 
   function setEvalCardError(agent) {
@@ -365,14 +392,7 @@
     card.classList.remove('eval-running');
     card.classList.add('eval-error-flash');
     setTimeout(() => card.classList.remove('eval-error-flash'), 3000);
-    const btn = card.querySelector('.eval-run-btn');
-    if (btn) btn.style.display = '';
-    const badge = card.querySelector('.eval-badge');
-    if (badge) badge.style.display = '';
-    const costRow = card.querySelector('.eval-cost-row');
-    if (costRow) costRow.style.display = '';
-    const tooltip = card.querySelector('.eval-tooltip');
-    if (tooltip) tooltip.style.display = '';
+    _restoreEvalCard(card);
   }
 
   function disableAllEvalButtons() {
@@ -629,6 +649,13 @@
             break;
           case 'eval:agent:start':
             setEvalCardRunning(data.agent);
+            break;
+          case 'eval:log':
+            // Parse [X/N] progress from log lines like "[3/35] scenario_name"
+            if (data.line && data.agent) {
+              const m = data.line.match(/\[(\d+)\/(\d+)\]/);
+              if (m) updateEvalProgress(data.agent, parseInt(m[1]), parseInt(m[2]));
+            }
             break;
           case 'eval:agent:complete':
             setEvalCardComplete(data.agent);
