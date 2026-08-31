@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -257,6 +258,112 @@ async def health_notify(body: dict = {}) -> JSONResponse:
     run_id = body.get("run_id", "unknown")
     await broadcast_to_dashboard(json.dumps({"event": "health:updated", "run_id": run_id}))
     return JSONResponse({"status": "notified"})
+
+
+# ---------------------------------------------------------------------------
+# Eval runner (trigger evals from dashboard)
+# ---------------------------------------------------------------------------
+
+_eval_process: asyncio.subprocess.Process | None = None
+_eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "queued": []}
+
+
+@app.post("/api/eval/run")
+async def run_eval(body: dict = {}):
+    global _eval_status
+    if _eval_status["state"] == "running":
+        return JSONResponse({"error": "Eval already running"}, status_code=409)
+
+    agents = body.get("agents", [])
+    run_all = body.get("all", False)
+    if run_all:
+        agents = ["triage", "planner", "generator", "healer"]
+
+    if not agents:
+        return JSONResponse({"error": "No agents specified"}, status_code=400)
+
+    _eval_status = {"state": "running", "current_agent": None, "completed": [], "queued": list(agents)}
+    asyncio.create_task(_execute_eval_run(agents))
+    return JSONResponse({"status": "started", "agents": agents})
+
+
+@app.get("/api/eval/run/status")
+async def eval_run_status():
+    return JSONResponse(content=_eval_status)
+
+
+@app.post("/api/eval/stop")
+async def stop_eval():
+    global _eval_process, _eval_status
+    if _eval_status["state"] == "running":
+        if _eval_process and _eval_process.returncode is None:
+            _eval_process.terminate()
+        _eval_status["state"] = "stopped"
+        cancelled = list(_eval_status["queued"])
+        _eval_status["queued"] = []
+        await broadcast_to_dashboard(json.dumps({
+            "event": "eval:complete",
+            "completed": len(_eval_status["completed"]),
+            "cancelled": cancelled,
+        }))
+        _eval_status["state"] = "idle"
+        _eval_status["current_agent"] = None
+        return JSONResponse({"status": "stopped", "cancelled": cancelled})
+    return JSONResponse({"status": "not_running"})
+
+
+async def _execute_eval_run(agents: list[str]):
+    global _eval_process, _eval_status
+
+    await broadcast_to_dashboard(json.dumps({"event": "eval:start", "agents": agents}))
+
+    for agent in agents:
+        if _eval_status["state"] == "stopped":
+            break
+
+        _eval_status["current_agent"] = agent
+        if agent in _eval_status["queued"]:
+            _eval_status["queued"].remove(agent)
+
+        await broadcast_to_dashboard(json.dumps({"event": "eval:agent:start", "agent": agent}))
+
+        try:
+            cmd = [
+                sys.executable, "-c",
+                f"import asyncio; from qa_agent.eval.eval_runner import run_{agent}_eval; asyncio.run(run_{agent}_eval())"
+            ]
+            _eval_process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                cwd=str(PROJECT_ROOT),
+            )
+
+            while True:
+                line = await _eval_process.stdout.readline()
+                if not line:
+                    break
+                decoded = line.decode("utf-8", errors="replace").rstrip()
+                if decoded:
+                    await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": decoded}))
+
+            await _eval_process.wait()
+            _eval_status["completed"].append(agent)
+
+            await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
+
+        except Exception as e:
+            await broadcast_to_dashboard(json.dumps({"event": "eval:agent:error", "agent": agent, "error": str(e)}))
+
+    _eval_status["state"] = "idle"
+    _eval_status["current_agent"] = None
+    _eval_status["queued"] = []
+
+    await broadcast_to_dashboard(json.dumps({
+        "event": "eval:complete",
+        "completed": len(_eval_status["completed"]),
+        "failed": len(agents) - len(_eval_status["completed"]),
+    }))
 
 
 @app.get("/api/eval/{agent}/latest")

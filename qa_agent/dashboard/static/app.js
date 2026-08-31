@@ -14,6 +14,7 @@
     refreshAllData();
     connectWebSocket();
     initRunnerControls();
+    initEvalControls();
   });
 
   function startTimestampClock() {
@@ -254,10 +255,15 @@
         </div>
       `;
 
+      const runBtn = `<button class="eval-run-btn" data-agent="${agent}" onclick="window._runEval('${agent}')">&#9654; RUN</button>`;
+
       if (!data || data.score === null) {
         return `
           <div class="eval-card" data-agent="${agent}">
-            <div class="eval-agent-name">${agent.toUpperCase()}</div>
+            <div class="eval-card-header">
+              <div class="eval-agent-name">${agent.toUpperCase()}</div>
+              ${runBtn}
+            </div>
             <div class="eval-score">--</div>
             <span class="eval-badge">NO DATA</span>
             ${tooltip}
@@ -276,7 +282,10 @@
 
       return `
         <div class="eval-card" data-agent="${agent}">
-          <div class="eval-agent-name">${agent.toUpperCase()}</div>
+          <div class="eval-card-header">
+            <div class="eval-agent-name">${agent.toUpperCase()}</div>
+            ${runBtn}
+          </div>
           <div class="eval-score ${scoreClass}">${score.toFixed(1)}%</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
           <div class="eval-cost-row">
@@ -287,6 +296,101 @@
         </div>
       `;
     }).join('');
+  }
+
+  // ============================================
+  // Eval Runner Controls
+  // ============================================
+
+  function initEvalControls() {
+    document.getElementById('btn-eval-all').addEventListener('click', () => {
+      fetch('/api/eval/run', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({all: true}),
+      }).catch(err => console.warn('Eval run failed:', err));
+    });
+
+    document.getElementById('btn-eval-stop').addEventListener('click', () => {
+      fetch('/api/eval/stop', {method: 'POST'}).catch(err => console.warn('Eval stop failed:', err));
+    });
+  }
+
+  // Exposed globally for inline onclick on RUN buttons
+  window._runEval = function(agent) {
+    fetch('/api/eval/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({agents: [agent]}),
+    }).catch(err => console.warn('Eval run failed:', err));
+  };
+
+  function setEvalCardRunning(agent) {
+    const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+    if (!card) return;
+    card.classList.add('eval-running');
+    const scoreEl = card.querySelector('.eval-score');
+    if (scoreEl) scoreEl.dataset.prevText = scoreEl.textContent;
+    if (scoreEl) scoreEl.textContent = 'Running...';
+    const btn = card.querySelector('.eval-run-btn');
+    if (btn) btn.style.display = 'none';
+    const badge = card.querySelector('.eval-badge');
+    if (badge) badge.style.display = 'none';
+  }
+
+  function setEvalCardComplete(agent) {
+    const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+    if (!card) return;
+    card.classList.remove('eval-running');
+    card.classList.add('eval-complete-flash');
+    setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
+    const btn = card.querySelector('.eval-run-btn');
+    if (btn) btn.style.display = '';
+    const badge = card.querySelector('.eval-badge');
+    if (badge) badge.style.display = '';
+  }
+
+  function setEvalCardError(agent) {
+    const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+    if (!card) return;
+    card.classList.remove('eval-running');
+    card.classList.add('eval-error-flash');
+    setTimeout(() => card.classList.remove('eval-error-flash'), 3000);
+    const btn = card.querySelector('.eval-run-btn');
+    if (btn) btn.style.display = '';
+    const badge = card.querySelector('.eval-badge');
+    if (badge) badge.style.display = '';
+  }
+
+  function disableAllEvalButtons() {
+    document.querySelectorAll('.eval-run-btn').forEach(b => b.disabled = true);
+    document.getElementById('btn-eval-all').style.display = 'none';
+    document.getElementById('btn-eval-stop').style.display = 'inline-block';
+    const dot = document.getElementById('eval-dot');
+    const text = document.getElementById('eval-status');
+    if (dot) dot.className = 'eval-status-dot eval-dot-running';
+    if (text) text.textContent = 'RUNNING';
+  }
+
+  function enableAllEvalButtons() {
+    document.querySelectorAll('.eval-run-btn').forEach(b => { b.disabled = false; b.style.display = ''; });
+    document.getElementById('btn-eval-all').style.display = 'inline-block';
+    document.getElementById('btn-eval-stop').style.display = 'none';
+    const dot = document.getElementById('eval-dot');
+    const text = document.getElementById('eval-status');
+    if (dot) dot.className = 'eval-status-dot';
+    if (text) text.textContent = '';
+  }
+
+  function syncEvalStatus() {
+    fetch('/api/eval/run/status').then(r => r.json()).then(status => {
+      if (status.state === 'running') {
+        disableAllEvalButtons();
+        if (status.current_agent) {
+          setEvalCardRunning(status.current_agent);
+        }
+      }
+    }).catch(() => {});
   }
 
   // ============================================
@@ -425,6 +529,8 @@
           document.getElementById('btn-clear').disabled = true;
         }
       }).catch(() => {});
+      // Sync eval state on connect
+      syncEvalStatus();
     };
     ws.onmessage = (event) => {
       try {
@@ -500,6 +606,24 @@
             break;
           case 'runner:clear':
             doClearRunner();
+            break;
+          case 'eval:start':
+            disableAllEvalButtons();
+            break;
+          case 'eval:agent:start':
+            setEvalCardRunning(data.agent);
+            break;
+          case 'eval:agent:complete':
+            setEvalCardComplete(data.agent);
+            fetchEvalSummary();
+            break;
+          case 'eval:agent:error':
+            setEvalCardError(data.agent);
+            break;
+          case 'eval:complete':
+            enableAllEvalButtons();
+            fetchEvalSummary();
+            fetchAuditSummary();
             break;
           case 'eval:updated':
             fetchEvalSummary();

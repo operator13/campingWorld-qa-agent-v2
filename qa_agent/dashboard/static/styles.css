@@ -413,6 +413,153 @@ body::before {
   overflow: visible;
 }
 
+/* Eval section header row */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-header-row .section-title {
+  margin-bottom: 0;
+}
+
+.eval-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eval-all-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  background: transparent;
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+.eval-all-btn:hover {
+  background: rgba(0, 255, 200, 0.1);
+  box-shadow: 0 0 12px rgba(0, 255, 200, 0.2);
+}
+
+.eval-stop-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  background: transparent;
+  color: var(--neon-red);
+  border: 1px solid var(--neon-red);
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+.eval-stop-btn:hover {
+  background: rgba(255, 0, 60, 0.1);
+  box-shadow: 0 0 12px rgba(255, 0, 60, 0.2);
+}
+
+.eval-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.eval-dot-running {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 8px var(--neon-cyan);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.eval-status-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  letter-spacing: 0.05em;
+}
+
+/* Eval card header with RUN button */
+.eval-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.eval-run-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.45rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  background: transparent;
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0, 255, 200, 0.3);
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+.eval-run-btn:hover {
+  background: rgba(0, 255, 200, 0.1);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(0, 255, 200, 0.15);
+}
+
+.eval-run-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Eval card running state */
+.eval-card.eval-running {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.1);
+}
+
+.eval-card.eval-running .eval-score {
+  font-size: 1rem;
+  color: var(--neon-cyan);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Eval card complete flash */
+.eval-card.eval-complete-flash {
+  animation: eval-flash-green 2s ease;
+}
+
+@keyframes eval-flash-green {
+  0% { box-shadow: 0 0 30px rgba(0, 255, 200, 0.4); }
+  100% { box-shadow: none; }
+}
+
+/* Eval card error flash */
+.eval-card.eval-error-flash {
+  animation: eval-flash-red 3s ease;
+}
+
+@keyframes eval-flash-red {
+  0% { box-shadow: 0 0 30px rgba(255, 0, 60, 0.4); }
+  100% { box-shadow: none; }
+}
+
 .eval-card {
   background: var(--bg-card);
   backdrop-filter: blur(12px);
@@ -913,6 +1060,14 @@ body::before {
 
 /* iPad mini / large phones landscape */
 @media (max-width: 768px) {
+  /* Hide eval runner buttons on mobile */
+  .eval-run-btn,
+  .eval-all-btn,
+  .eval-stop-btn,
+  .eval-header-right {
+    display: none !important;
+  }
+
   .header {
     flex-direction: column;
     gap: 8px;

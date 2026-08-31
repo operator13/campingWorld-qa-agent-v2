@@ -64,7 +64,15 @@
 
   <!-- Section 2: Agent Eval Cards -->
   <section class="section section-eval">
-    <h2 class="section-title">AGENT EVALUATION</h2>
+    <div class="section-header-row">
+      <h2 class="section-title">AGENT EVALUATION</h2>
+      <div class="eval-header-right">
+        <button class="eval-all-btn" id="btn-eval-all">&#9654; EVAL ALL</button>
+        <button class="eval-stop-btn" id="btn-eval-stop" style="display:none;">&#9632; STOP</button>
+        <span class="eval-status-dot" id="eval-dot"></span>
+        <span class="eval-status-text" id="eval-status"></span>
+      </div>
+    </div>
     <div class="eval-grid" id="eval-grid">
       <!-- Agent eval cards rendered by JS -->
     </div>
