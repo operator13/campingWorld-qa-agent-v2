@@ -1433,6 +1433,18 @@ body::before {
   cursor: not-allowed;
 }
 
+.runner-btn-clear.clear-highlight {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
+  animation: clear-pulse 2s ease-in-out infinite;
+}
+
+@keyframes clear-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 200, 0.2); }
+  50% { box-shadow: 0 0 18px rgba(0, 255, 200, 0.4); }
+}
+
 .runner-card {
   background: var(--bg-card);
   backdrop-filter: blur(12px);
