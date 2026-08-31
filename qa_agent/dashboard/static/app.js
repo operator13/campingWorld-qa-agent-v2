@@ -6,6 +6,7 @@
   'use strict';
 
   let wsConnected = false;
+  let evalRunning = false;
   let costChart = null;
   let runnerTestCount = 0, runnerPassCount = 0, runnerFailCount = 0;
 
@@ -81,6 +82,7 @@
   }
 
   async function fetchEvalSummary() {
+    if (evalRunning) return;  // Don't re-render cards while evals are in progress
     try {
       const res = await fetch('/api/eval/summary');
       if (!res.ok) throw new Error(res.statusText);
@@ -385,8 +387,11 @@
   function syncEvalStatus() {
     fetch('/api/eval/run/status').then(r => r.json()).then(status => {
       if (status.state === 'running') {
+        evalRunning = true;
         disableAllEvalButtons();
-        if (status.current_agent) {
+        if (status.current_agent === 'all') {
+          ['triage', 'planner', 'generator', 'healer'].forEach(a => setEvalCardRunning(a));
+        } else if (status.current_agent) {
           setEvalCardRunning(status.current_agent);
         }
       }
@@ -608,6 +613,7 @@
             doClearRunner();
             break;
           case 'eval:start':
+            evalRunning = true;
             disableAllEvalButtons();
             break;
           case 'eval:agent:start':
@@ -615,12 +621,12 @@
             break;
           case 'eval:agent:complete':
             setEvalCardComplete(data.agent);
-            fetchEvalSummary();
             break;
           case 'eval:agent:error':
             setEvalCardError(data.agent);
             break;
           case 'eval:complete':
+            evalRunning = false;
             enableAllEvalButtons();
             fetchEvalSummary();
             fetchAuditSummary();
