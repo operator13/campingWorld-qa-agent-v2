@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-08-31T14:36:53.291945+00:00",
+  "run_id": "08_31_2026_14-36-21",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 10,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 10,
+  "trend": {
+    "delta": 0.0202,
+    "status": "improving",
+    "previous_score": 0.9798
+  },
+  "domains": [
+    {
+      "name": "Sign In",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10,
+      "duration_ms": 82177,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.5,
+      "is_critical": true
+    }
+  ],
+  "critical_domains": [
+    "Sign In"
+  ]
+}
