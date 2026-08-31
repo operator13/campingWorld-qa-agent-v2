@@ -16,6 +16,8 @@
     connectWebSocket();
     initRunnerControls();
     initEvalControls();
+    // Replay last test run results for late-joining clients
+    _replayLastRun();
   });
 
   function startTimestampClock() {
@@ -80,9 +82,9 @@
       runnerFailCount = 0;
       lines.forEach(line => {
         const specMatch = line.match(/([a-z0-9-]+\.spec\.ts)/);
-        if (specMatch && (line.includes('\u2713') || line.includes('\u2718') || line.includes('\u00b7'))) {
+        if (specMatch && (line.includes('✓') || line.includes('✘') || line.includes('·') || line.includes('\u2713') || line.includes('\u2718'))) {
           const spec = specMatch[1];
-          const passed = line.includes('\u2713');
+          const passed = line.includes('✓') || line.includes('\u2713');
           if (passed) { runnerPassCount++; updateDomainProgress(spec, true); }
           else { runnerFailCount++; updateDomainProgress(spec, false); }
         }
