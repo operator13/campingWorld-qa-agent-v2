@@ -362,6 +362,11 @@
     const text = card.querySelector('.eval-progress-text');
     if (fill) fill.style.width = pct + '%';
     if (text) text.textContent = current + '/' + total + ' (' + pct + '%)';
+    // When all scenarios done, show finalizing state
+    if (current >= total) {
+      const scoreEl = card.querySelector('.eval-score');
+      if (scoreEl) scoreEl.textContent = 'Finalizing...';
+    }
   }
 
   function _restoreEvalCard(card) {
