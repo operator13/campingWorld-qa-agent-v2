@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "nav.spec.ts",
+      "test_title": "Find a Store link opens store locator panel",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-08-31T23:02:17.725944+00:00"
+}
