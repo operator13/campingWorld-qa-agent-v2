@@ -332,12 +332,15 @@
     if (!card) return;
     card.classList.add('eval-running');
     const scoreEl = card.querySelector('.eval-score');
-    if (scoreEl) scoreEl.dataset.prevText = scoreEl.textContent;
-    if (scoreEl) scoreEl.textContent = 'Running...';
+    if (scoreEl) { scoreEl.dataset.prevText = scoreEl.textContent; scoreEl.textContent = 'Running...'; }
     const btn = card.querySelector('.eval-run-btn');
     if (btn) btn.style.display = 'none';
     const badge = card.querySelector('.eval-badge');
     if (badge) badge.style.display = 'none';
+    const costRow = card.querySelector('.eval-cost-row');
+    if (costRow) costRow.style.display = 'none';
+    const tooltip = card.querySelector('.eval-tooltip');
+    if (tooltip) tooltip.style.display = 'none';
   }
 
   function setEvalCardComplete(agent) {
@@ -350,6 +353,10 @@
     if (btn) btn.style.display = '';
     const badge = card.querySelector('.eval-badge');
     if (badge) badge.style.display = '';
+    const costRow = card.querySelector('.eval-cost-row');
+    if (costRow) costRow.style.display = '';
+    const tooltip = card.querySelector('.eval-tooltip');
+    if (tooltip) tooltip.style.display = '';
   }
 
   function setEvalCardError(agent) {
@@ -362,6 +369,10 @@
     if (btn) btn.style.display = '';
     const badge = card.querySelector('.eval-badge');
     if (badge) badge.style.display = '';
+    const costRow = card.querySelector('.eval-cost-row');
+    if (costRow) costRow.style.display = '';
+    const tooltip = card.querySelector('.eval-tooltip');
+    if (tooltip) tooltip.style.display = '';
   }
 
   function disableAllEvalButtons() {
