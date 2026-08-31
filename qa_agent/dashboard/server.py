@@ -335,6 +335,8 @@ async def _execute_eval_run(agents: list[str]):
                 cwd=str(PROJECT_ROOT),
             )
 
+            agent_completed = False
+            import re as _re
             while True:
                 line = await proc.stdout.readline()
                 if not line:
@@ -342,10 +344,18 @@ async def _execute_eval_run(agents: list[str]):
                 decoded = line.decode("utf-8", errors="replace").rstrip()
                 if decoded:
                     await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": decoded}))
+                    # Detect when all scenarios done — complete early before git push
+                    m = _re.search(r"\[(\d+)/(\d+)\]", decoded)
+                    if m and int(m.group(1)) >= int(m.group(2)) and not agent_completed:
+                        agent_completed = True
+                        _eval_status["completed"].append(agent)
+                        await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
 
             await proc.wait()
-            _eval_status["completed"].append(agent)
-            await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
+            # If we never saw progress markers, complete now
+            if not agent_completed:
+                _eval_status["completed"].append(agent)
+                await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
 
         except Exception as e:
             await broadcast_to_dashboard(json.dumps({"event": "eval:agent:error", "agent": agent, "error": str(e)}))
