@@ -203,23 +203,69 @@
   // ============================================
   // Agent Eval Cards
   // ============================================
+  const AGENT_INFO = {
+    triage: {
+      role: 'Failure Classifier',
+      description: 'Analyzes test failures and classifies them as locator drift, app defect, or timing flake using a 5-criteria confidence rubric.',
+      model: 'Claude Opus',
+      evaluates: 'Classification accuracy against 35 golden scenarios',
+      capabilities: ['Locator drift detection', 'App defect identification', 'Timing flake recognition', 'Historical pattern matching', 'Confidence-gated routing'],
+    },
+    planner: {
+      role: 'Test Planner',
+      description: 'Generates structured test plans from UI specs and acceptance criteria, prioritizing critical paths and volatile routes.',
+      model: 'Claude Opus',
+      evaluates: 'AC coverage and test case quality',
+      capabilities: ['Acceptance criteria mapping', 'Critical path prioritization', 'Volatile route detection', 'Memory-enhanced planning'],
+    },
+    generator: {
+      role: 'Code Generator',
+      description: 'Produces Playwright spec files and Page Object Models with resilient locators from test plans.',
+      model: 'Claude Sonnet',
+      evaluates: 'Locator quality, POM validity, and test validity',
+      capabilities: ['Page Object Model generation', 'Resilient locator selection', 'TypeScript spec generation', 'Import correctness'],
+    },
+    healer: {
+      role: 'Self-Healer',
+      description: 'Auto-fixes broken tests by patching drifted locators in page objects and adding synchronization waits for timing flakes.',
+      model: 'Claude Sonnet',
+      evaluates: 'Fix correctness, assertion integrity, and timing fix accuracy',
+      capabilities: ['Locator drift repair', 'Timing flake fixes (waitFor)', 'Known-fix memory cache', 'Assertion guardrail enforcement'],
+    },
+  };
+
   function renderEvalCards(evalSummary) {
     const grid = document.getElementById('eval-grid');
     const agents = ['triage', 'planner', 'generator', 'healer'];
 
     grid.innerHTML = agents.map(agent => {
       const data = evalSummary[agent];
+      const info = AGENT_INFO[agent];
+      const capsHtml = info.capabilities.map(c => `<li>${c}</li>`).join('');
+      const tooltip = `
+        <div class="eval-tooltip">
+          <div class="eval-tooltip-header">${agent.toUpperCase()} <span class="eval-tooltip-role">${info.role}</span></div>
+          <p class="eval-tooltip-desc">${info.description}</p>
+          <div class="eval-tooltip-meta">
+            <span>Model: ${info.model}</span>
+            <span>Eval: ${info.evaluates}</span>
+          </div>
+          <ul class="eval-tooltip-caps">${capsHtml}</ul>
+        </div>
+      `;
+
       if (!data || data.score === null) {
         return `
           <div class="eval-card" data-agent="${agent}">
-            <div class="eval-agent-name">${agent.toUpperCase()}</div>
+            <div class="eval-agent-name">${agent.toUpperCase()} <span class="eval-info-icon">i</span></div>
             <div class="eval-score">--</div>
             <span class="eval-badge">NO DATA</span>
+            ${tooltip}
           </div>
         `;
       }
 
-      const score = (data.score ?? 0) * 100; // API returns 0-1
+      const score = (data.score ?? 0) * 100;
       const passed = data.passed ?? false;
       const scoreClass = passed ? 'score-pass' : 'score-fail';
       const badgeClass = passed ? 'badge-pass' : 'badge-fail';
@@ -230,13 +276,14 @@
 
       return `
         <div class="eval-card" data-agent="${agent}">
-          <div class="eval-agent-name">${agent.toUpperCase()}</div>
+          <div class="eval-agent-name">${agent.toUpperCase()} <span class="eval-info-icon">i</span></div>
           <div class="eval-score ${scoreClass}">${score.toFixed(1)}%</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
           <div class="eval-cost-row">
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
             <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
+          ${tooltip}
         </div>
       `;
     }).join('');
