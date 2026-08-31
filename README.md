@@ -7,7 +7,7 @@
 [![Claude](https://img.shields.io/badge/Claude-Opus%20%2B%20Sonnet-d97706?logo=anthropic)](https://anthropic.com/)
 [![Docker](https://img.shields.io/badge/Docker-dashboard-2496ED?logo=docker)](https://docker.com/)
 
-An **AI-powered QA automation framework** that generates Playwright tests, runs them against [campingworld.com](https://www.campingworld.com), self-heals when locators drift, and serves a real-time cyberpunk dashboard for monitoring health scores, triggering test runs, and tracking agent performance — all from your browser or phone. Built with **LangGraph**, **Claude**, **FastAPI**, and **WebSocket**.
+An **AI-powered QA automation framework** that generates Playwright tests, runs them against [campingworld.com](https://www.campingworld.com), self-heals when locators drift or tests flake, and serves a real-time cyberpunk dashboard for monitoring health scores, triggering test runs and agent evaluations, and tracking agent performance — all from your browser or phone. Built with **LangGraph**, **Claude**, **FastAPI**, and **WebSocket**.
 
 ---
 
@@ -15,7 +15,7 @@ An **AI-powered QA automation framework** that generates Playwright tests, runs 
 
 ```
                     ┌──────────────┐
-                    │  DASHBOARD   │  Real-time health, test runner, agent evals
+                    │  DASHBOARD   │  Real-time health, test runner, eval runner
                     │  (Browser)   │  WebSocket-synced across devices
                     └──────┬───────┘
                            │
@@ -31,15 +31,15 @@ An **AI-powered QA automation framework** that generates Playwright tests, runs 
 1. **Generate** — AI creates Playwright tests with Page Object Models from Figma designs and Jira tickets
 2. **Execute** — Runs 127 tests across 14 domains of campingworld.com
 3. **Score** — Computes weighted health scores per domain with critical path weighting
-4. **Heal** — Triages failures, auto-fixes locator drift, defers to humans when unsure
-5. **Evaluate** — Benchmarks 4 AI agents (Triage, Planner, Generator, Healer) against golden datasets
-6. **Monitor** — Live dashboard with WebSocket streaming, accessible from desktop and mobile
+4. **Heal** — Triages failures, auto-fixes locator drift AND timing flakes, defers to humans when unsure
+5. **Evaluate** — Benchmarks 4 AI agents against golden datasets with cumulative token/cost tracking
+6. **Monitor** — Live dashboard with event-driven WebSocket push, accessible from desktop and mobile
 
 ---
 
 ## QA Command Center Dashboard
 
-A real-time cyberpunk-themed dashboard for monitoring and controlling the entire QA pipeline from any device.
+A real-time cyberpunk-themed dashboard for monitoring and controlling the entire QA pipeline from any device. **Zero polling** — all updates are event-driven via WebSocket push.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -51,19 +51,19 @@ A real-time cyberpunk-themed dashboard for monitoring and controlling the entire
 │     │HEALTHY│            │  │100%  │ │100%  │ │100%  │ │100%  │   │
 │     └───────┘            │  └──────┘ └──────┘ └──────┘ └──────┘   │
 ├──────────────────────────┼───────────────────────────────────────────┤
-│  AGENT EVALUATION        │                                          │
-│  Triage 90% │ Plan 97.8% │  Generator 100% │ Healer 100%           │
+│  AGENT EVALUATION                               [▶ EVAL ALL]       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐              │
+│  │TRIAGE    │ │PLANNER   │ │GENERATOR │ │HEALER    │              │
+│  │85.7% [▶] │ │100%  [▶] │ │100%  [▶] │ │96%   [▶] │              │
+│  │271K $1.31│ │79K $0.90 │ │24K $0.18 │ │122K $0.66│              │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘              │
 ├──────────────────────────┼───────────────────────────────────────────┤
 │  TEST RUNNER             │  RUN HISTORY                             │
-│  Workers [1][2][●3][4]   │  2026-08-30 20:29  127  126  1  99.3%  │
-│  Retries [●0][1]         │  2026-08-30 20:20  127  125  2  98.7%  │
-│  Self-Heal [OFF][●ON]    │  2026-08-30 19:45   21   21  0 100.0%  │
+│  Workers [1][2][●3][4]   │  2026-08-31 23:02  127  126  1  99.3%  │
+│  Retries [●0][1]         │  2026-08-31 23:02    1    0  1  HEAL   │
+│  Self-Heal [OFF][●ON]    │  2026-08-31 20:55  127  127  0 100.0%  │
 │  [▶ RUN SELECTED][▶ ALL] │  ← Click any row to view HTML report    │
-│  ○ ★ Cart      8 tests   │                                         │
-│  ○ ★ Checkout  4 tests   │  SELF-HEAL rows show triage stats       │
-│  ○ ★ Sign In  10 tests   │  (triaged / healed / unhealed)          │
-│  ○   Search    9 tests   │                                         │
-│  ...14 domains total      │                                         │
+│  [CLEAR]                 │                                         │
 └──────────────────────────┴───────────────────────────────────────────┘
 ```
 
@@ -73,13 +73,17 @@ A real-time cyberpunk-themed dashboard for monitoring and controlling the entire
 |---------|-------------|
 | **Health Gauge** | SVG circular gauge with weighted overall score |
 | **Domain Cards** | 14 cards showing per-domain pass rate, test counts, status |
-| **Agent Eval Cards** | 4 cards with accuracy scores, token usage, cost per agent |
+| **Agent Eval Cards** | 4 cards with accuracy, cumulative tokens/cost, hover tooltips with agent details |
+| **Eval Runner** | Trigger per-agent or all evals from browser with progress bars (desktop only) |
 | **Test Runner** | Select domains, configure workers/retries, trigger from browser |
 | **Self-Heal Toggle** | Auto-triage and fix failures after test run completes |
-| **Run History** | Clickable rows open Playwright HTML reports in new tab |
-| **Self-Heal Rows** | Purple badges showing triage/healed/unhealed counts |
-| **Console Output** | Live streaming test output via WebSocket |
+| **Run History** | Clickable rows open Playwright HTML reports; Self-Heal rows show triage stats |
+| **Console Output** | Live streaming test output via WebSocket with smooth collapse |
 | **Cross-Device Sync** | Start tests on iPhone, watch results on desktop (and vice versa) |
+| **Late-Join Replay** | New clients see last run's results without needing to be connected during the run |
+| **Domain Locking** | Domain list locked during/after test runs, unlocked on CLEAR |
+| **Agent Tooltips** | Hover any eval card for agent role, description, model, capabilities |
+| **Event-Driven Updates** | Zero polling — health, eval, and test data push via WebSocket |
 | **Mobile Responsive** | 2-column grids on iPhone, optimized for touch |
 
 ### Run the Dashboard
@@ -103,13 +107,19 @@ open http://<your-local-ip>:8080             # iPhone/iPad on same WiFi
 |--------|----------|---------|
 | `GET` | `/api/health/latest` | Latest health with partial run merging |
 | `GET` | `/api/health/history` | Last 20 runs (test + self-heal) |
-| `GET` | `/api/eval/summary` | All 4 agent scores + token/cost data |
+| `POST` | `/api/health/notify` | Event-driven health update broadcast |
+| `GET` | `/api/eval/summary` | All 4 agent scores + cumulative token/cost |
 | `GET` | `/api/eval/{agent}/latest` | Latest eval for specific agent |
+| `POST` | `/api/eval/run` | Trigger agent evals (per-agent or all, parallel) |
+| `GET` | `/api/eval/run/status` | Current eval runner state |
+| `POST` | `/api/eval/stop` | Stop running evals |
+| `POST` | `/api/eval/notify` | Event-driven eval update broadcast |
 | `GET` | `/api/audit/summary` | Total tokens, cost, per-run breakdown |
 | `POST` | `/api/tests/run` | Start test run with specs/workers/retries/heal |
 | `POST` | `/api/tests/stop` | Kill running subprocess |
 | `POST` | `/api/tests/clear` | Clear runner state (syncs across devices) |
 | `GET` | `/api/tests/status` | Current runner state |
+| `GET` | `/api/tests/lastrun` | Last run's log for late-joining clients |
 | `GET` | `/report/{run_id}` | Serve Playwright HTML report |
 | `WS` | `/ws/dashboard` | Browser live updates |
 | `WS` | `/ws/tests` | Test output streaming |
@@ -156,6 +166,7 @@ Each run automatically:
 3. Computes health score → `health-reports/{timestamp}.json`
 4. Triggers self-healing on failures (if enabled)
 5. Commits and pushes health report to GitHub
+6. Pushes real-time updates to all connected dashboards
 
 ---
 
@@ -185,27 +196,33 @@ Test Failure → Triage Agent → Classification
                                   │
                     ┌─────────────┼──────────────┐
                     ▼             ▼              ▼
-              locator_drift   app_defect      unsure
+              locator_drift   test_flake      app_defect
                     │             │              │
                     ▼             ▼              ▼
-               Healer Agent   Defect Report   Human Review
-               (fix locator)  (file Jira)     (interrupt)
-                    │
-                    ▼
+               Healer Agent   Healer Agent   Defect Report
+               (fix locator)  (add waitFor)  (file Jira)
+                    │             │
+                    ▼             ▼
                Re-run fixed test
 ```
 
-The triage agent uses a **5-criteria confidence rubric** (C1-C5) with anti-inflation guards:
+The Healer handles **two types** of failures:
+- **Locator drift** — patches drifted selectors in Page Object files
+- **Timing flakes** — adds `waitFor()` synchronization in spec files (e.g., `scrollIntoViewIfNeeded` before element is in DOM)
+
+The triage agent uses a **5-criteria confidence rubric** (C1-C5) with anti-inflation guards and **historical test stability analysis**:
 
 | Criterion | What it measures |
 |-----------|-----------------|
-| **C1** Error type signal | Is the error clearly drift or clearly defect? |
+| **C1** Error type signal | Is the error clearly drift, flake, or defect? |
 | **C2** DOM evidence | Does the DOM show the element renamed or absent? |
 | **C3** Historical pattern | Has this error been seen before? |
 | **C4** Human calibration | Do past human decisions agree? |
 | **C5** Consistency check | Do multiple signals agree? |
 
-**Current accuracy:** Triage 90%, Planner 97.8%, Generator 100%, Healer 100%
+**Historical awareness** — Triage checks `TEST_STABILITY.md` and health report history. If a test passed 8/8 yesterday and fails today, that's strong evidence of a flake, not a defect.
+
+**Triage reports** now include full context: LLM reasoning, C1-C5 confidence breakdown, error message, and human-readable explanation of why a failure wasn't healed.
 
 ---
 
@@ -214,19 +231,30 @@ The triage agent uses a **5-criteria confidence rubric** (C1-C5) with anti-infla
 4 agents benchmarked against golden datasets with regression detection.
 
 ```bash
-# Run all evals
+# Run all evals (from CLI)
 qa-agent eval --agent all
 
 # Single agent
 qa-agent eval --agent triage --threshold 0.75
+
+# From the dashboard
+# Click ▶ EVAL ALL or ▶ RUN on individual agent cards
 ```
 
 | Agent | Metrics | Golden Scenarios |
 |-------|---------|-----------------|
-| **Triage** | Classification accuracy, confidence calibration | 10 labeled failure cases |
-| **Planner** | AC coverage, test case quality | 5 planning scenarios |
-| **Generator** | Locator quality, POM validity, test validity | 5 generation scenarios |
-| **Healer** | Fix correctness, import correctness, diff minimality | 5 healing scenarios |
+| **Triage** | Classification accuracy (drift/flake/defect) | 35 labeled failure cases |
+| **Planner** | AC coverage, test case quality | 8 planning scenarios |
+| **Generator** | Locator quality, POM validity, test validity | 5+ generation scenarios |
+| **Healer** | Locator fix + timing fix accuracy (60/40 weighted) | 10 locator + 5 timing scenarios |
+
+**Cumulative token/cost tracking** — Dashboard shows total tokens and cost across all eval runs per agent (odometer-style, never decreases).
+
+**Parallel execution** — EVAL ALL runs all 4 agents as separate subprocesses simultaneously.
+
+**Per-card progress bars** — Each agent card shows live `[X/N]` scenario progress during eval runs.
+
+**Event-driven updates** — Eval completion pushes scores to all connected dashboards instantly via WebSocket.
 
 Reports auto-commit to `qa_agent/eval/reports/{agent}/` with PASS/FAIL/BASELINE status.
 
@@ -243,6 +271,7 @@ Every agent invocation is tracked with token counts and costs.
 | Prompt versions | SHA256 hash of system prompts |
 | Memory context | Files read, similar failures found |
 | Routing decisions | Which path the agent took and why |
+| Timing fixes | Strategy used, element, error pattern, success/failure |
 
 Storage: `memory/AUDIT_TRAIL.md` (human-readable) + `memory/audit_runs/*.json` (machine-readable)
 
@@ -255,11 +284,11 @@ Storage: `memory/AUDIT_TRAIL.md` (human-readable) + `memory/audit_runs/*.json` (
 | Node | Type | Model | Purpose |
 |------|------|-------|---------|
 | **Design Reader** | AI | Sonnet | Figma MCP → structured UI spec |
-| **Planner** | AI | Opus | UI spec + AC → categorized test cases |
+| **Planner** | AI | Sonnet | UI spec + AC → categorized test cases |
 | **Generator** | AI | Sonnet | Test plan → page objects + Playwright specs |
 | **Executor** | Runner | — | Runs `npx playwright test`, captures results |
-| **Triage** | AI | Opus | Classifies failure + 5-criteria confidence rubric |
-| **Healer** | AI | Sonnet | Patches drifted locators (never assertions) |
+| **Triage** | AI | Sonnet | Classifies failure (drift/flake/defect) + confidence rubric |
+| **Healer** | AI | Sonnet | Patches locators OR adds timing waits (never assertions) |
 | **Human Review** | Human | — | LangGraph `interrupt()` for low-confidence cases |
 | **Defect Report** | System | — | Files deduped Jira ticket via Atlassian MCP |
 | **Metrics** | System | — | Records runs + triage calls to markdown |
@@ -271,13 +300,13 @@ Storage: `memory/AUDIT_TRAIL.md` (human-readable) + `memory/audit_runs/*.json` (
 | **Orchestration** | LangGraph StateGraph, Python 3.11+ |
 | **LLM** | Claude Opus + Sonnet via `langchain-anthropic` |
 | **Browser** | Playwright (127 tests, 14 domains) |
-| **Dashboard** | FastAPI + WebSocket + Vanilla JS |
+| **Dashboard** | FastAPI + WebSocket + Vanilla JS (event-driven, zero polling) |
 | **Design** | Figma MCP |
 | **Tickets** | Atlassian MCP (Jira) |
 | **Containerization** | Docker + docker-compose |
 | **Generated Tests** | TypeScript `@playwright/test` with POM |
-| **Memory** | Git-tracked markdown (12 files, zero databases) |
-| **Eval** | Custom harness with golden datasets |
+| **Memory** | Git-tracked markdown (14 files, zero databases) |
+| **Eval** | Custom harness with golden datasets + parallel execution |
 | **Audit** | Dual-format (Markdown + JSON) with token tracking |
 
 ---
@@ -287,9 +316,10 @@ Storage: `memory/AUDIT_TRAIL.md` (human-readable) + `memory/audit_runs/*.json` (
 | Guardrail | What it prevents |
 |-----------|-----------------|
 | **Assertion guardrail** | Healer can never modify `expect()`, `toBeVisible()`, etc. |
+| **Hard wait guardrail** | Healer can never add `page.waitForTimeout()` (anti-pattern) |
 | **Confidence gate** | Triage defers to humans when unsure (< 0.75) |
 | **MAX_ATTEMPTS** | Heal loop bounded to 3 attempts |
-| **Anti-inflation guards** | First-seen capped at 0.7, no DOM capped at 0.5 |
+| **Anti-inflation guards** | First-seen capped at 0.8, no DOM capped at 0.5 |
 | **Token budget** | Per-run ceiling (500K tokens) |
 | **Prompt-injection guards** | 12 regex patterns strip injections from Figma/DOM text |
 | **File locking** | `fcntl.flock` on all memory writes |
@@ -304,6 +334,7 @@ Git-tracked markdown files in `memory/` — human-readable, PR-reviewable, zero 
 memory/
 ├── locators/              # Per-route locator drift history
 ├── audit_runs/            # JSON audit trail per run
+├── retrospectives/        # Retrospective report history
 ├── APP_STRUCTURE.md       # Known routes, testids, change frequency
 ├── AUDIT_TRAIL.md         # Human-readable execution timeline
 ├── CONFIDENCE_RUBRIC.md   # 5-criteria Triage scoring rubric
@@ -314,6 +345,7 @@ memory/
 ├── LESSONS.md             # Pattern scoreboard + route insights
 ├── RUN_HISTORY.md         # Every run: passed/failed, outcome
 ├── TEST_STABILITY.md      # Per-test flakiness scores
+├── TIMING_FIXES.md        # Known timing fix cache (waitFor patterns)
 ├── TRIAGE_CALLS.md        # Every Triage classification for audit
 └── WEEKLY_REVIEW.md       # Periodic self-grading with prescriptions
 ```
@@ -382,37 +414,57 @@ qa-agent review weekly                         # Self-grading report
 
 ---
 
+## Feature Roadmap
+
+Build specs for planned features are in `features/`:
+
+| Feature | Status | Spec |
+|---------|--------|------|
+| Healer Flaky Test Fix | **COMPLETE** | [HEALER_FLAKY_TEST_FIX.md](features/HEALER_FLAKY_TEST_FIX.md) |
+| Dashboard Test Runner | **COMPLETE** | [DASHBOARD_TEST_RUNNER.md](features/DASHBOARD_TEST_RUNNER.md) |
+| Dashboard Eval Runner | **COMPLETE** | [DASHBOARD_EVAL_RUNNER.md](features/DASHBOARD_EVAL_RUNNER.md) |
+| Guild.AI Dashboard Alignment | PLANNED | [GUILD_AI_DASHBOARD_ALIGNMENT.md](features/GUILD_AI_DASHBOARD_ALIGNMENT.md) |
+| Human Review Notifications | PLANNED | [HUMAN_REVIEW_NOTIFICATIONS.md](features/HUMAN_REVIEW_NOTIFICATIONS.md) |
+| Retrospective Agent | PLANNED | [RETROSPECTIVE_AGENT.md](features/RETROSPECTIVE_AGENT.md) |
+| ngrok Public Sharing | PLANNED | [NGROK_PUBLIC_SHARING.md](features/NGROK_PUBLIC_SHARING.md) |
+| Agent Audit Trail | **COMPLETE** | [AGENT_AUDIT_TRAIL.md](features/AGENT_AUDIT_TRAIL.md) |
+| Eval Agent | **COMPLETE** | [BUILD_SPEC_EVAL_AGENT.md](features/BUILD_SPEC_EVAL_AGENT.md) |
+| QA Command Center | **COMPLETE** | [QA_COMMAND_CENTER_DASHBOARD.md](features/QA_COMMAND_CENTER_DASHBOARD.md) |
+
+---
+
 ## Project Structure
 
 ```
 qa-automation-agent/
 ├── qa_agent/
 │   ├── dashboard/                  # QA Command Center
-│   │   ├── server.py               # FastAPI + WebSocket (13 endpoints)
+│   │   ├── server.py               # FastAPI + WebSocket (20+ endpoints)
 │   │   ├── Dockerfile              # Container config
 │   │   ├── docker-compose.yml      # Docker orchestration
 │   │   └── static/                 # Cyberpunk UI (HTML/JS/CSS)
 │   ├── eval/                       # Agent evaluation system
 │   │   ├── eval_runner.py          # Parallel eval execution
-│   │   ├── golden/                 # Golden datasets (4 agents)
+│   │   ├── golden/                 # Golden datasets (4 agents, 63 scenarios)
 │   │   └── reports/                # Eval results (auto-committed)
 │   ├── nodes/                      # LangGraph agent nodes
-│   │   ├── triage.py               # Failure classification
-│   │   ├── healer.py               # Locator repair
+│   │   ├── triage.py               # Failure classification (drift/flake/defect)
+│   │   ├── healer.py               # Locator repair + timing fix
 │   │   ├── planner.py              # Test planning
 │   │   ├── generator.py            # Test generation
 │   │   └── ...                     # 10 nodes total
 │   ├── health.py                   # Weighted health scoring
 │   ├── audit.py                    # Execution audit trail
 │   ├── triage_runner.py            # Self-healing pipeline
-│   ├── confidence.py               # 5-criteria rubric scorer
+│   ├── confidence.py               # 5-criteria rubric + flake detection
 │   ├── memory.py                   # Markdown-backed memory store
 │   └── prompts/                    # System prompts (editable markdown)
 ├── tests_generated/                # 14 Playwright spec files (127 tests)
 ├── page_objects/                   # 15 Page Object Models
 ├── test-results/                   # Timestamped run archives
 ├── health-reports/                 # Health score history (git-tracked)
-├── memory/                         # Agent memory (12 markdown files)
+├── memory/                         # Agent memory (14 markdown files)
+├── features/                       # Feature build specs (20 specs)
 ├── run-tests.sh                    # Test runner script
 └── pyproject.toml                  # Python project config
 ```
@@ -422,7 +474,7 @@ qa-automation-agent/
 ## Author
 
 **QA Automation Portfolio Project**
-AI-powered test automation with self-healing, confidence-gated triage, real-time dashboard, and cross-run learning for QA Lead / Staff QA Engineer roles.
+AI-powered test automation with self-healing, flaky test detection, confidence-gated triage, real-time dashboard, event-driven architecture, and cross-run learning for QA Lead / Staff QA Engineer roles.
 
 ---
 
