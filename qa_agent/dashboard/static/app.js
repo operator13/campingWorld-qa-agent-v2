@@ -49,13 +49,45 @@
       } else if (state === 'cleared') {
         doClearRunner();
       } else if (state === 'idle' || state === 'complete') {
-        // Always sync to idle/complete state and enable controls
         setRunnerState(state === 'complete' ? 'complete' : 'idle');
         document.getElementById('btn-run-selected').style.display = 'inline-block';
         document.getElementById('btn-run-all').style.display = 'inline-block';
         document.getElementById('btn-stop').style.display = 'none';
         document.getElementById('btn-clear').disabled = false;
+        // Replay last run's log and progress for late-joining clients
+        _replayLastRun();
       }
+    }).catch(() => {});
+  }
+
+  function _replayLastRun() {
+    fetch('/api/tests/lastrun').then(r => r.json()).then(data => {
+      const lines = data.log || [];
+      if (lines.length === 0) return;
+
+      // Show log output
+      const logEl = document.getElementById('runner-log');
+      const logContainer = document.getElementById('runner-log-container');
+      if (logEl && lines.length > 0) {
+        logEl.innerHTML = '';
+        logContainer.style.display = 'block';
+        lines.forEach(line => appendRunnerLog(line));
+      }
+
+      // Replay domain progress from log lines
+      resetDomainProgress();
+      runnerPassCount = 0;
+      runnerFailCount = 0;
+      lines.forEach(line => {
+        const specMatch = line.match(/([a-z0-9-]+\.spec\.ts)/);
+        if (specMatch && (line.includes('\u2713') || line.includes('\u2718') || line.includes('\u00b7'))) {
+          const spec = specMatch[1];
+          const passed = line.includes('\u2713');
+          if (passed) { runnerPassCount++; updateDomainProgress(spec, true); }
+          else { runnerFailCount++; updateDomainProgress(spec, false); }
+        }
+      });
+      updateProgress();
     }).catch(() => {});
   }
 

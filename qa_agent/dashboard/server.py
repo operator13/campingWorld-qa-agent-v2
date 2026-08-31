@@ -44,6 +44,7 @@ dashboard_connections: list[WebSocket] = []
 # Test runner state
 _test_process: asyncio.subprocess.Process | None = None
 _test_run_status: dict = {"state": "idle", "run_id": None, "started_at": None}
+_last_run_log: list[str] = []  # Stores log lines from the last completed run
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 TESTS_DIR = PROJECT_ROOT / "tests_generated"
 TEST_RESULTS_TMP = PROJECT_ROOT / "test-results-tmp"
@@ -505,10 +506,17 @@ async def test_status():
     return JSONResponse(content=_test_run_status)
 
 
+@app.get("/api/tests/lastrun")
+async def test_lastrun():
+    """Return the last completed run's log lines for late-joining clients."""
+    return JSONResponse(content={"log": _last_run_log})
+
+
 @app.post("/api/tests/clear")
 async def clear_tests():
     global _test_run_status
     _test_run_status = {"state": "cleared", "run_id": None, "started_at": None}
+    _last_run_log.clear()
     await broadcast_to_dashboard(json.dumps({"event": "runner:clear"}))
     return JSONResponse({"status": "cleared"})
 
@@ -535,6 +543,7 @@ async def _execute_test_run(specs: list, workers: int, retries: int, heal: bool,
     if specs:
         cmd.extend([f"tests_generated/{s}" if not s.startswith("tests_generated/") else s for s in specs])
 
+    _last_run_log.clear()
     await broadcast_to_dashboard(json.dumps({"event": "runner:start", "run_id": run_id, "specs": specs or ["all"]}))
 
     try:
@@ -552,6 +561,7 @@ async def _execute_test_run(specs: list, workers: int, retries: int, heal: bool,
                 break
             decoded = line.decode("utf-8", errors="replace").rstrip()
             if decoded:
+                _last_run_log.append(decoded)
                 await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": decoded}))
 
         exit_code = await _test_process.wait()
