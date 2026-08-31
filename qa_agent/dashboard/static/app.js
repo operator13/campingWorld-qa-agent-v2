@@ -918,8 +918,6 @@
   function doClearRunner() {
     domainsLocked = false;
     document.getElementById('runner-domain-list').classList.remove('domains-locked');
-    document.getElementById('runner-log').innerHTML = '';
-    document.getElementById('runner-log-container').style.display = 'none';
     document.getElementById('btn-run-selected').style.display = 'inline-block';
     document.getElementById('btn-run-all').style.display = 'inline-block';
     document.getElementById('btn-stop').style.display = 'none';
@@ -930,6 +928,16 @@
     setRunnerState('idle');
     // Re-select all domains
     document.querySelectorAll('.domain-row').forEach(r => r.classList.add('selected'));
+    // Smooth collapse of console output
+    const logContainer = document.getElementById('runner-log-container');
+    if (logContainer && logContainer.style.display !== 'none') {
+      logContainer.classList.add('collapsing');
+      setTimeout(() => {
+        logContainer.style.display = 'none';
+        logContainer.classList.remove('collapsing');
+        document.getElementById('runner-log').innerHTML = '';
+      }, 300);
+    }
   }
 
   async function startTestRun(runAll) {

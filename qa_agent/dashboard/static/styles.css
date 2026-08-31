@@ -1670,7 +1670,18 @@ body::before {
 .result-fail { color: var(--neon-red); text-shadow: 0 0 8px rgba(255, 0, 60, 0.3); }
 
 /* Log output */
-.runner-log-container { margin-top: 12px; }
+.runner-log-container {
+  margin-top: 12px;
+  overflow: hidden;
+  max-height: 500px;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.runner-log-container.collapsing {
+  max-height: 0;
+  opacity: 0;
+}
 
 .runner-log-header {
   font-family: 'Orbitron', sans-serif;
