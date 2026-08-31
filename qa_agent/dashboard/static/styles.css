@@ -954,11 +954,22 @@ body::before {
   background: rgba(255, 255, 255, 0.015);
 }
 
-.run-table tbody tr:hover {
-  background: rgba(0, 255, 200, 0.03);
+@media (hover: hover) {
+  /* Desktop: hover highlights */
+  .run-table tbody tr:hover {
+    background: rgba(0, 255, 200, 0.03);
+  }
+  .run-table tbody tr.clickable-row:hover {
+    background: rgba(0, 255, 200, 0.08);
+    box-shadow: inset 0 0 20px rgba(0, 255, 200, 0.05);
+  }
 }
 
-.run-table tbody tr.clickable-row:hover {
+/* Touch devices: only highlight while finger is down */
+.run-table tbody tr:active {
+  background: rgba(0, 255, 200, 0.03);
+}
+.run-table tbody tr.clickable-row:active {
   background: rgba(0, 255, 200, 0.08);
   box-shadow: inset 0 0 20px rgba(0, 255, 200, 0.05);
 }
