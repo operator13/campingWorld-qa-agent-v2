@@ -264,7 +264,6 @@ async def health_notify(body: dict = {}) -> JSONResponse:
 # Eval runner (trigger evals from dashboard)
 # ---------------------------------------------------------------------------
 
-_eval_process: asyncio.subprocess.Process | None = None
 _eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "queued": []}
 
 
@@ -294,10 +293,8 @@ async def eval_run_status():
 
 @app.post("/api/eval/stop")
 async def stop_eval():
-    global _eval_process, _eval_status
+    global _eval_status
     if _eval_status["state"] == "running":
-        if _eval_process and _eval_process.returncode is None:
-            _eval_process.terminate()
         _eval_status["state"] = "stopped"
         cancelled = list(_eval_status["queued"])
         _eval_status["queued"] = []
@@ -313,26 +310,24 @@ async def stop_eval():
 
 
 async def _execute_eval_run(agents: list[str]):
-    global _eval_process, _eval_status
+    global _eval_status
 
     await broadcast_to_dashboard(json.dumps({"event": "eval:start", "agents": agents}))
 
+    # Broadcast start for all agents
+    _eval_status["queued"] = []
+    _eval_status["current_agent"] = "all" if len(agents) > 1 else agents[0]
     for agent in agents:
-        if _eval_status["state"] == "stopped":
-            break
-
-        _eval_status["current_agent"] = agent
-        if agent in _eval_status["queued"]:
-            _eval_status["queued"].remove(agent)
-
         await broadcast_to_dashboard(json.dumps({"event": "eval:agent:start", "agent": agent}))
 
+    # Run all agents in parallel as separate subprocesses
+    async def _run_one(agent: str):
         try:
             cmd = [
                 sys.executable, "-c",
                 f"import asyncio; from qa_agent.eval.eval_runner import run_{agent}_eval; asyncio.run(run_{agent}_eval())"
             ]
-            _eval_process = await asyncio.create_subprocess_exec(
+            proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
@@ -340,20 +335,21 @@ async def _execute_eval_run(agents: list[str]):
             )
 
             while True:
-                line = await _eval_process.stdout.readline()
+                line = await proc.stdout.readline()
                 if not line:
                     break
                 decoded = line.decode("utf-8", errors="replace").rstrip()
                 if decoded:
                     await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": decoded}))
 
-            await _eval_process.wait()
+            await proc.wait()
             _eval_status["completed"].append(agent)
-
             await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
 
         except Exception as e:
             await broadcast_to_dashboard(json.dumps({"event": "eval:agent:error", "agent": agent, "error": str(e)}))
+
+    await asyncio.gather(*[_run_one(agent) for agent in agents])
 
     _eval_status["state"] = "idle"
     _eval_status["current_agent"] = None
