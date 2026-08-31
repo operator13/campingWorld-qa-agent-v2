@@ -8,6 +8,163 @@
 
 ---
 
+## Full Dashboard Visual — With Guild.AI Enhancements
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  QA COMMAND CENTER                                              ● LIVE  UTC     │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌─────────────┐   ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐  │
+│  │ SYSTEM      │   │ DOMAIN STATUS (4-column grid)     │   │                  │  │
+│  │ HEALTH      │   │ ┌──────┐┌──────┐┌──────┐┌──────┐ │   │                  │  │
+│  │  ┌───────┐  │   │ │★Cart ││★Chkt ││★Sign ││Good  │ │   │                  │  │
+│  │  │ 98.7% │  │   │ │100%  ││100%  ││100%  ││Sam   │ │   │                  │  │
+│  │  │HEALTHY│  │   │ │8/8   ││4/4   ││10/10 ││100%  │ │   │                  │  │
+│  │  └───────┘  │   │ └──────┘└──────┘└──────┘└──────┘ │   │                  │  │
+│  │ Tests: 127  │   │ ┌──────┐┌──────┐┌──────┐┌──────┐ │   │                  │  │
+│  │ Pass:  126  │   │ │Footer││Home  ││Nav   ││Prodct│ │   │                  │  │
+│  │ Fail:    1  │   │ │100%  ││100%  ││100%  ││100%  │ │   │                  │  │
+│  └─────────────┘   │ └──────┘└──────┘└──────┘└──────┘ │   │                  │  │
+│                     │ ┌──────┐┌──────┐┌──────┐┌──────┐ │   │                  │  │
+│                     │ │Reg   ││RVPrt ││RVSale││RVDtl │ │   │                  │  │
+│                     │ │100%  ││100%  ││100%  ││100%  │ │   │                  │  │
+│                     │ └──────┘└──────┘└──────┘└──────┘ │   │                  │  │
+│                     │ ┌──────┐┌──────┐                 │   │                  │  │
+│                     │ │Search││Store ││                 │   │                  │  │
+│                     │ │100%  ││100%  ││                 │   │                  │  │
+│                     │ └──────┘└──────┘                 │   │                  │  │
+│                     └──────────────────────────────────┘   │                  │  │
+│                                                                                  │
+├────────────── NEW: KPI STRIP ────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │ TOTAL SPEND  │  │ TOTAL TOKENS │  │ CACHE HIT    │  │ AVG COST/EVAL       │  │
+│  │   $3.14      │  │   495.6K     │  │ RATE  67.3%  │  │   $0.19             │  │
+│  │  +$0.65 ▲    │  │  +121.5K ▲   │  │ ████████░░░  │  │  -$0.02 ▼          │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+│                                                                                  │
+├────────────── AGENT EVALUATION (with trend arrows + hover tooltips) ─────────────┤
+│                                                                                  │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌────────────────┐  │
+│  │ TRIAGE          │ │ PLANNER         │ │ GENERATOR       │ │ HEALER         │  │
+│  │                 │ │                 │ │                 │ │                │  │
+│  │    85.7%        │ │   100.0%        │ │   100.0%        │ │    94.0%       │  │
+│  │    PASS         │ │    PASS         │ │    PASS         │ │    PASS        │  │
+│  │   ▲ +2.1%      │ │   ─ 0.0%       │ │   ─ 0.0%       │ │   ▼ -2.0%     │  │
+│  │                 │ │                 │ │                 │ │                │  │
+│  │ TOKENS 271.1K ▲ │ │ TOKENS 79.0K ▲ │ │ TOKENS 23.9K ▲ │ │ TOKENS 121K ▲ │  │
+│  │ COST   $1.31  ▲ │ │ COST  $0.90  ▲ │ │ COST  $0.18  ▲ │ │ COST  $0.66 ▲ │  │
+│  └─────────────────┘ └─────────────────┘ └─────────────────┘ └────────────────┘  │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐  │
+│  │  On hover, tooltip appears above card:                                     │  │
+│  │  ┌──────────────────────────────────────────┐                              │  │
+│  │  │ TRIAGE  Failure Classifier               │                              │  │
+│  │  │                                          │                              │  │
+│  │  │ Analyzes test failures and classifies    │                              │  │
+│  │  │ them as locator drift, app defect, or    │                              │  │
+│  │  │ timing flake using a 5-criteria rubric.  │                              │  │
+│  │  │                                          │                              │  │
+│  │  │ Cost Breakdown (last run):               │  ← NEW: cost drill-down     │  │
+│  │  │   Input:  57,442 tokens  ($0.17)         │                              │  │
+│  │  │   Output: 10,065 tokens  ($0.15)         │                              │  │
+│  │  │   Total: $0.32                           │                              │  │
+│  │  │                                          │                              │  │
+│  │  │ Historical: 4 runs, avg $0.33/run        │  ← NEW: historical stats    │  │
+│  │  │                                          │                              │  │
+│  │  │ Model: Claude Opus                       │                              │  │
+│  │  │ Eval: 35 golden scenarios                │                              │  │
+│  │  │                                          │                              │  │
+│  │  │ ┌──────────────┐ ┌──────────────────┐    │                              │  │
+│  │  │ │Drift detect  │ │Defect identify   │    │                              │  │
+│  │  │ └──────────────┘ └──────────────────┘    │                              │  │
+│  │  │ ┌──────────────┐ ┌──────────────────┐    │                              │  │
+│  │  │ │Flake recog   │ │History matching  │    │                              │  │
+│  │  │ └──────────────┘ └──────────────────┘    │                              │  │
+│  │  └──────────────────────────────────────────┘                              │  │
+│  └─────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+├────────────── NEW: CACHE EFFICIENCY + OPTIMIZATION SIGNALS ──────────────────────┤
+│                                                                                  │
+│  ┌──────────────────────────────┐  ┌──────────────────────────────────────────┐  │
+│  │ CACHE EFFICIENCY             │  │ OPTIMIZATION SIGNALS                     │  │
+│  │                              │  │                                          │  │
+│  │ Hit Rate: 67.3%              │  │ ⚡ Healer cache rate dropped below 50%  │  │
+│  │ ████████████████░░░░░░░░     │  │ ⚡ Triage cost +40% vs last period      │  │
+│  │                              │  │ ✓ Generator maintaining stable usage    │  │
+│  │ Cache Hits:  42              │  │ ✓ All agents passing eval thresholds    │  │
+│  │ LLM Calls:   21             │  │                                          │  │
+│  │ Est. Saved:  $3.28           │  │                                          │  │
+│  └──────────────────────────────┘  └──────────────────────────────────────────┘  │
+│                                                                                  │
+├────────────── NEW: DOMAIN RESOURCE HEATMAP ──────────────────────────────────────┤
+│                                                                                  │
+│  DOMAIN TEST DURATION                                                            │
+│  ★ Cart       ████████████████████████████  85.9s  (critical, 2.0x weight)      │
+│  ★ Checkout   ████████████████             44.6s  (critical, 2.0x weight)      │
+│  ★ Sign In    █████████████████████████    71.8s  (critical, 1.5x weight)      │
+│    Homepage   █████████████████████████    71.8s                                │
+│    Nav        ███████████████████████████  82.4s                                │
+│    Search     ██████████████████           52.3s                                │
+│    Product    ████████████████████         58.7s                                │
+│    Register   ██████████████               37.7s                                │
+│    Store Loc  █████████████████████████    71.8s                                │
+│    RVs Sale   █████████████████████████    71.8s                                │
+│    RV Detail  █████████████████████████    71.8s                                │
+│    Good Sam   ██████████████               37.7s                                │
+│    RV Parts   ███████████                  29.3s                                │
+│    Footer     ███████████████████████████  85.9s                                │
+│                                                                                  │
+├────────────── TEST RUNNER + RUN HISTORY (existing, unchanged) ───────────────────┤
+│                                                                                  │
+│  ┌────────────────────────────┐  ┌──────────────────────────────────────────┐    │
+│  │ TEST RUNNER                │  │ RUN HISTORY                              │    │
+│  │                     ● IDLE │  │                                          │    │
+│  │ Workers [1][2][●3][4]      │  │ TIMESTAMP    TESTS PASS FAIL HLTH  STAT │    │
+│  │ Retries [●0][1]            │  │ 08-30 22:52   127  126    1  99.3  HLTH │    │
+│  │ Self-Heal [OFF][●ON]       │  │ 08-30 22:52     1    0    1   --  HEAL │    │
+│  │                            │  │ 08-30 20:55   127  127    0 100.0  HLTH │    │
+│  │ [▶ RUN SELECTED] [▶ ALL]  │  │ 08-30 20:24   127  125    2  98.7  HLTH │    │
+│  │                            │  │                                          │    │
+│  │ ○ ★ Cart      8 tests     │  │  ← Click any row to open HTML report    │    │
+│  │ ○ ★ Checkout  4 tests     │  │                                          │    │
+│  │ ○ ★ Sign In  10 tests     │  │                                          │    │
+│  │ ○   Search    9 tests     │  │                                          │    │
+│  │ ○   Product   9 tests     │  │                                          │    │
+│  │ ○   Homepage 13 tests     │  │                                          │    │
+│  │ ○   Nav      14 tests     │  │                                          │    │
+│  │ ○   Register  6 tests     │  │                                          │    │
+│  │ ○   Store Loc 10 tests    │  │                                          │    │
+│  │ ○   RVs Sale 10 tests     │  │                                          │    │
+│  │ ○   RV Detail 10 tests    │  │                                          │    │
+│  │ ○   Good Sam  6 tests     │  │                                          │    │
+│  │ ○   RV Parts  5 tests     │  │                                          │    │
+│  │ ○   Footer   13 tests     │  │                                          │    │
+│  │                            │  │                                          │    │
+│  │ CONSOLE OUTPUT ▾           │  │                                          │    │
+│  │ ┌────────────────────────┐ │  │                                          │    │
+│  │ │ ✓ cart.spec.ts:12...  │ │  │                                          │    │
+│  │ │ ✓ cart.spec.ts:18...  │ │  │                                          │    │
+│  │ └────────────────────────┘ │  │                                          │    │
+│  └────────────────────────────┘  └──────────────────────────────────────────┘    │
+│                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────┘
+
+Legend:
+  ── Existing sections (already built)
+  ── NEW sections (Guild.AI alignment additions)
+
+  ▲ Green trend arrow (improved vs previous)
+  ▼ Red trend arrow (regressed vs previous)
+  ─ Gray (unchanged)
+  ⚡ Amber optimization warning
+  ✓ Green positive signal
+  ★ Critical domain marker
+```
+
+---
+
 ## The Problem
 
 Our dashboard covers core observability (health scores, agent evals, test runner, real-time WebSocket updates), but Guild.AI's philosophy identifies gaps in how we surface cost intelligence, optimization signals, and trend analysis:
