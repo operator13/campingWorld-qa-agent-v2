@@ -130,6 +130,8 @@ async def triage(state: QAState) -> dict:
     return {
         "failure_class": failure_class,
         "confidence": confidence,
+        "reasoning": reasoning,
+        "confidence_breakdown": final_breakdown.to_dict(),
     }
 
 

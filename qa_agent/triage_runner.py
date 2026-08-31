@@ -142,10 +142,14 @@ async def run_triage_and_heal(failures: list[dict[str, Any]]) -> dict[str, Any]:
         )
 
         # Call triage
+        reasoning = ""
+        confidence_breakdown = {}
         try:
             result = await triage(state)
             failure_class = result.get("failure_class", "unknown")
             confidence = result.get("confidence", 0.0)
+            reasoning = result.get("reasoning", "")
+            confidence_breakdown = result.get("confidence_breakdown", {})
         except Exception as e:
             logger.error("Triage failed for %s: %s", title, e)
             failure_class = "error"
@@ -153,12 +157,27 @@ async def run_triage_and_heal(failures: list[dict[str, Any]]) -> dict[str, Any]:
 
         print(f"        Triage: {failure_class} (confidence: {confidence:.2f})")
 
+        # Determine why it won't be healed (if applicable)
+        not_healed_reason = None
+        if failure_class in ("locator_drift", "test_flake") and confidence < CONF_SURE:
+            not_healed_reason = f"Confidence {confidence:.2f} is below auto-heal threshold ({CONF_SURE})"
+        elif failure_class == "app_defect":
+            not_healed_reason = "Classified as app defect — not a test issue, the application has a bug"
+        elif failure_class == "unknown":
+            not_healed_reason = "Could not confidently classify the failure — needs human review"
+        elif failure_class == "error":
+            not_healed_reason = "Triage agent encountered an error during classification"
+
         detail = {
             "spec_file": spec,
             "test_title": title,
             "failure_class": failure_class,
             "confidence": confidence,
             "healed": False,
+            "error": error[:500],
+            "reasoning": reasoning,
+            "confidence_breakdown": confidence_breakdown,
+            "not_healed_reason": not_healed_reason,
         }
 
         # Heal if locator drift or test flake with high confidence
@@ -424,16 +443,43 @@ def _format_triage_markdown(summary: dict[str, Any]) -> str:
             lines.append("")
             lines.append(f"- **Classification:** {d['failure_class']}")
             lines.append(f"- **Confidence:** {d['confidence']:.2f}")
+
+            # Action taken
             if d["failure_class"] == "locator_drift" and d.get("healed"):
                 lines.append(f"- **Action:** Auto-healed by healer agent (locator fix)")
             elif d["failure_class"] == "test_flake" and d.get("healed"):
                 lines.append(f"- **Action:** Auto-healed by healer agent (timing fix)")
-            elif d["failure_class"] == "app_defect":
-                lines.append(f"- **Action:** Skipped — app defect, not a locator issue")
-            elif d["failure_class"] in ("locator_drift", "test_flake") and not d.get("healed"):
-                lines.append(f"- **Action:** Skipped — confidence below threshold ({d['confidence']:.2f} < 0.75)")
+            elif d.get("not_healed_reason"):
+                lines.append(f"- **Action:** Not healed")
+                lines.append(f"- **Reason:** {d['not_healed_reason']}")
             else:
                 lines.append(f"- **Action:** Skipped — needs human review")
+
+            # LLM reasoning
+            if d.get("reasoning"):
+                lines.append(f"- **Agent Reasoning:** {d['reasoning']}")
+
+            # Confidence breakdown
+            breakdown = d.get("confidence_breakdown", {})
+            if breakdown:
+                lines.append(f"- **Confidence Breakdown:**")
+                lines.append(f"  - C1 Error type signal: {breakdown.get('c1_error_type', 0):.2f}")
+                lines.append(f"  - C2 DOM evidence: {breakdown.get('c2_dom_evidence', 0):.2f}")
+                lines.append(f"  - C3 Historical match: {breakdown.get('c3_history_match', 0):.2f}")
+                lines.append(f"  - C4 Human calibration: {breakdown.get('c4_human_calibration', 0):.2f}")
+                lines.append(f"  - C5 Consistency check: {breakdown.get('c5_consistency', 0):.2f}")
+                guards = breakdown.get("guards_applied", [])
+                if guards:
+                    lines.append(f"  - Guards applied: {', '.join(guards)}")
+
+            # Error snippet
+            if d.get("error"):
+                error_snippet = d["error"][:300].replace("\n", "\n    ")
+                lines.append(f"- **Error:**")
+                lines.append(f"    ```")
+                lines.append(f"    {error_snippet}")
+                lines.append(f"    ```")
+
             lines.append("")
 
     return "\n".join(lines)
