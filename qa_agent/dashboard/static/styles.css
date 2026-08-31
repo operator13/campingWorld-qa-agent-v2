@@ -1424,8 +1424,14 @@ body::before {
 }
 
 .runner-btn-clear:hover:not(:disabled) {
-  border-color: var(--neon-cyan);
-  color: var(--neon-cyan);
+  background: rgba(0, 255, 200, 0.1);
+  box-shadow: 0 0 12px rgba(0, 255, 200, 0.2);
+}
+
+.runner-btn-clear:active:not(:disabled) {
+  background: rgba(0, 255, 200, 0.25);
+  box-shadow: 0 0 18px rgba(0, 255, 200, 0.4);
+  transform: scale(0.95);
 }
 
 .runner-btn-clear:disabled {
