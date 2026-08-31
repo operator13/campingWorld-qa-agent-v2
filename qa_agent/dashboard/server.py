@@ -324,7 +324,8 @@ async def _execute_eval_run(agents: list[str]):
     async def _run_one(agent: str):
         try:
             cmd = [
-                sys.executable, "-c",
+                sys.executable, "-u", "-c",
+                f"import logging; logging.basicConfig(level=logging.INFO, format='%(message)s'); "
                 f"import asyncio; from qa_agent.eval.eval_runner import run_{agent}_eval; asyncio.run(run_{agent}_eval())"
             ]
             proc = await asyncio.create_subprocess_exec(

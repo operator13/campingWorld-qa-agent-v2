@@ -415,6 +415,34 @@
     if (text) text.textContent = '';
   }
 
+  function _refreshSingleEvalCard(agent) {
+    fetch('/api/eval/summary').then(r => r.json()).then(summary => {
+      const data = summary[agent];
+      if (!data) return;
+      const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+      if (!card) return;
+      // Update score
+      const scoreEl = card.querySelector('.eval-score');
+      if (scoreEl && data.score != null) {
+        const score = (data.score * 100).toFixed(1) + '%';
+        scoreEl.textContent = score;
+        scoreEl.className = 'eval-score ' + (data.passed ? 'score-pass' : 'score-fail');
+      }
+      // Update badge
+      const badge = card.querySelector('.eval-badge');
+      if (badge) {
+        badge.textContent = data.passed ? 'PASS' : 'FAIL';
+        badge.className = 'eval-badge ' + (data.passed ? 'badge-pass' : 'badge-fail');
+      }
+      // Update tokens/cost
+      const costValues = card.querySelectorAll('.eval-cost-value');
+      if (costValues.length >= 2) {
+        costValues[0].textContent = data.tokens != null ? formatNumber(data.tokens) : '--';
+        costValues[1].textContent = data.cost != null ? '$' + data.cost.toFixed(4) : '--';
+      }
+    }).catch(() => {});
+  }
+
   function syncEvalStatus() {
     fetch('/api/eval/run/status').then(r => r.json()).then(status => {
       if (status.state === 'running') {
@@ -659,6 +687,8 @@
             break;
           case 'eval:agent:complete':
             setEvalCardComplete(data.agent);
+            // Fetch fresh data for just this agent's card without full re-render
+            _refreshSingleEvalCard(data.agent);
             break;
           case 'eval:agent:error':
             setEvalCardError(data.agent);
