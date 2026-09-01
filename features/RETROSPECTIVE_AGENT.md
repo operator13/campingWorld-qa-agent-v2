@@ -674,14 +674,245 @@ On iPhone, recommendations stack vertically with compact action buttons:
 
 ---
 
+## Claude Dreaming Integration (Phase RA7)
+
+### What is Dreaming?
+
+[Claude Dreaming](https://platform.claude.com/docs/en/managed-agents/dreams) is an async process in Claude's Managed Agents API that consolidates agent memory by reading past session transcripts, merging duplicates, pruning stale entries, and surfacing patterns that individual sessions can't see. It's the LLM-native equivalent of what our Retrospective Agent does with rule-based analysis.
+
+### Why Integrate?
+
+Our Retrospective Agent has two layers:
+
+1. **Rule-based analysis** (Phase RA1) — structured data crunching: count unhealed failures, compute C1-C5 distributions, measure strategy success rates
+2. **LLM synthesis** (Phase RA2) — turn findings into actionable recommendations with context
+
+Dreaming can **replace Phase RA2** with a more powerful, context-rich synthesis — and add a third capability we don't have: **cross-session memory optimization**.
+
+### How It Maps
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                    RETROSPECTIVE AGENT                          │
+│                                                                │
+│  Phase RA1: Rule-Based Analysis          ← KEEP (our code)    │
+│  ┌──────────────────────────────────┐                          │
+│  │ Count unhealed patterns          │                          │
+│  │ Compute C1-C5 distributions      │                          │
+│  │ Measure strategy success rates   │                          │
+│  │ Detect stability trends          │                          │
+│  │ Analyze cost trajectories        │                          │
+│  └──────────────────┬───────────────┘                          │
+│                     │ findings                                  │
+│                     ▼                                           │
+│  Phase RA2: LLM Synthesis            ← REPLACE with Dreaming  │
+│  ┌──────────────────────────────────┐                          │
+│  │ Synthesize findings into recs    │  →  Dream processes      │
+│  │ Prioritize by impact             │      session transcripts │
+│  │ Generate file/line references    │      + memory store      │
+│  │ Produce human-readable report    │      and produces        │
+│  └──────────────────────────────────┘      optimized output    │
+│                                                                │
+│  Phase RA7: Dreaming Memory Optimization  ← NEW               │
+│  ┌──────────────────────────────────┐                          │
+│  │ Consolidate FAILURES.md          │                          │
+│  │ Prune stale locator history      │                          │
+│  │ Merge duplicate timing fixes     │                          │
+│  │ Surface cross-run patterns       │                          │
+│  │ Optimize LESSONS.md              │                          │
+│  └──────────────────────────────────┘                          │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Implementation
+
+#### Session Transcript Format
+
+Dreaming expects session transcripts. We convert our structured data into conversation-like transcripts:
+
+```python
+def build_dream_transcript(triage_report: dict, health_report: dict) -> str:
+    """Convert a triage + health report pair into a Dreaming session transcript."""
+    lines = []
+    lines.append(f"Test run {health_report['run_id']} completed.")
+    lines.append(f"Results: {health_report['total_passed']}/{health_report['total_tests']} passed.")
+    
+    for detail in triage_report.get("details", []):
+        lines.append(f"Failure: {detail['spec_file']} — {detail['test_title']}")
+        lines.append(f"Classification: {detail['failure_class']} (confidence: {detail['confidence']})")
+        if detail.get("reasoning"):
+            lines.append(f"Reasoning: {detail['reasoning']}")
+        if detail.get("not_healed_reason"):
+            lines.append(f"Not healed: {detail['not_healed_reason']}")
+        if detail.get("healed"):
+            lines.append(f"Healed successfully.")
+    
+    return "\n".join(lines)
+```
+
+#### Memory Store Mapping
+
+Our `memory/` folder maps to a Dreaming memory store:
+
+| Our File | Dream Memory Key | Content |
+|----------|-----------------|---------|
+| `FAILURES.md` | `failure_patterns` | Known error patterns + resolutions |
+| `TIMING_FIXES.md` | `timing_fixes` | Known timing fix cache |
+| `LESSONS.md` | `lessons` | Pattern scoreboard + route insights |
+| `TEST_STABILITY.md` | `test_stability` | Per-test flakiness data |
+| `HEALER_STATS.md` | `healer_stats` | Cache hit rates |
+| `locators/*.md` | `locator_history` | Per-route locator changes |
+
+#### Dream Execution Flow
+
+```python
+async def run_dream_retrospective(lookback_days: int = 7):
+    """Run a Dreaming-enhanced retrospective."""
+    
+    # 1. Rule-based analysis (Phase RA1 — unchanged)
+    findings = run_rule_based_analysis(lookback_days)
+    
+    # 2. Build session transcripts from recent runs
+    transcripts = []
+    for triage, health in load_recent_report_pairs(lookback_days):
+        transcripts.append(build_dream_transcript(triage, health))
+    
+    # 3. Build current memory store snapshot
+    memory_store = snapshot_memory_store()
+    
+    # 4. Create Dream with custom instructions
+    dream = await client.dreams.create(
+        model="claude-opus-4-6",
+        memory_store=memory_store,
+        session_transcripts=transcripts,  # up to 100
+        instructions=f"""
+        You are analyzing a QA automation system's recent test runs.
+        
+        Rule-based analysis found these findings:
+        {json.dumps(findings, indent=2)}
+        
+        Analyze the session transcripts and memory store to:
+        1. Validate or challenge each finding with evidence from the transcripts
+        2. Surface patterns the rule-based analysis missed
+        3. Recommend specific code changes (file, line, what to change)
+        4. Identify memory entries that are stale or duplicated
+        5. Prioritize: HIGH (immediate), MEDIUM (should address), LOW (nice to have)
+        """
+    )
+    
+    # 5. Poll until complete
+    while dream.status != "completed":
+        await asyncio.sleep(30)
+        dream = await client.dreams.retrieve(dream.id)
+    
+    # 6. Extract recommendations from Dream output
+    recommendations = parse_dream_output(dream.output)
+    
+    # 7. Apply optimized memory store
+    if dream.optimized_memory:
+        apply_memory_updates(dream.optimized_memory)
+    
+    # 8. Produce retrospective report
+    report = build_retrospective_report(findings, recommendations)
+    save_retrospective(report)
+    
+    return report
+```
+
+#### What Dreaming Adds That We Can't Do Manually
+
+| Capability | Rule-Based (RA1-RA2) | With Dreaming (RA7) |
+|------------|---------------------|---------------------|
+| Count unhealed patterns | Yes | Yes |
+| Detect C1-C5 gaps | Yes | Yes + explains why |
+| Cross-session patterns | Limited (last N runs) | Full (up to 100 sessions) |
+| Memory deduplication | No | Yes (automatic) |
+| Stale entry pruning | No | Yes (automatic) |
+| Novel insight discovery | No (only pre-coded rules) | Yes (LLM finds unexpected patterns) |
+| Recommendation quality | Template-based | Context-rich with evidence |
+| Memory optimization | Manual (`qa-agent memory prune`) | Automatic per Dream cycle |
+
+### Phase RA7 Build Steps
+
+| # | Task |
+|---|------|
+| 1 | Request access to Claude Managed Agents research preview |
+| 2 | Build `dream_adapter.py` — converts triage/health reports to session transcripts |
+| 3 | Build `memory_snapshot.py` — serializes `memory/` folder into Dream memory store format |
+| 4 | Integrate Dream API: create dream, poll status, retrieve output |
+| 5 | Parse Dream output into recommendation format compatible with Phase RA5 approval UI |
+| 6 | Apply optimized memory store back to `memory/` files (with git diff review) |
+| 7 | Custom `instructions` prompt that feeds rule-based findings (Phase RA1) into Dream |
+| 8 | Dashboard: show "Dream" indicator when Dreaming is in progress (async, may take minutes-hours) |
+| 9 | Fallback: if Dreaming API unavailable, fall back to Phase RA2 (local LLM synthesis) |
+| 10 | Track Dream costs separately in audit trail |
+
+### Hybrid Architecture (Final State)
+
+```
+                         ┌─────────────────────────┐
+                         │    RETROSPECTIVE AGENT   │
+                         └────────┬────────────────┘
+                                  │
+                    ┌─────────────┼──────────────┐
+                    ▼             ▼              ▼
+           ┌──────────────┐ ┌──────────┐ ┌─────────────────┐
+           │ Phase RA1    │ │Phase RA7 │ │ Phase RA5       │
+           │ Rule-Based   │ │ Dreaming │ │ Dashboard       │
+           │ Analysis     │ │ API      │ │ Approval UI     │
+           │              │ │          │ │                 │
+           │ • Count      │ │ • Cross- │ │ • APPROVE       │
+           │   patterns   │ │   session│ │ • REJECT        │
+           │ • C1-C5 gaps │ │   insight│ │ • MODIFY        │
+           │ • Strategy   │ │ • Memory │ │ • GENERATE SPEC │
+           │   rates      │ │   optim  │ │ • Rollback      │
+           │ • Cost trend │ │ • Novel  │ │   safety        │
+           │              │ │   pattern│ │                 │
+           └──────┬───────┘ └────┬─────┘ └────────┬────────┘
+                  │              │                 │
+                  └──────────────┘                 │
+                         │ combined findings       │
+                         ▼                         │
+                  ┌──────────────┐                 │
+                  │ Recommendations│◄──────────────┘
+                  │ with evidence  │  human approval
+                  └──────┬─────────┘
+                         │ applied
+                         ▼
+              ┌─────────────────────┐
+              │ Improved Agents     │
+              │ • Triage rubric     │
+              │ • Healer strategies │
+              │ • Test configs      │
+              │ • Optimized memory  │
+              └─────────────────────┘
+```
+
+### Prerequisites
+
+- Access to Claude Managed Agents research preview
+- API key with Dreams capability
+- Budget for Dream processing (billed at standard API token rates)
+- Minimum 10 session transcripts for meaningful patterns (recommend 50-100)
+
+### Graceful Degradation
+
+If Dreaming API is unavailable (access not granted, API down, budget exhausted):
+- Phase RA1 (rule-based) runs normally
+- Phase RA2 (local LLM synthesis) activates as fallback
+- Memory optimization skipped (manual `qa-agent memory prune` still available)
+- Dashboard shows "Dreaming unavailable — using local analysis" indicator
+
+---
+
 ## Relationship to Other Agents
 
 ```
                     ┌──────────────────┐
                     │  RETROSPECTIVE   │
-                    │     AGENT        │
+                    │  AGENT + DREAM   │
                     └──────┬───────────┘
-                           │ reads
+                           │ reads + dreams on
           ┌────────────────┼────────────────────┐
           ▼                ▼                    ▼
    ┌─────────────┐  ┌───────────┐  ┌──────────────────┐
@@ -695,9 +926,17 @@ On iPhone, recommendations stack vertically with compact action buttons:
    │  Triage     │  │  Healer   │  │  Test Config     │
    │  Rubric     │  │  Prompts  │  │  + Stability     │
    └─────────────┘  └───────────┘  └──────────────────┘
+          ▲
+          │ Dreaming also optimizes
+          │
+   ┌──────────────┐
+   │  Memory      │
+   │  Store       │
+   │  (14 files)  │
+   └──────────────┘
 ```
 
-The Retrospective Agent is the **meta-agent** — it doesn't fix tests or classify failures. It improves the agents that do.
+The Retrospective Agent is the **meta-agent** — it doesn't fix tests or classify failures. It improves the agents that do. With Dreaming, it also **optimizes the memory** those agents rely on.
 
 ---
 
@@ -713,3 +952,6 @@ The Retrospective Agent is the **meta-agent** — it doesn't fix tests or classi
 8. Dashboard shows findings summary with priority levels
 9. Can be triggered from CLI, dashboard, or automatically after N runs
 10. Recommendations feed back into agent memory when applied
+11. Dreaming integration consolidates memory across 50-100 sessions when available
+12. Graceful fallback to local LLM synthesis when Dreaming API is unavailable
+13. Memory optimization (dedup, prune, merge) runs automatically per Dream cycle
