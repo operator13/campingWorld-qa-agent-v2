@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 1,
+  "unknown": 0,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "rvs-for-sale.spec.ts",
+      "test_title": "clicking a listing card navigates to a detail page",
+      "failure_class": "app_defect",
+      "confidence": 0.05,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-09-01T14:16:27.900999+00:00"
+}
