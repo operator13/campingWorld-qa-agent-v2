@@ -1,0 +1,32 @@
+{
+  "triaged": 3,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 3,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "footer is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false
+    },
+    {
+      "spec_file": "product.spec.ts",
+      "test_title": "add to cart button is visible",
+      "failure_class": "locator_drift",
+      "confidence": 0.45,
+      "healed": false
+    },
+    {
+      "spec_file": "search.spec.ts",
+      "test_title": "product prices are displayed in results",
+      "failure_class": "test_flake",
+      "confidence": 0.55,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-09-01T15:54:12.117543+00:00"
+}
