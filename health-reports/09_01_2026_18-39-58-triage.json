@@ -1,0 +1,18 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "register.spec.ts",
+      "test_title": "logo is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false
+    }
+  ],
+  "timestamp": "2026-09-01T18:39:58.107850+00:00"
+}
