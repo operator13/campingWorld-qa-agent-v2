@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-09-01T15:59:25.877619+00:00",
+  "run_id": "09_01_2026_15-58-21",
+  "overall_score": 0.9474,
+  "overall_status": "DEGRADED",
+  "total_passed": 23,
+  "total_failed": 1,
+  "total_skipped": 0,
+  "total_tests": 24,
+  "trend": {
+    "delta": -0.029,
+    "status": "declining",
+    "previous_score": 0.9764
+  },
+  "domains": [
+    {
+      "name": "Good Sam",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "duration_ms": 35720,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Product",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 55050,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Search",
+      "passed": 8,
+      "failed": 1,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 84323,
+      "score": 0.8889,
+      "status": "DEGRADED",
+      "weight": 1.5,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
