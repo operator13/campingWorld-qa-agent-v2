@@ -890,8 +890,9 @@ async def run_dream_retrospective(lookback_days: int = 7):
 
 ### Prerequisites
 
-- Access to Claude Managed Agents research preview
-- API key with Dreams capability
+- Access to Claude Managed Agents research preview — **GRANTED** (active on account)
+- API key with Dreams capability — existing `ANTHROPIC_API_KEY` works
+- Memory store created: `memstore_019YoqVnYqpNTHYHi8mWSXHj` (name: `qa-automation-memory`, status: Active)
 - Budget for Dream processing (billed at standard API token rates)
 - Minimum 10 session transcripts for meaningful patterns (recommend 50-100)
 
