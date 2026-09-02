@@ -399,6 +399,7 @@ async def _execute_eval_run(agents: list[str]):
         try:
             cmd = [
                 sys.executable, "-u", "-c",
+                f"import os; os.environ['EVAL_DASHBOARD_SUBPROCESS']='1'; "
                 f"import logging; logging.basicConfig(level=logging.INFO, format='%(message)s'); "
                 f"import asyncio; from qa_agent.eval.eval_runner import run_{agent}_eval; asyncio.run(run_{agent}_eval())"
             ]

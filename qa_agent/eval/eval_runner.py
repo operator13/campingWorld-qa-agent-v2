@@ -146,7 +146,14 @@ def _notify_dashboard_agent_complete(agent: str) -> None:
 
 
 def _dashboard_post(path: str, data: dict) -> None:
-    """POST to the dashboard server (silent fail if not running)."""
+    """POST to the dashboard server (silent fail if not running).
+
+    Skipped when running as a dashboard subprocess (EVAL_DASHBOARD_SUBPROCESS=1)
+    to avoid duplicate events — the parent process handles broadcasting.
+    """
+    import os
+    if os.environ.get("EVAL_DASHBOARD_SUBPROCESS"):
+        return
     import urllib.request
     try:
         payload = json.dumps(data).encode()
