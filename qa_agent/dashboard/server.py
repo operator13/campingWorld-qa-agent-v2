@@ -279,6 +279,7 @@ async def eval_progress_external(body: dict = {}) -> JSONResponse:
     current = body.get("current", 0)
     total = body.get("total", 0)
     _eval_status["progress"][agent] = {"current": current, "total": total}
+    _eval_status["last_activity"] = time.time()
     await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": f"[{current}/{total}] scenario"}))
     return JSONResponse({"status": "ok"})
 
@@ -295,7 +296,7 @@ async def eval_agent_complete_external(body: dict = {}) -> JSONResponse:
         all_agents = {"triage", "planner", "generator", "healer"}
         if all_agents.issubset(set(_eval_status["completed"])) or _eval_status["current_agent"] == agent:
             _eval_status["state"] = "idle"
-        _eval_status["progress"] = {}
+            _eval_status["progress"] = {}
             _eval_status["current_agent"] = None
             await broadcast_to_dashboard(json.dumps({
                 "event": "eval:complete",
@@ -311,8 +312,9 @@ async def eval_agent_start_external(body: dict = {}) -> JSONResponse:
     global _eval_status
     agent = body.get("agent", "unknown")
     if _eval_status["state"] != "running":
-        _eval_status = {"state": "running", "current_agent": agent, "completed": [], "queued": []}
+        _eval_status = {"state": "running", "current_agent": agent, "completed": [], "queued": [], "progress": {}, "last_activity": time.time()}
     _eval_status["current_agent"] = agent
+    _eval_status["last_activity"] = time.time()
     await broadcast_to_dashboard(json.dumps({"event": "eval:agent:start", "agent": agent}))
     return JSONResponse({"status": "started"})
 
@@ -329,7 +331,7 @@ async def health_notify(body: dict = {}) -> JSONResponse:
 # Eval runner (trigger evals from dashboard)
 # ---------------------------------------------------------------------------
 
-_eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "queued": [], "progress": {}}
+_eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "queued": [], "progress": {}, "last_activity": 0}
 
 
 @app.post("/api/eval/run")
@@ -353,6 +355,12 @@ async def run_eval(body: dict = {}):
 
 @app.get("/api/eval/run/status")
 async def eval_run_status():
+    # Auto-reset stale running state (no activity for 5 minutes)
+    if _eval_status["state"] == "running" and _eval_status["last_activity"] > 0:
+        if time.time() - _eval_status["last_activity"] > 300:
+            _eval_status["state"] = "idle"
+            _eval_status["progress"] = {}
+            _eval_status["current_agent"] = None
     return JSONResponse(content=_eval_status)
 
 
@@ -431,6 +439,7 @@ async def _execute_eval_run(agents: list[str]):
     await asyncio.gather(*[_run_one(agent) for agent in agents])
 
     _eval_status["state"] = "idle"
+    _eval_status["progress"] = {}
     _eval_status["current_agent"] = None
     _eval_status["queued"] = []
 
