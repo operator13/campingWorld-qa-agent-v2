@@ -490,11 +490,20 @@
       if (status.state === 'running') {
         evalRunning = true;
         disableAllEvalButtons();
-        if (status.current_agent === 'all') {
-          ['triage', 'planner', 'generator', 'healer'].forEach(a => setEvalCardRunning(a));
-        } else if (status.current_agent) {
-          setEvalCardRunning(status.current_agent);
-        }
+        // Show running state for agents that have progress or are current
+        const progress = status.progress || {};
+        const completed = new Set(status.completed || []);
+        const agents = ['triage', 'planner', 'generator', 'healer'];
+        agents.forEach(a => {
+          if (completed.has(a)) return;  // Already done
+          if (progress[a] || status.current_agent === a || status.current_agent === 'all') {
+            setEvalCardRunning(a);
+            // Replay progress bar
+            if (progress[a]) {
+              updateEvalProgress(a, progress[a].current, progress[a].total);
+            }
+          }
+        });
       }
     }).catch(() => {});
   }

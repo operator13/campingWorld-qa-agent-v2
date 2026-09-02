@@ -278,6 +278,7 @@ async def eval_progress_external(body: dict = {}) -> JSONResponse:
     agent = body.get("agent", "unknown")
     current = body.get("current", 0)
     total = body.get("total", 0)
+    _eval_status["progress"][agent] = {"current": current, "total": total}
     await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": f"[{current}/{total}] scenario"}))
     return JSONResponse({"status": "ok"})
 
@@ -294,6 +295,7 @@ async def eval_agent_complete_external(body: dict = {}) -> JSONResponse:
         all_agents = {"triage", "planner", "generator", "healer"}
         if all_agents.issubset(set(_eval_status["completed"])) or _eval_status["current_agent"] == agent:
             _eval_status["state"] = "idle"
+        _eval_status["progress"] = {}
             _eval_status["current_agent"] = None
             await broadcast_to_dashboard(json.dumps({
                 "event": "eval:complete",
@@ -327,7 +329,7 @@ async def health_notify(body: dict = {}) -> JSONResponse:
 # Eval runner (trigger evals from dashboard)
 # ---------------------------------------------------------------------------
 
-_eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "queued": []}
+_eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "queued": [], "progress": {}}
 
 
 @app.post("/api/eval/run")
@@ -367,6 +369,7 @@ async def stop_eval():
             "cancelled": cancelled,
         }))
         _eval_status["state"] = "idle"
+        _eval_status["progress"] = {}
         _eval_status["current_agent"] = None
         return JSONResponse({"status": "stopped", "cancelled": cancelled})
     return JSONResponse({"status": "not_running"})
@@ -407,8 +410,10 @@ async def _execute_eval_run(agents: list[str]):
                 decoded = line.decode("utf-8", errors="replace").rstrip()
                 if decoded:
                     await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": decoded}))
-                    # Detect when all scenarios done — complete early before git push
+                    # Track progress and detect when all scenarios done
                     m = _re.search(r"\[(\d+)/(\d+)\]", decoded)
+                    if m:
+                        _eval_status["progress"][agent] = {"current": int(m.group(1)), "total": int(m.group(2))}
                     if m and int(m.group(1)) >= int(m.group(2)) and not agent_completed:
                         agent_completed = True
                         _eval_status["completed"].append(agent)
