@@ -1209,15 +1209,36 @@ Full pre-mortem: [PRE_MORTEM_RETROSPECTIVE_AGENT.md](PRE_MORTEM_RETROSPECTIVE_AG
 |---------|-------|------------|--------|
 | **#1** | TIMING_FIXES.md had 100 duplicate rows poisoning analysis | Deduped to 5 unique rows + added dedup guard in `record_timing_fix()` | `90478d0` |
 | **#2** | Triage reports missing C1-C5 breakdown, reasoning, error | Triage node now returns full context; triage runner persists it in reports | `21355f7` |
-| **#3** | Rollback used `git reset --hard` + `--force-with-lease` | Changed all rollback levels to `git revert` — never rewrites public history | `90478d0` |
+| **#6** | Rollback used `git reset --hard` + `--force-with-lease` | Changed all rollback levels to `git revert` — never rewrites public history | `90478d0` |
 
-**Remaining P1 items to address during build:**
-- Build `DreamProvider` abstraction (not direct API calls) — issue #3
-- Design three-way merge for memory write-back — issue #4
-- Add counter-example checks to eval gate — issue #5
-- Narrow file allowlist for auto-apply — issue #17
-- Add regression threshold (not "any amount" drop) — issue #15
-- Add minimum data requirements for recommendations — issue #16
+### Full Pre-Mortem Tracker (22 Issues)
+
+| # | Issue | Severity | Status | When |
+|---|-------|----------|--------|------|
+| 1 | TIMING_FIXES.md duplicates poisoning analysis | HIGH | FIXED | `90478d0` |
+| 2 | Triage reports missing C1-C5 breakdown | HIGH | FIXED | `21355f7` |
+| 3 | Dreaming API is research preview, may change | HIGH | OPEN | During build — create `DreamProvider` abstraction |
+| 4 | Memory sync two-source-of-truth problem | HIGH | OPEN | During build — design three-way merge |
+| 5 | Eval gate doesn't catch all regression types | HIGH | OPEN | During build — add counter-example checks |
+| 6 | `git reset --hard` in rollback is dangerous | HIGH | FIXED | `90478d0` |
+| 7 | Dreaming latency (hours) makes UX awkward | MEDIUM | OPEN | During build — persist job status, add notifications |
+| 8 | Session transcript format is lossy | MEDIUM | OPEN | During build — include raw JSON in transcripts |
+| 9 | Feedback loop compounds bad decisions | MEDIUM | OPEN | During build — add escape rate metric |
+| 10 | HEALER_STATS lacks cache miss reasons | MEDIUM | OPEN | Can fix now (code change to healer) |
+| 11 | Suppression list grows unboundedly | MEDIUM | OPEN | During build — add 30-day expiration |
+| 12 | Concurrent operations create race conditions | MEDIUM | OPEN | During build — add operation locks |
+| 13 | Build spec generation quality unvalidated | MEDIUM | OPEN | During build — save as drafts, validate paths |
+| 14 | Dreaming cost is unbounded | MEDIUM | OPEN | During build — add per-Dream cost cap |
+| 15 | "Any amount" eval drop threshold too strict | MEDIUM | OPEN | During build — add regression threshold (>2%) |
+| 16 | Insufficient data produces misleading recs | MEDIUM | OPEN | During build — add minimum data requirements |
+| 17 | File allowlist too broad for auto-apply | MEDIUM | OPEN | During build — narrow to specific files |
+| 18 | MODIFY flow under-specified, no syntax check | LOW | OPEN | During build — add syntax validation |
+| 19 | Dreaming write-back could corrupt markdown | MEDIUM | OPEN | During build — validate schema on write-back |
+| 20 | No observability into recommendation provenance | LOW | OPEN | During build — add "Show Evidence" section |
+| 21 | WebSocket SPOF for approval state | MEDIUM | OPEN | During build — persist state to disk |
+| 22 | Dreaming can't produce file-line code recs | MEDIUM | OPEN | During build — keep code-level recs in local LLM |
+
+**Progress: 3/22 fixed (14%), 19 remaining**
 
 ### Graceful Degradation
 
