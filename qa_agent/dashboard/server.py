@@ -282,6 +282,27 @@ async def eval_progress_external(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
+@app.post("/api/eval/run/agent-complete-external")
+async def eval_agent_complete_external(body: dict = {}) -> JSONResponse:
+    """Called by CLI eval runner when an agent eval finishes. Resets state when all done."""
+    global _eval_status
+    agent = body.get("agent", "unknown")
+    if _eval_status["state"] == "running":
+        if agent not in _eval_status["completed"]:
+            _eval_status["completed"].append(agent)
+        # If no more agents are running (all completed), reset to idle
+        all_agents = {"triage", "planner", "generator", "healer"}
+        if all_agents.issubset(set(_eval_status["completed"])) or _eval_status["current_agent"] == agent:
+            _eval_status["state"] = "idle"
+            _eval_status["current_agent"] = None
+            await broadcast_to_dashboard(json.dumps({
+                "event": "eval:complete",
+                "completed": len(_eval_status["completed"]),
+                "failed": 0,
+            }))
+    return JSONResponse({"status": "completed"})
+
+
 @app.post("/api/eval/run/agent-start-external")
 async def eval_agent_start_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner when a specific agent eval begins."""

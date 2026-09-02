@@ -114,6 +114,7 @@ def _git_commit_and_push_reports(agent: str, scorecard: dict) -> None:
 
         # Notify dashboard to refresh eval data
         _notify_dashboard(agent)
+        _notify_dashboard_agent_complete(agent)
     except Exception as e:
         logger.warning("Auto-commit failed (non-fatal): %s", e)
 
@@ -137,6 +138,11 @@ def _notify_dashboard_agent_start(agent: str) -> None:
 def _notify_dashboard_progress(agent: str, current: int, total: int) -> None:
     """Notify the dashboard of eval scenario progress."""
     _dashboard_post("/api/eval/run/progress", {"agent": agent, "current": current, "total": total})
+
+
+def _notify_dashboard_agent_complete(agent: str) -> None:
+    """Notify the dashboard that an agent eval finished (resets state if all done)."""
+    _dashboard_post("/api/eval/run/agent-complete-external", {"agent": agent})
 
 
 def _dashboard_post(path: str, data: dict) -> None:
