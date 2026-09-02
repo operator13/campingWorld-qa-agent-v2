@@ -134,6 +134,11 @@ def _notify_dashboard_agent_start(agent: str) -> None:
     _dashboard_post("/api/eval/run/agent-start-external", {"agent": agent})
 
 
+def _notify_dashboard_progress(agent: str, current: int, total: int) -> None:
+    """Notify the dashboard of eval scenario progress."""
+    _dashboard_post("/api/eval/run/progress", {"agent": agent, "current": current, "total": total})
+
+
 def _dashboard_post(path: str, data: dict) -> None:
     """POST to the dashboard server (silent fail if not running)."""
     import urllib.request
@@ -241,6 +246,7 @@ async def run_triage_eval(
     import asyncio
     semaphore = asyncio.Semaphore(5)
     memory = MemoryStore()
+    _triage_done = [0]
 
     async def _run_one_triage(i: int, scenario: dict) -> dict:
         async with semaphore:
@@ -272,6 +278,9 @@ async def run_triage_eval(
                     "error": scenario.get("error", ""),
                     "confidence_breakdown": None,
                 }
+            finally:
+                _triage_done[0] += 1
+                _notify_dashboard_progress("triage", _triage_done[0], total)
 
     triage_results = await asyncio.gather(
         *[_run_one_triage(i, s) for i, s in enumerate(scenarios, 1)]
@@ -419,6 +428,7 @@ async def run_planner_eval(
     # Run scenarios concurrently (max 5 parallel LLM calls)
     import asyncio
     semaphore = asyncio.Semaphore(5)
+    _planner_done = [0]
 
     async def _run_one_planner(i: int, scenario: dict) -> dict:
         async with semaphore:
@@ -442,6 +452,9 @@ async def run_planner_eval(
                 logger.error("Planner scenario %s failed: %s", scenario["scenario"], e)
                 return {"scenario": scenario, "coverage": None, "quality": None,
                         "tc_dicts": [], "error": str(e)}
+            finally:
+                _planner_done[0] += 1
+                _notify_dashboard_progress("planner", _planner_done[0], total)
 
     raw_results = await asyncio.gather(
         *[_run_one_planner(i, s) for i, s in enumerate(scenarios, 1)]
@@ -681,6 +694,7 @@ async def run_healer_eval(
     # Run scenarios concurrently (max 5 parallel LLM calls)
     import asyncio
     semaphore = asyncio.Semaphore(5)
+    _healer_done = [0]
 
     async def _run_one_healer(i: int, scenario: dict) -> dict:
         async with semaphore:
@@ -718,6 +732,9 @@ async def run_healer_eval(
                     "has_hard_wait": False,
                     "attempts": 0, "error": str(e),
                 }
+            finally:
+                _healer_done[0] += 1
+                _notify_dashboard_progress("healer", _healer_done[0], total)
 
     raw_results = await asyncio.gather(
         *[_run_one_healer(i, s) for i, s in enumerate(scenarios, 1)]
@@ -1010,6 +1027,7 @@ async def run_generator_eval(
     # Run scenarios concurrently (max 5 parallel LLM calls)
     import asyncio
     semaphore = asyncio.Semaphore(5)
+    _generator_done = [0]
 
     async def _run_one_generator(i: int, scenario: dict) -> dict:
         async with semaphore:
@@ -1023,6 +1041,9 @@ async def run_generator_eval(
             except Exception as e:
                 logger.error("Generator scenario %s failed: %s", scenario["scenario"], e)
                 return {"scenario": scenario["scenario"], "po": {}, "tc": {}, "error": str(e)}
+            finally:
+                _generator_done[0] += 1
+                _notify_dashboard_progress("generator", _generator_done[0], total)
 
     raw_results = await asyncio.gather(
         *[_run_one_generator(i, s) for i, s in enumerate(scenarios, 1)]

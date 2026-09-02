@@ -272,6 +272,16 @@ async def eval_start_external(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "started"})
 
 
+@app.post("/api/eval/run/progress")
+async def eval_progress_external(body: dict = {}) -> JSONResponse:
+    """Called by CLI eval runner to report scenario progress."""
+    agent = body.get("agent", "unknown")
+    current = body.get("current", 0)
+    total = body.get("total", 0)
+    await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": f"[{current}/{total}] scenario"}))
+    return JSONResponse({"status": "ok"})
+
+
 @app.post("/api/eval/run/agent-start-external")
 async def eval_agent_start_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner when a specific agent eval begins."""
