@@ -348,7 +348,7 @@ async def run_eval(body: dict = {}):
     if not agents:
         return JSONResponse({"error": "No agents specified"}, status_code=400)
 
-    _eval_status = {"state": "running", "current_agent": None, "completed": [], "queued": list(agents)}
+    _eval_status = {"state": "running", "current_agent": None, "completed": [], "queued": list(agents), "progress": {}, "last_activity": time.time()}
     asyncio.create_task(_execute_eval_run(agents))
     return JSONResponse({"status": "started", "agents": agents})
 

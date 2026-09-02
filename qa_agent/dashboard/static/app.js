@@ -740,8 +740,11 @@
             break;
           case 'eval:agent:complete':
             setEvalCardComplete(data.agent);
-            // Fetch fresh data for just this agent's card without full re-render
-            _refreshSingleEvalCard(data.agent);
+            // Only refresh individual card data if NOT in a multi-agent run
+            // (multi-agent gets a full refresh on eval:complete)
+            if (!evalRunning) {
+              _refreshSingleEvalCard(data.agent);
+            }
             break;
           case 'eval:agent:error':
             setEvalCardError(data.agent);
@@ -749,8 +752,8 @@
           case 'eval:complete':
             evalRunning = false;
             enableAllEvalButtons();
-            // Delay full re-render to let complete flash animations finish
-            setTimeout(() => { fetchEvalSummary(); fetchAuditSummary(); }, 3000);
+            // Delay re-render to let green flash animations play (2s matches CSS animation)
+            setTimeout(() => { fetchEvalSummary(); fetchAuditSummary(); }, 2500);
             break;
           case 'eval:updated':
             fetchEvalSummary();
