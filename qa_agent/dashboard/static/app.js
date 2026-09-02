@@ -399,11 +399,6 @@
     const text = card.querySelector('.eval-progress-text');
     if (fill) fill.style.width = pct + '%';
     if (text) text.textContent = current + '/' + total + ' (' + pct + '%)';
-    // When all scenarios done, show finalizing state
-    if (current >= total) {
-      const scoreEl = card.querySelector('.eval-score');
-      if (scoreEl) scoreEl.textContent = 'Finalizing...';
-    }
   }
 
   function _restoreEvalCard(card) {
@@ -424,6 +419,11 @@
     if (!card) return;
     card.classList.remove('eval-running');
     card.classList.add('eval-complete-flash');
+    // Restore score text from saved value
+    const scoreEl = card.querySelector('.eval-score');
+    if (scoreEl && scoreEl.dataset.prevText) {
+      scoreEl.textContent = scoreEl.dataset.prevText;
+    }
     setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
     _restoreEvalCard(card);
   }
