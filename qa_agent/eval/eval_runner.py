@@ -120,19 +120,34 @@ def _git_commit_and_push_reports(agent: str, scorecard: dict) -> None:
 
 def _notify_dashboard(agent: str) -> None:
     """Notify the dashboard server that an eval completed."""
+    _dashboard_post("/api/eval/notify", {"agent": agent})
+    logger.info("Dashboard notified of %s eval update", agent)
+
+
+def _notify_dashboard_eval_start(agents: list[str]) -> None:
+    """Notify the dashboard that eval(s) are starting."""
+    _dashboard_post("/api/eval/run/start-external", {"agents": agents})
+
+
+def _notify_dashboard_agent_start(agent: str) -> None:
+    """Notify the dashboard that a specific agent eval is starting."""
+    _dashboard_post("/api/eval/run/agent-start-external", {"agent": agent})
+
+
+def _dashboard_post(path: str, data: dict) -> None:
+    """POST to the dashboard server (silent fail if not running)."""
     import urllib.request
     try:
-        data = json.dumps({"agent": agent}).encode()
+        payload = json.dumps(data).encode()
         req = urllib.request.Request(
-            "http://localhost:8080/api/eval/notify",
-            data=data,
+            f"http://localhost:8080{path}",
+            data=payload,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
         urllib.request.urlopen(req, timeout=3)
-        logger.info("Dashboard notified of %s eval update", agent)
     except Exception:
-        pass  # Dashboard may not be running — not an error
+        pass  # Dashboard may not be running
 
 
 def load_triage_scenarios(golden_path: Path | None = None) -> tuple[list[dict], int]:
@@ -210,6 +225,7 @@ async def run_triage_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _notify_dashboard_agent_start("triage")
 
     # Load scenarios
     skipped = 0
@@ -386,6 +402,7 @@ async def run_planner_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _notify_dashboard_agent_start("planner")
 
     # Load scenarios
     skipped = 0
@@ -648,6 +665,7 @@ async def run_healer_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _notify_dashboard_agent_start("healer")
 
     skipped = 0
     if scenarios is None:
@@ -972,6 +990,7 @@ async def run_generator_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _notify_dashboard_agent_start("generator")
 
     skipped = 0
     if scenarios is None:

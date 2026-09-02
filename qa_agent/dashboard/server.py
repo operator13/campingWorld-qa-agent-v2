@@ -248,9 +248,40 @@ async def serve_report(run_id: str) -> FileResponse:
 @app.post("/api/eval/notify")
 async def eval_notify(body: dict = {}) -> JSONResponse:
     """Called by the eval runner after an eval completes. Broadcasts to all dashboards."""
+    global _eval_status
     agent = body.get("agent", "unknown")
+    await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
     await broadcast_to_dashboard(json.dumps({"event": "eval:updated", "agent": agent}))
+    # Track completion and reset state when all running agents complete
+    if _eval_status["state"] == "running":
+        if agent not in _eval_status["completed"]:
+            _eval_status["completed"].append(agent)
+        # Check if all known agents are done (for CLI runs we don't know the full list,
+        # so reset to idle after 10s of no new agent starts)
     return JSONResponse({"status": "notified"})
+
+
+@app.post("/api/eval/run/start-external")
+async def eval_start_external(body: dict = {}) -> JSONResponse:
+    """Called by CLI eval runner to show running state on dashboard."""
+    global _eval_status
+    agents = body.get("agents", [])
+    if _eval_status["state"] != "running":
+        _eval_status = {"state": "running", "current_agent": None, "completed": [], "queued": []}
+    await broadcast_to_dashboard(json.dumps({"event": "eval:start", "agents": agents}))
+    return JSONResponse({"status": "started"})
+
+
+@app.post("/api/eval/run/agent-start-external")
+async def eval_agent_start_external(body: dict = {}) -> JSONResponse:
+    """Called by CLI eval runner when a specific agent eval begins."""
+    global _eval_status
+    agent = body.get("agent", "unknown")
+    if _eval_status["state"] != "running":
+        _eval_status = {"state": "running", "current_agent": agent, "completed": [], "queued": []}
+    _eval_status["current_agent"] = agent
+    await broadcast_to_dashboard(json.dumps({"event": "eval:agent:start", "agent": agent}))
+    return JSONResponse({"status": "started"})
 
 
 @app.post("/api/health/notify")
