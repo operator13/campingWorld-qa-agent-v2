@@ -749,8 +749,8 @@
           case 'eval:complete':
             evalRunning = false;
             enableAllEvalButtons();
-            fetchEvalSummary();
-            fetchAuditSummary();
+            // Delay full re-render to let complete flash animations finish
+            setTimeout(() => { fetchEvalSummary(); fetchAuditSummary(); }, 3000);
             break;
           case 'eval:updated':
             fetchEvalSummary();
