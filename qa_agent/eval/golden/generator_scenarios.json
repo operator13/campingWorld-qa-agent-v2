@@ -82,5 +82,341 @@
     ],
     "expected_locator_quality_min": 0.70,
     "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "shopping_cart_interactions",
+    "goal": "Generate tests for shopping cart add/remove/update flow on campingworld.com",
+    "plan": [
+      {
+        "id": "tc-cart-1",
+        "title": "Add to Cart button is visible on product page",
+        "feature": "cart",
+        "route": "/product",
+        "steps": ["Navigate to a product detail page", "Scroll to the Add to Cart section"],
+        "expected": ["Add to Cart button is visible", "Button is enabled and clickable"],
+        "tags": ["@cart", "@critical"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-cart-2",
+        "title": "Cart icon updates count after adding item",
+        "feature": "cart",
+        "route": "/product",
+        "steps": ["Navigate to a product page", "Click Add to Cart", "Observe the cart icon in header"],
+        "expected": ["Cart icon shows updated item count", "Count increases by 1"],
+        "tags": ["@cart", "@critical"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-cart-3",
+        "title": "Cart page shows added items with prices",
+        "feature": "cart",
+        "route": "/cart",
+        "steps": ["Navigate to /cart after adding an item", "Verify cart is not empty"],
+        "expected": ["Cart displays product name", "Cart displays product price", "Cart displays quantity selector"],
+        "tags": ["@cart"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-cart-4",
+        "title": "Empty cart shows helpful message",
+        "feature": "cart",
+        "route": "/cart",
+        "steps": ["Navigate to /cart with no items"],
+        "expected": ["Empty cart message is visible", "Continue Shopping link is present"],
+        "tags": ["@cart", "@edge-case"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "global_navigation_header",
+    "goal": "Generate tests for the global navigation header across campingworld.com — logo, search, cart link, sign in, and mega menu",
+    "plan": [
+      {
+        "id": "tc-nav-1",
+        "title": "Logo is visible and links to homepage",
+        "feature": "navigation",
+        "route": "/",
+        "steps": ["Navigate to homepage", "Verify logo is in the header"],
+        "expected": ["Logo image is visible", "Logo links to / or /shop"],
+        "tags": ["@nav", "@smoke"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-nav-2",
+        "title": "Search input is visible and functional",
+        "feature": "navigation",
+        "route": "/",
+        "steps": ["Navigate to homepage", "Locate search input in header", "Type a search term"],
+        "expected": ["Search input accepts text", "Search button or submit is available"],
+        "tags": ["@nav"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-nav-3",
+        "title": "Cart link in header shows cart page",
+        "feature": "navigation",
+        "route": "/",
+        "steps": ["Navigate to homepage", "Click cart icon in header"],
+        "expected": ["Navigates to /cart", "Cart page loads"],
+        "tags": ["@nav", "@critical"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-nav-4",
+        "title": "Sign In link navigates to account page",
+        "feature": "navigation",
+        "route": "/",
+        "steps": ["Navigate to homepage", "Click Sign In link in header"],
+        "expected": ["Navigates to sign-in page", "Login form is visible"],
+        "tags": ["@nav"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-nav-5",
+        "title": "Shop By Category menu is accessible",
+        "feature": "navigation",
+        "route": "/",
+        "steps": ["Navigate to homepage", "Hover or click Shop By Category in nav"],
+        "expected": ["Category menu or dropdown appears", "Menu contains category links"],
+        "tags": ["@nav"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "store_locator_search",
+    "goal": "Generate tests for the store locator feature — search by zip code, view results, and see store details",
+    "plan": [
+      {
+        "id": "tc-store-1",
+        "title": "Store locator page loads with search input",
+        "feature": "store-locator",
+        "route": "/store-locator",
+        "steps": ["Navigate to /store-locator"],
+        "expected": ["Page loads with heading", "Zip code or location search input is visible"],
+        "tags": ["@store-locator"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-store-2",
+        "title": "Searching by zip code returns store results",
+        "feature": "store-locator",
+        "route": "/store-locator",
+        "steps": ["Navigate to /store-locator", "Enter zip code 90210", "Click Search or submit"],
+        "expected": ["Store results are displayed", "Each result shows store name and address"],
+        "tags": ["@store-locator"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-store-3",
+        "title": "Store result card shows phone number and hours",
+        "feature": "store-locator",
+        "route": "/store-locator",
+        "steps": ["Search for stores near zip 90210", "View first result card"],
+        "expected": ["Phone number is displayed", "Store hours are visible"],
+        "tags": ["@store-locator"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "rv_listing_browse_and_filter",
+    "goal": "Generate tests for browsing RV listings on rv.campingworld.com — listing cards, images, prices, and filtering",
+    "plan": [
+      {
+        "id": "tc-rv-1",
+        "title": "RV listings page displays listing cards",
+        "feature": "rvs-for-sale",
+        "route": "/rvs-for-sale",
+        "steps": ["Navigate to RVs for Sale page"],
+        "expected": ["Listing cards are visible", "Multiple RV cards are displayed"],
+        "tags": ["@rv", "@smoke"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-rv-2",
+        "title": "Each listing card shows image, price, and title",
+        "feature": "rvs-for-sale",
+        "route": "/rvs-for-sale",
+        "steps": ["Navigate to RVs for Sale page", "Inspect first listing card"],
+        "expected": ["Card has an image", "Card shows a price", "Card shows RV name or model"],
+        "tags": ["@rv"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-rv-3",
+        "title": "Clicking a listing card navigates to detail page",
+        "feature": "rvs-for-sale",
+        "route": "/rvs-for-sale",
+        "steps": ["Navigate to RVs for Sale page", "Click first listing card"],
+        "expected": ["URL changes to detail page", "Detail page shows RV information"],
+        "tags": ["@rv"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-rv-4",
+        "title": "Search RVs input is available in header",
+        "feature": "rvs-for-sale",
+        "route": "/rvs-for-sale",
+        "steps": ["Navigate to RVs for Sale page", "Locate Search RVs input"],
+        "expected": ["Search input is visible", "Input accepts text"],
+        "tags": ["@rv"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.75,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "footer_links_and_legal",
+    "goal": "Generate tests for the site footer — navigation links, legal links, social media, and newsletter signup",
+    "plan": [
+      {
+        "id": "tc-footer-1",
+        "title": "Footer is visible on homepage",
+        "feature": "footer",
+        "route": "/",
+        "steps": ["Navigate to homepage", "Scroll to bottom"],
+        "expected": ["Footer section is visible"],
+        "tags": ["@footer"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-footer-2",
+        "title": "Footer contains Privacy Policy link",
+        "feature": "footer",
+        "route": "/",
+        "steps": ["Scroll to footer", "Find Privacy Policy link"],
+        "expected": ["Privacy Policy link is visible", "Link has correct href"],
+        "tags": ["@footer", "@legal"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-footer-3",
+        "title": "Footer contains Terms of Use link",
+        "feature": "footer",
+        "route": "/",
+        "steps": ["Scroll to footer", "Find Terms of Use link"],
+        "expected": ["Terms of Use link is visible", "Link has correct href"],
+        "tags": ["@footer", "@legal"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-footer-4",
+        "title": "Footer social media links are present",
+        "feature": "footer",
+        "route": "/",
+        "steps": ["Scroll to footer", "Locate social media section"],
+        "expected": ["Social media links are visible", "At least one social link is present"],
+        "tags": ["@footer"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.70,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "product_detail_page",
+    "goal": "Generate tests for product detail page — images, pricing, description, add to cart, and reviews section",
+    "plan": [
+      {
+        "id": "tc-prod-1",
+        "title": "Product page displays primary image",
+        "feature": "product",
+        "route": "/product",
+        "steps": ["Navigate to a product detail page"],
+        "expected": ["Primary product image is visible", "Image has alt text"],
+        "tags": ["@product"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-prod-2",
+        "title": "Product page shows price",
+        "feature": "product",
+        "route": "/product",
+        "steps": ["Navigate to a product detail page"],
+        "expected": ["Price is displayed", "Price matches format $X.XX"],
+        "tags": ["@product", "@critical"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-prod-3",
+        "title": "Product page has description section",
+        "feature": "product",
+        "route": "/product",
+        "steps": ["Navigate to a product detail page", "Scroll to description"],
+        "expected": ["Description section is visible", "Description contains text content"],
+        "tags": ["@product"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-prod-4",
+        "title": "Add to Cart button is enabled for in-stock product",
+        "feature": "product",
+        "route": "/product",
+        "steps": ["Navigate to an in-stock product", "Locate Add to Cart button"],
+        "expected": ["Add to Cart button is visible", "Button is enabled"],
+        "tags": ["@product", "@critical"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-prod-5",
+        "title": "Product SKU is displayed on page",
+        "feature": "product",
+        "route": "/product",
+        "steps": ["Navigate to a product detail page"],
+        "expected": ["SKU or item number is visible on page"],
+        "tags": ["@product"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.80,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario": "registration_form_validation",
+    "goal": "Generate tests for the user registration form — field validation, password requirements, and successful submission",
+    "plan": [
+      {
+        "id": "tc-reg-1",
+        "title": "Registration page loads with form fields",
+        "feature": "register",
+        "route": "/register",
+        "steps": ["Navigate to registration page"],
+        "expected": ["Email field is visible", "Password field is visible", "Submit button is present"],
+        "tags": ["@register"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-reg-2",
+        "title": "Email field validates format",
+        "feature": "register",
+        "route": "/register",
+        "steps": ["Enter invalid email 'notanemail'", "Attempt to submit"],
+        "expected": ["Validation error appears", "Form does not submit"],
+        "tags": ["@register", "@validation"],
+        "source": "jira"
+      },
+      {
+        "id": "tc-reg-3",
+        "title": "Password field enforces minimum requirements",
+        "feature": "register",
+        "route": "/register",
+        "steps": ["Enter short password 'abc'", "Attempt to submit"],
+        "expected": ["Password requirement message is shown", "Form does not submit"],
+        "tags": ["@register", "@validation"],
+        "source": "jira"
+      }
+    ],
+    "expected_locator_quality_min": 0.75,
+    "valid_until": "2027-06-01"
   }
 ]
