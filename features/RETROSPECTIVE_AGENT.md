@@ -8,6 +8,312 @@
 
 ---
 
+## Architecture Overview — Retrospective Agent + Claude Dreaming
+
+### The Complete System (How Everything Connects)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║                          QA AUTOMATION FRAMEWORK                                    ║
+║                                                                                      ║
+║   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               ║
+║   │   TRIAGE    │  │   PLANNER   │  │  GENERATOR  │  │   HEALER    │               ║
+║   │   Agent     │  │   Agent     │  │   Agent     │  │   Agent     │               ║
+║   │             │  │             │  │             │  │             │               ║
+║   │ Classifies  │  │ Plans test  │  │ Generates   │  │ Fixes drift │               ║
+║   │ failures    │  │ cases from  │  │ Playwright  │  │ + timing    │               ║
+║   │ drift/flake │  │ UI specs    │  │ specs+POMs  │  │ flakes      │               ║
+║   │ /defect     │  │             │  │             │  │             │               ║
+║   └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘               ║
+║          │                │                │                │                        ║
+║          │  Each agent run produces data that feeds into memory                      ║
+║          │                │                │                │                        ║
+║          ▼                ▼                ▼                ▼                        ║
+║   ┌─────────────────────────────────────────────────────────────────────────┐       ║
+║   │                         LOCAL MEMORY STORE                              │       ║
+║   │                         memory/ (14 markdown files)                     │       ║
+║   │                                                                         │       ║
+║   │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  │       ║
+║   │  │ FAILURES.md  │ │TIMING_FIXES  │ │TEST_STABILITY│ │ LESSONS.md   │  │       ║
+║   │  │              │ │.md           │ │.md           │ │              │  │       ║
+║   │  │ Error        │ │ Known waits  │ │ Pass/fail    │ │ Patterns +   │  │       ║
+║   │  │ patterns +   │ │ per element  │ │ per test,    │ │ route        │  │       ║
+║   │  │ resolutions  │ │ + strategy   │ │ flakiness %  │ │ insights     │  │       ║
+║   │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  │       ║
+║   │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  │       ║
+║   │  │ locators/    │ │HEALER_STATS  │ │HUMAN_        │ │CONFIDENCE_   │  │       ║
+║   │  │ *.md         │ │.md           │ │DECISIONS.md  │ │RUBRIC.md     │  │       ║
+║   │  │              │ │              │ │              │ │              │  │       ║
+║   │  │ Per-route    │ │ Cache hits   │ │ Human        │ │ C1-C5        │  │       ║
+║   │  │ locator      │ │ vs LLM      │ │ overrides +  │ │ scoring      │  │       ║
+║   │  │ change log   │ │ call counts  │ │ verdicts     │ │ criteria     │  │       ║
+║   │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  │       ║
+║   └─────────────────────────────────┬───────────────────────────────────────┘       ║
+║                                     │                                                ║
+║          Each test run also produces│reports                                         ║
+║                                     │                                                ║
+║   ┌─────────────────────────────────┼───────────────────────────────────────┐       ║
+║   │                         REPORT HISTORY                                  │       ║
+║   │                                 │                                       │       ║
+║   │  ┌──────────────┐ ┌────────────┴─┐ ┌──────────────┐                   │       ║
+║   │  │ health-      │ │ health-      │ │ eval/        │                   │       ║
+║   │  │ reports/     │ │ reports/     │ │ reports/     │                   │       ║
+║   │  │ *.json       │ │ *-triage.json│ │ */           │                   │       ║
+║   │  │              │ │              │ │              │                   │       ║
+║   │  │ Domain       │ │ Unhealed     │ │ Agent        │                   │       ║
+║   │  │ scores,      │ │ failures,    │ │ accuracy,    │                   │       ║
+║   │  │ pass/fail    │ │ reasoning,   │ │ tokens,      │                   │       ║
+║   │  │ per run      │ │ C1-C5        │ │ cost         │                   │       ║
+║   │  │              │ │ breakdown    │ │ per run      │                   │       ║
+║   │  └──────────────┘ └──────────────┘ └──────────────┘                   │       ║
+║   └─────────────────────────────────────────────────────────────────────────┘       ║
+║                                                                                      ║
+╚════════════════════════════════════════════════════╤═════════════════════════════════╝
+                                                     │
+                    All this data flows DOWN          │
+                    into the Retrospective Agent      │
+                                                     │
+╔════════════════════════════════════════════════════╧═════════════════════════════════╗
+║                                                                                      ║
+║                          RETROSPECTIVE AGENT                                         ║
+║                                                                                      ║
+║   TRIGGER: Every 10 test runs / on-demand from dashboard / weekly cron               ║
+║                                                                                      ║
+║   ┌──────────────────────────────────────────────────────────────────────────────┐   ║
+║   │                                                                              │   ║
+║   │   STEP 1: COLLECT                                                            │   ║
+║   │   ─────────────────                                                          │   ║
+║   │   Load recent data (last 7 days):                                            │   ║
+║   │   • Triage reports → unhealed failures, confidence breakdowns                │   ║
+║   │   • Health reports → domain pass/fail trends                                 │   ║
+║   │   • Eval reports  → agent accuracy, token usage                              │   ║
+║   │   • Memory files  → stability data, healer stats, timing fixes              │   ║
+║   │                                                                              │   ║
+║   │   STEP 2: ANALYZE (Rule-Based — Phase RA1)                                   │   ║
+║   │   ────────────────────────────────────────                                   │   ║
+║   │   Our code — fast, cheap, deterministic:                                     │   ║
+║   │                                                                              │   ║
+║   │   ┌────────────────────┐  ┌────────────────────┐  ┌──────────────────────┐  │   ║
+║   │   │ Unhealed Patterns  │  │ Rubric Gaps        │  │ Healer Effectiveness │  │   ║
+║   │   │                    │  │                    │  │                      │  │   ║
+║   │   │ "beforeEach timeout│  │ "C2 is 0.00 in    │  │ "Strategy D has 0%  │  │   ║
+║   │   │  occurred 5 times  │  │  78% of runs —     │  │  success rate —     │  │   ║
+║   │   │  in 7 days, all    │  │  DOM snapshots     │  │  networkidle waits  │  │   ║
+║   │   │  unhealed"         │  │  never captured"   │  │  don't work here"   │  │   ║
+║   │   └────────────────────┘  └────────────────────┘  └──────────────────────┘  │   ║
+║   │                                                                              │   ║
+║   │   ┌────────────────────┐  ┌────────────────────┐                            │   ║
+║   │   │ Stability Trends   │  │ Cost Analysis      │                            │   ║
+║   │   │                    │  │                    │                            │   ║
+║   │   │ "rv-parts.spec.ts  │  │ "Triage uses 55%  │                            │   ║
+║   │   │  failing 3 straight│  │  of total spend —  │                            │   ║
+║   │   │  days — page may   │  │  fast-path could   │                            │   ║
+║   │   │  be removed"       │  │  save $0.20/run"   │                            │   ║
+║   │   └────────────────────┘  └────────────────────┘                            │   ║
+║   │                                                                              │   ║
+║   └──────────────────────────────────────┬───────────────────────────────────────┘   ║
+║                                          │                                           ║
+║                                          │ findings (structured JSON)                ║
+║                                          │                                           ║
+║   ┌──────────────────────────────────────▼───────────────────────────────────────┐   ║
+║   │                                                                              │   ║
+║   │   STEP 3: DREAM (Claude Dreaming API — Phase RA7)                            │   ║
+║   │   ───────────────────────────────────────────                                │   ║
+║   │                                                                              │   ║
+║   │   ┌─────────────────────────────────────────────────────────────────────┐    │   ║
+║   │   │                     CLAUDE DREAMING API                             │    │   ║
+║   │   │                                                                     │    │   ║
+║   │   │   INPUTS:                                                           │    │   ║
+║   │   │   ┌───────────────────┐  ┌───────────────────────────────────┐     │    │   ║
+║   │   │   │ Memory Store      │  │ Session Transcripts (50-100)     │     │    │   ║
+║   │   │   │                   │  │                                   │     │    │   ║
+║   │   │   │ memstore_019Yoq.. │  │ Each triage+health report pair   │     │    │   ║
+║   │   │   │ (qa-automation-   │  │ converted to a conversation:     │     │    │   ║
+║   │   │   │  memory)          │  │                                   │     │    │   ║
+║   │   │   │                   │  │ "Run 08_31 completed. 126/127    │     │    │   ║
+║   │   │   │ Synced from our   │  │  passed. Nav failed: beforeEach  │     │    │   ║
+║   │   │   │ memory/ folder    │  │  timeout. Classified test_flake  │     │    │   ║
+║   │   │   │                   │  │  confidence 0.20. Not healed:    │     │    │   ║
+║   │   │   │                   │  │  below threshold."               │     │    │   ║
+║   │   │   └───────────────────┘  └───────────────────────────────────┘     │    │   ║
+║   │   │                                                                     │    │   ║
+║   │   │   + Custom Instructions:                                            │    │   ║
+║   │   │   "Rule-based analysis found these findings: {RA1 output}.          │    │   ║
+║   │   │    Validate with evidence from transcripts. Surface patterns        │    │   ║
+║   │   │    the rules missed. Recommend specific code changes."              │    │   ║
+║   │   │                                                                     │    │   ║
+║   │   │   DREAMING PROCESS (async, minutes to hours):                       │    │   ║
+║   │   │   ┌─────────┐    ┌─────────┐    ┌─────────┐                       │    │   ║
+║   │   │   │ VERIFY  │ →  │ORGANIZE │ →  │ ENRICH  │                       │    │   ║
+║   │   │   │         │    │         │    │         │                       │    │   ║
+║   │   │   │ Check   │    │ Merge   │    │ Surface │                       │    │   ║
+║   │   │   │ memory  │    │ dupes,  │    │ novel   │                       │    │   ║
+║   │   │   │ entries │    │ prune   │    │ cross-  │                       │    │   ║
+║   │   │   │ against │    │ stale,  │    │ session │                       │    │   ║
+║   │   │   │ recent  │    │ resolve │    │ patterns│                       │    │   ║
+║   │   │   │ sessions│    │ conflicts│   │ & recs  │                       │    │   ║
+║   │   │   └─────────┘    └─────────┘    └─────────┘                       │    │   ║
+║   │   │                                                                     │    │   ║
+║   │   │   OUTPUTS:                                                          │    │   ║
+║   │   │   ┌───────────────────────────┐  ┌───────────────────────────┐     │    │   ║
+║   │   │   │ Optimized Memory Store    │  │ Cross-Session Insights    │     │    │   ║
+║   │   │   │                           │  │                           │     │    │   ║
+║   │   │   │ • Deduped FAILURES.md     │  │ • "Nav tests flake on    │     │    │   ║
+║   │   │   │ • Pruned stale locators   │  │    Tuesdays — correlates │     │    │   ║
+║   │   │   │ • Merged timing fixes     │  │    with CW deploy cycle" │     │    │   ║
+║   │   │   │ • Updated LESSONS.md      │  │ • "All scrollIntoView    │     │    │   ║
+║   │   │   │                           │  │    fixes use Strategy A  │     │    │   ║
+║   │   │   │ → Written back to         │  │    — stop suggesting D"  │     │    │   ║
+║   │   │   │   memory/ files           │  │ • "C2 always 0.0 because │     │    │   ║
+║   │   │   │                           │  │    no DOM on timeouts"   │     │    │   ║
+║   │   │   └───────────────────────────┘  └───────────────────────────┘     │    │   ║
+║   │   │                                                                     │    │   ║
+║   │   └─────────────────────────────────────────────────────────────────────┘    │   ║
+║   │                                                                              │   ║
+║   │   FALLBACK: If Dreaming API unavailable → Phase RA2 local LLM synthesis     │   ║
+║   │                                                                              │   ║
+║   └──────────────────────────────────────┬───────────────────────────────────────┘   ║
+║                                          │                                           ║
+║                                          │ recommendations + optimized memory        ║
+║                                          │                                           ║
+║   ┌──────────────────────────────────────▼───────────────────────────────────────┐   ║
+║   │                                                                              │   ║
+║   │   STEP 4: RECOMMEND & CLASSIFY                                               │   ║
+║   │   ────────────────────────────                                               │   ║
+║   │                                                                              │   ║
+║   │   Each recommendation gets classified:                                       │   ║
+║   │                                                                              │   ║
+║   │   ┌────────────────────────────┐    ┌────────────────────────────────────┐   │   ║
+║   │   │  SURGICAL FIX (1-5 lines)  │    │  STRUCTURAL CHANGE (complex)       │   │   ║
+║   │   │                            │    │                                    │   │   ║
+║   │   │  Specific file + line      │    │  Multi-file, architectural,        │   │   ║
+║   │   │  Exact code diff           │    │  needs investigation               │   │   ║
+║   │   │  Can be auto-applied       │    │  Generates build spec in           │   │   ║
+║   │   │                            │    │  /features/ for later              │   │   ║
+║   │   │  Example:                  │    │                                    │   │   ║
+║   │   │  "Add regex to             │    │  Example:                          │   │   ║
+║   │   │   confidence.py:92"        │    │  "Redesign Healer Strategy D"      │   │   ║
+║   │   └────────────────────────────┘    └────────────────────────────────────┘   │   ║
+║   │                                                                              │   ║
+║   └──────────────────────────────────────┬───────────────────────────────────────┘   ║
+║                                          │                                           ║
+╚══════════════════════════════════════════╧═══════════════════════════════════════════╝
+                                           │
+                                           │ presented on
+                                           ▼
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                      ║
+║   STEP 5: DASHBOARD APPROVAL (Human-in-the-Loop)                                    ║
+║   ──────────────────────────────────────────────                                    ║
+║                                                                                      ║
+║   ┌──────────────────────────────────────────────────────────────────────────────┐   ║
+║   │  RETROSPECTIVE                                    Last dream: 3h ago [▶ RUN]│   ║
+║   │                                                                              │   ║
+║   │  ⚡ HIGH — Add beforeEach timeout to flake patterns                         │   ║
+║   │     confidence.py:92 — surgical fix (1 line)                                │   ║
+║   │     ┌─────────────────────────────────────────────┐                         │   ║
+║   │     │ + re.compile(r"beforeEach.*Timeout", re.I), │                         │   ║
+║   │     └─────────────────────────────────────────────┘                         │   ║
+║   │                                                                              │   ║
+║   │     [✓ APPROVE]         [✕ REJECT]         [✎ MODIFY]                       │   ║
+║   │         │                    │                  │                             │   ║
+║   │         ▼                    ▼                  ▼                             │   ║
+║   │     ┌─────────┐        ┌─────────┐        ┌─────────┐                       │   ║
+║   │     │ Apply   │        │ Record  │        │ Edit    │                       │   ║
+║   │     │ code    │        │ reject  │        │ diff    │                       │   ║
+║   │     │ change  │        │ + add   │        │ before  │                       │   ║
+║   │     │    │    │        │ to sup- │        │ approve │                       │   ║
+║   │     │    ▼    │        │ pression│        │ or      │                       │   ║
+║   │     │ Git     │        │ list    │        │ reject  │                       │   ║
+║   │     │ commit  │        └─────────┘        └─────────┘                       │   ║
+║   │     │    │    │                                                              │   ║
+║   │     │    ▼    │                                                              │   ║
+║   │     │ Run     │                                                              │   ║
+║   │     │ eval    │                                                              │   ║
+║   │     │    │    │                                                              │   ║
+║   │     │    ▼    │                                                              │   ║
+║   │     │ Pass?───┼──Yes──▶ ✅ CONFIRMED — pushed to remote                     │   ║
+║   │     │    │    │                                                              │   ║
+║   │     │    No   │                                                              │   ║
+║   │     │    │    │                                                              │   ║
+║   │     │    ▼    │                                                              │   ║
+║   │     │ REVERT  │──────▶ ⚠ Rolled back — eval score dropped                  │   ║
+║   │     └─────────┘                                                              │   ║
+║   │                                                                              │   ║
+║   │  ⚡ HIGH — rv-parts.spec.ts may need removal                                │   ║
+║   │     Structural change — needs investigation                                  │   ║
+║   │                                                                              │   ║
+║   │     [📝 GENERATE SPEC]     [✕ REJECT]         [✎ MODIFY]                    │   ║
+║   │         │                                                                    │   ║
+║   │         ▼                                                                    │   ║
+║   │     LLM generates build spec → saved to /features/retro-*.md                │   ║
+║   │                                                                              │   ║
+║   └──────────────────────────────────────────────────────────────────────────────┘   ║
+║                                                                                      ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
+                                           │
+                                           │ approved changes flow BACK UP
+                                           ▼
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                      ║
+║   STEP 6: FEEDBACK LOOP (Improvements Applied)                                       ║
+║   ─────────────────────────────────────────────                                      ║
+║                                                                                      ║
+║   Approved changes improve the agents for the NEXT test run:                         ║
+║                                                                                      ║
+║   ┌────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌─────────────────┐  ║
+║   │ Triage Rubric  │  │ Healer Prompts │  │ Test Configs   │  │ Memory Store    │  ║
+║   │                │  │                │  │                │  │                 │  ║
+║   │ • New flake    │  │ • Strategy     │  │ • Timeout      │  │ • Deduped       │  ║
+║   │   patterns     │  │   priorities   │  │   adjustments  │  │ • Pruned stale  │  ║
+║   │ • Adjusted     │  │ • New fix      │  │ • Spec file    │  │ • New lessons   │  ║
+║   │   C1-C5 scores │  │   templates    │  │   additions/   │  │ • Optimized     │  ║
+║   │ • Better error │  │ • Locator      │  │   removals     │  │   patterns      │  ║
+║   │   matching     │  │   preferences  │  │                │  │                 │  ║
+║   └───────┬────────┘  └───────┬────────┘  └───────┬────────┘  └────────┬────────┘  ║
+║           │                   │                   │                    │             ║
+║           └───────────────────┴───────────────────┴────────────────────┘             ║
+║                                       │                                              ║
+║                                       ▼                                              ║
+║                          ┌─────────────────────────┐                                ║
+║                          │    NEXT TEST RUN         │                                ║
+║                          │    performs better        │                                ║
+║                          │                          │                                ║
+║                          │    → fewer unhealed      │                                ║
+║                          │    → higher confidence    │                                ║
+║                          │    → better fix success   │                                ║
+║                          │    → lower token cost     │                                ║
+║                          └──────────┬───────────────┘                                ║
+║                                     │                                                ║
+║                                     │ produces new data                              ║
+║                                     │ for the NEXT retrospective                     ║
+║                                     │                                                ║
+║                                     └──────────▶ CYCLE REPEATS                       ║
+║                                                                                      ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
+```
+
+### The Key Insight
+
+```
+Traditional QA:    Test → Fail → Fix → Test → Fail → Fix → ...  (reactive, manual)
+
+Our System:        Test → Fail → Triage → Heal → Test           (self-healing)
+
+With Retrospective: Test → Fail → Triage → Heal → Test          (self-improving)
+                                     ↑                │
+                                     │   Retrospective │
+                                     │   + Dreaming    │
+                                     │   analyzes WHY  │
+                                     │   and improves  │
+                                     │   the agents    │
+                                     └────────────────┘
+```
+
+The system doesn't just fix tests — it fixes **the agents that fix tests**.
+
+---
+
 ## The Problem
 
 The system detects failures, classifies them, attempts healing, and documents everything — but no agent reads the documented findings to improve future performance. Triage reports with full reasoning, confidence breakdowns, and not_healed_reasons accumulate in `health-reports/` without anyone analyzing them.
