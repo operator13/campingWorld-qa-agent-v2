@@ -1201,6 +1201,24 @@ async def run_dream_retrospective(lookback_days: int = 7):
 - Budget for Dream processing (billed at standard API token rates)
 - Minimum 10 session transcripts for meaningful patterns (recommend 50-100)
 
+### Pre-Mortem Items Addressed
+
+Full pre-mortem: [PRE_MORTEM_RETROSPECTIVE_AGENT.md](PRE_MORTEM_RETROSPECTIVE_AGENT.md) — 22 issues identified, 6 HIGH.
+
+| P0 Item | Issue | Resolution | Commit |
+|---------|-------|------------|--------|
+| **#1** | TIMING_FIXES.md had 100 duplicate rows poisoning analysis | Deduped to 5 unique rows + added dedup guard in `record_timing_fix()` | `90478d0` |
+| **#2** | Triage reports missing C1-C5 breakdown, reasoning, error | Triage node now returns full context; triage runner persists it in reports | `21355f7` |
+| **#3** | Rollback used `git reset --hard` + `--force-with-lease` | Changed all rollback levels to `git revert` — never rewrites public history | `90478d0` |
+
+**Remaining P1 items to address during build:**
+- Build `DreamProvider` abstraction (not direct API calls) — issue #3
+- Design three-way merge for memory write-back — issue #4
+- Add counter-example checks to eval gate — issue #5
+- Narrow file allowlist for auto-apply — issue #17
+- Add regression threshold (not "any amount" drop) — issue #15
+- Add minimum data requirements for recommendations — issue #16
+
 ### Graceful Degradation
 
 If Dreaming API is unavailable (access not granted, API down, budget exhausted):
