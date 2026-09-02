@@ -317,7 +317,7 @@ class MemoryStore:
         fix_description: str,
         success: bool = False,
     ) -> None:
-        """Record a timing fix attempt in TIMING_FIXES.md."""
+        """Record a timing fix attempt in TIMING_FIXES.md (with dedup)."""
         if not self._enabled("healer"):
             return
 
@@ -331,6 +331,14 @@ class MemoryStore:
                 "| Date | Route | Element | Error Pattern | Strategy | Fix | Success |\n"
                 "|------|-------|---------|--------------|----------|-----|--------|\n"
             )
+
+        # Dedup: don't record if same (route, element, error_pattern) already exists for today
+        content = filepath.read_text() if filepath.exists() else ""
+        for line in content.split("\n"):
+            if (route in line and element in line and error_pattern in line
+                    and now in line):
+                logger.debug("Memory: skipping duplicate timing fix for %s/%s", route, element)
+                return
 
         row = (
             f"| {now} | {route} | {element} | {error_pattern} "

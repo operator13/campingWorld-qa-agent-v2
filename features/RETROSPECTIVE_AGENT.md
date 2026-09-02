@@ -705,8 +705,7 @@ User clicks [✓ APPROVE]
       │
       └── Tests fail / crash?
             └─ 🚨 CATASTROPHIC FAILURE
-            └─ git reset --hard ROLLBACK_SHA (hard reset to safe state)
-            └─ git push --force-with-lease (safe force push)
+            └─ git revert NEW_SHA --no-edit (revert commit, preserve history)
             └─ Dashboard: "Emergency rollback: {title} — tests crashed"
             └─ Record in RETROSPECTIVE.md as: emergency_rollback, error
             └─ Recommendation auto-rejected (added to suppression list)
@@ -717,7 +716,7 @@ User clicks [✓ APPROVE]
 | Level | Trigger | Action | Reversible? |
 |-------|---------|--------|-------------|
 | **Level 1: Revert** | Eval score drops but tests still run | `git revert` (clean revert commit) | Yes — revert of revert |
-| **Level 2: Hard Reset** | Tests crash, process hangs, or server error | `git reset --hard ROLLBACK_SHA` | Yes — reflog has history |
+| **Level 2: Revert (crash)** | Tests crash, process hangs, or server error | `git revert NEW_SHA --no-edit` (preserves history) | Yes — revert of revert |
 | **Level 3: Restore Backup** | Multiple files corrupted, git state broken | Restore from pre-approval stash | Yes — stash preserved |
 
 #### Safety Guards
@@ -731,7 +730,7 @@ User clicks [✓ APPROVE]
 | **File allowlist** | Only files in `qa_agent/`, `memory/`, `tests_generated/`, `playwright.config.ts` can be modified |
 | **Human checkpoint** | Nothing is applied without explicit APPROVE click |
 | **Suppression on crash** | If a fix causes catastrophic failure, it's auto-rejected and never suggested again |
-| **Force push guard** | Only uses `--force-with-lease` (fails if remote has new commits from others) |
+| **No force push** | All rollbacks use `git revert` — never rewrites public history |
 
 ### Full Dashboard Visual — Approval Screen
 
