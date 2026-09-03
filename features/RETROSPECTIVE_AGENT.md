@@ -1219,17 +1219,17 @@ Full pre-mortem: [PRE_MORTEM_RETROSPECTIVE_AGENT.md](PRE_MORTEM_RETROSPECTIVE_AG
 | 2 | Triage reports missing C1-C5 breakdown | HIGH | FIXED | `21355f7` |
 | 3 | Dreaming API is research preview, may change | HIGH | OPEN | During build — create `DreamProvider` abstraction |
 | 4 | Memory sync two-source-of-truth problem | HIGH | OPEN | During build — design three-way merge |
-| 5 | Eval gate doesn't catch all regression types | HIGH | OPEN | During build — add counter-example checks |
+| 5 | Eval gate doesn't catch all regression types | HIGH | FIXED | `afb1486` — healer records cache miss reasons at every miss point |
 | 6 | `git reset --hard` in rollback is dangerous | HIGH | FIXED | `90478d0` |
 | 7 | Dreaming latency (hours) makes UX awkward | MEDIUM | OPEN | During build — persist job status, add notifications |
 | 8 | Session transcript format is lossy | MEDIUM | OPEN | During build — include raw JSON in transcripts |
 | 9 | Feedback loop compounds bad decisions | MEDIUM | OPEN | During build — add escape rate metric |
-| 10 | HEALER_STATS lacks cache miss reasons | MEDIUM | OPEN | Can fix now (code change to healer) |
+| 10 | HEALER_STATS lacks cache miss reasons | MEDIUM | FIXED | `afb1486` — tracks no_locator, key_not_found, fix_stale, guardrail_reject |
 | 11 | Suppression list grows unboundedly | MEDIUM | OPEN | During build — add 30-day expiration |
 | 12 | Concurrent operations create race conditions | MEDIUM | OPEN | During build — add operation locks |
 | 13 | Build spec generation quality unvalidated | MEDIUM | OPEN | During build — save as drafts, validate paths |
 | 14 | Dreaming cost is unbounded | MEDIUM | OPEN | During build — add per-Dream cost cap |
-| 15 | "Any amount" eval drop threshold too strict | MEDIUM | OPEN | During build — add regression threshold (>2%) |
+| 15 | "Any amount" eval drop threshold too strict | MEDIUM | FIXED | `afb1486` — threshold changed from 5% to 2% |
 | 16 | Insufficient data produces misleading recs | MEDIUM | OPEN | During build — add minimum data requirements |
 | 17 | File allowlist too broad for auto-apply | MEDIUM | OPEN | During build — narrow to specific files |
 | 18 | MODIFY flow under-specified, no syntax check | LOW | OPEN | During build — add syntax validation |
@@ -1238,7 +1238,7 @@ Full pre-mortem: [PRE_MORTEM_RETROSPECTIVE_AGENT.md](PRE_MORTEM_RETROSPECTIVE_AG
 | 21 | WebSocket SPOF for approval state | MEDIUM | OPEN | During build — persist state to disk |
 | 22 | Dreaming can't produce file-line code recs | MEDIUM | OPEN | During build — keep code-level recs in local LLM |
 
-**Progress: 3/22 fixed (14%), 19 remaining**
+**Progress: 6/22 fixed (27%), 16 remaining**
 
 ### Graceful Degradation
 
