@@ -1096,11 +1096,13 @@ body::before {
 
 /* iPad mini / large phones landscape */
 @media (max-width: 768px) {
-  /* Hide eval runner buttons on mobile */
+  /* Hide eval runner buttons and tooltip on mobile */
   .eval-run-btn,
   .eval-all-btn,
   .eval-stop-btn,
-  .eval-header-right {
+  .eval-header-right,
+  .eval-info-icon,
+  .eval-tooltip {
     display: none !important;
   }
 
