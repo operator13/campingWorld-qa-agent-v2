@@ -751,8 +751,13 @@
             break;
           case 'eval:complete':
             evalRunning = false;
+            // Restore any cards still stuck in running state
+            document.querySelectorAll('.eval-card.eval-running').forEach(card => {
+              const agent = card.dataset.agent;
+              if (agent) setEvalCardComplete(agent);
+            });
             enableAllEvalButtons();
-            // Delay re-render to let green flash animations play (2s matches CSS animation)
+            // Delay re-render to let green flash animations play
             setTimeout(() => { fetchEvalSummary(); fetchAuditSummary(); }, 2500);
             break;
           case 'eval:updated':
