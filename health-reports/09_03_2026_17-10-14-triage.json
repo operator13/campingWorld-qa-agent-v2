@@ -1,0 +1,91 @@
+{
+  "triaged": 4,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 4,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "main content area is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false,
+      "error": "Test timeout of 30000ms exceeded while running \"beforeEach\" hook.\n\n   5 |   let goodSamPage: GoodSamPage;\n   6 |\n>  7 |   test.beforeEach(async ({ page }) => {\n     |                  ^\n   8 |     goodSamPage = new GoodSamPage(page);\n   9 |     await goodSamPage.navigate();\n  10 |   });\n    at /Users/oantazo/Desktop/claud_projects/campingWorld/qa-automation-agent/tests_generated/good-sam.spec.ts:7:18",
+      "reasoning": "The failure is a TimeoutError in the beforeEach hook during page navigation (goodSamPage.navigate()), not during a locator lookup or assertion. C1=0.1: TimeoutError is a moderate signal \u2014 could be network/load latency rather than a broken selector or app defect. C2=0.0: No DOM snapshot available, so we can't confirm element presence or absence. C3=0.0: No matching historical pattern with known resolution. C4=0.0: No human review decisions to reference. C5=0.1: The intermittent history (2/5 fully passing runs, with CRITICAL and HEALTHY states alternating) strongly supports a flaky pattern \u2014 the page sometimes loads slowly or times out. The failure is in navigation, not in a selector or value assertion, and the spec has shown it can pass fully. This is consistent with test_flake (intermittent load/network timing issue). Confidence is capped low (0.2) due to no DOM evidence and no historical match, per anti-inflation guards. Adjusted slightly upward from 0.15 to 0.20 given the clear intermittent pattern in run history supporting flake classification.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.1,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.05,
+        "raw_score": 0.25,
+        "guards_applied": [],
+        "final_score": 0.25
+      },
+      "not_healed_reason": "Confidence 0.20 is below auto-heal threshold (0.75)"
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "page has a heading",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false,
+      "error": "Test timeout of 30000ms exceeded while running \"beforeEach\" hook.\n\n   5 |   let goodSamPage: GoodSamPage;\n   6 |\n>  7 |   test.beforeEach(async ({ page }) => {\n     |                  ^\n   8 |     goodSamPage = new GoodSamPage(page);\n   9 |     await goodSamPage.navigate();\n  10 |   });\n    at /Users/oantazo/Desktop/claud_projects/campingWorld/qa-automation-agent/tests_generated/good-sam.spec.ts:7:18",
+      "reasoning": "The failure is a TimeoutError in the beforeEach hook during page navigation (goodSamPage.navigate()), not during a selector lookup or assertion. This is a classic flake pattern \u2014 the page simply didn't load within 30s. C1 (0.1): TimeoutError is a moderate signal, consistent with flake rather than drift or defect. C2 (0.0): No DOM snapshot available, so we can't confirm element presence or absence. C3 (0.0): No identical historical pattern match. C4 (0.0): No human decisions to reference. C5 (0.1): The historical run pattern strongly supports flake \u2014 the spec has passed fully in 2/5 recent runs and shows an intermittent CRITICAL/HEALTHY oscillation, which is a hallmark of test_flake (network/load timing issues). The pre-computed score is 0.15; I'm adjusting slightly upward to 0.20 because the intermittent pass/fail history (domain health) is a meaningful additional signal supporting flake classification, though the cap from no DOM snapshot and TimeoutError limits confidence.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.1,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.05,
+        "raw_score": 0.25,
+        "guards_applied": [],
+        "final_score": 0.25
+      },
+      "not_healed_reason": "Confidence 0.20 is below auto-heal threshold (0.75)"
+    },
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "heading contains Good Sam",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false,
+      "error": "Test timeout of 30000ms exceeded while running \"beforeEach\" hook.\n\n   5 |   let goodSamPage: GoodSamPage;\n   6 |\n>  7 |   test.beforeEach(async ({ page }) => {\n     |                  ^\n   8 |     goodSamPage = new GoodSamPage(page);\n   9 |     await goodSamPage.navigate();\n  10 |   });\n    at /Users/oantazo/Desktop/claud_projects/campingWorld/qa-automation-agent/tests_generated/good-sam.spec.ts:7:18",
+      "reasoning": "The failure is a TimeoutError in the beforeEach hook during page navigation \u2014 not a selector error and not an assertion value mismatch. This is a classic test_flake pattern: the page simply didn't load within 30s. C1 (0.1): TimeoutError is a moderate signal, consistent with flake rather than drift or defect. C2 (0.0): No DOM snapshot available, capping confidence. C3 (0.0): No matching historical pattern with known resolution. C4 (0.0): No human decisions to reference. C5 (0.1): The historical run pattern strongly supports flake \u2014 the spec has passed fully in 2/5 recent runs with intermittent CRITICAL/HEALTHY oscillation, suggesting network or environment instability rather than a code change. The pre-computed score is 0.15; I adjust slightly upward to 0.2 given the strong intermittent pattern in run history, which is the clearest signal available. Still capped low due to no DOM evidence and no prior human calibration.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.1,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.05,
+        "raw_score": 0.25,
+        "guards_applied": [],
+        "final_score": 0.25
+      },
+      "not_healed_reason": "Confidence 0.20 is below auto-heal threshold (0.75)"
+    },
+    {
+      "spec_file": "search.spec.ts",
+      "test_title": "product prices are displayed in results",
+      "failure_class": "test_flake",
+      "confidence": 0.55,
+      "healed": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator:  getByText(/\\$[\\d,]+(\\.\\d{2})?/).first()\nExpected: visible\nReceived: hidden\nTimeout:  10000ms\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 10000ms\n  - waiting for getByText(/\\$[\\d,]+(\\.\\d{2})?/).first()\n    22 \u00d7 locator resolved to <div>Labor Day of Savings - $25 off your order over $1\u2026</div>\n       - unexpected value \"hidden\"\n\n\n  28 |\n  29 |   test('product prices are displayed in results', async () => {\n> 30 |     await expect(searchPag",
+      "reasoning": "C1 (0.2): The locator resolves successfully 22 times to a real element (<div>Labor Day of Savings - $25 off your order over $1\u2026</div>), but that element is 'hidden' \u2014 this is a visibility issue, not a missing selector. The regex /\\$[\\d,]+(\\.[\\d]{2})?/ matches a promotional banner text that happens to contain a dollar amount, not a product price element. The locator is technically valid but resolves to the wrong (hidden) element. C2 (0.0): No DOM snapshot provided to confirm whether actual product price elements exist elsewhere. C3 (0.0): No matching historical pattern. C4 (0.0): No human decisions to reference. C5 (0.1): The intermittent pattern (passed 1/4 recent runs) and the fact that the locator resolves but the element is hidden both point toward flakiness \u2014 possibly the promotional banner loads first and is hidden, while product prices load later. The test may sometimes pass when product prices load before the banner is matched. The regex is too broad and matches promotional text containing dollar signs, which is a locator quality issue that manifests as flakiness depending on render order. Capped at 0.45 per rubric (no DOM snapshot, TimeoutError-adjacent pattern).",
+      "confidence_breakdown": {
+        "c1_error_type": 0.3,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.15,
+        "raw_score": 0.55,
+        "guards_applied": [],
+        "final_score": 0.55
+      },
+      "not_healed_reason": "Confidence 0.55 is below auto-heal threshold (0.75)"
+    }
+  ],
+  "timestamp": "2026-09-03T17:10:14.107053+00:00"
+}
