@@ -160,6 +160,9 @@ async def _heal_timing(state: QAState) -> dict:
             except (AssertionGuardError, HardWaitGuardError):
                 logger.warning("Healer: known timing fix failed guardrail — falling through to LLM")
                 memory.mark_timing_fix_failed(route, element, error_pattern)
+                memory.record_healer_event("cache_miss", miss_reason="guardrail_reject")
+    else:
+        memory.record_healer_event("cache_miss", miss_reason="key_not_found")
 
     # --- Slow path: LLM ---
     memory.record_healer_event("llm_call")
@@ -269,6 +272,11 @@ async def _heal_locator(state: QAState) -> dict:
             except AssertionGuardError:
                 logger.warning("Healer: known fix touches assertions — marking failed, falling through to LLM")
                 memory.mark_fix_failed(route, element, old_locator)
+                memory.record_healer_event("cache_miss", miss_reason="guardrail_reject")
+        else:
+            memory.record_healer_event("cache_miss", miss_reason="key_not_found")
+    else:
+        memory.record_healer_event("cache_miss", miss_reason="no_locator")
 
     # --- Slow path: ask LLM, with memory context + lessons ---
     memory.record_healer_event("llm_call")

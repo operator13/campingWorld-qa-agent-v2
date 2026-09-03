@@ -9,7 +9,7 @@ def detect_regression(
     current: dict[str, Any],
     previous: dict[str, Any] | None,
     *,
-    threshold_delta: float = 0.05,
+    threshold_delta: float = 0.02,
 ) -> dict[str, Any]:
     """Compare current scorecard to previous. Returns regression report.
 

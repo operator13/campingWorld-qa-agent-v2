@@ -1582,19 +1582,55 @@ class MemoryStore:
     # Healer Cache Tracking
     # -------------------------------------------------------------------
 
-    def record_healer_event(self, event: str) -> None:
-        """Record a healer event: 'cache_hit' or 'llm_call'."""
+    def record_healer_event(self, event: str, miss_reason: str = "") -> None:
+        """Record a healer event: 'cache_hit', 'llm_call', or 'cache_miss'.
+
+        For cache_miss events, provide a reason:
+        - 'no_locator': Could not extract locator from error
+        - 'key_not_found': No known fix for this locator
+        - 'fix_stale': Known fix found but marked as failed/stale
+        - 'guardrail_reject': Known fix rejected by assertion guardrail
+        """
         if not self._enabled("healer"):
             return
         filepath = self.memory_dir / "HEALER_STATS.md"
         if not filepath.exists():
-            self._write_locked(filepath, "# Healer Stats\n\ncache_hits: 0\nllm_calls: 0\n")
+            self._write_locked(filepath,
+                "# Healer Stats\n\n"
+                "cache_hits: 0\n"
+                "llm_calls: 0\n"
+                "cache_misses: 0\n"
+                "miss_no_locator: 0\n"
+                "miss_key_not_found: 0\n"
+                "miss_fix_stale: 0\n"
+                "miss_guardrail_reject: 0\n"
+            )
 
         def _modify(content: str) -> str:
+            # Ensure new fields exist in older files
+            if "cache_misses:" not in content:
+                content += (
+                    "\ncache_misses: 0\n"
+                    "miss_no_locator: 0\n"
+                    "miss_key_not_found: 0\n"
+                    "miss_fix_stale: 0\n"
+                    "miss_guardrail_reject: 0\n"
+                )
+
             if event == "cache_hit":
                 return re.sub(r"cache_hits: (\d+)", lambda m: f"cache_hits: {int(m.group(1)) + 1}", content)
             elif event == "llm_call":
                 return re.sub(r"llm_calls: (\d+)", lambda m: f"llm_calls: {int(m.group(1)) + 1}", content)
+            elif event == "cache_miss":
+                content = re.sub(r"cache_misses: (\d+)", lambda m: f"cache_misses: {int(m.group(1)) + 1}", content)
+                if miss_reason:
+                    key = f"miss_{miss_reason}"
+                    content = re.sub(
+                        rf"{key}: (\d+)",
+                        lambda m: f"{key}: {int(m.group(1)) + 1}",
+                        content,
+                    )
+                return content
             return content
 
         self._read_modify_write(filepath, _modify)
