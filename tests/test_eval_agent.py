@@ -37,9 +37,9 @@ from qa_agent.eval.scorecard import (
 
 class TestLoadScenarios:
 
-    def test_loads_all_30_scenarios(self):
+    def test_loads_all_35_scenarios(self):
         scenarios, skipped = load_triage_scenarios()
-        assert len(scenarios) == 30
+        assert len(scenarios) == 35
         assert skipped == 0
 
     def test_skips_expired_scenarios(self, tmp_path):
@@ -81,7 +81,7 @@ class TestLoadScenarios:
     def test_categories_are_correct(self):
         scenarios, _ = load_triage_scenarios()
         categories = {s["category"] for s in scenarios}
-        assert categories == {"locator_drift", "app_defect", "unknown"}
+        assert categories == {"locator_drift", "app_defect", "test_flake", "unknown"}
 
     def test_category_counts(self):
         scenarios, _ = load_triage_scenarios()
@@ -261,7 +261,8 @@ class TestRegressionDetection:
         assert result["status"] == "first_run"
 
     def test_stable_within_threshold(self):
-        current = {"triage_accuracy": {"score": 0.83, "misses": []}}
+        # 1.5% drop is within the 2% threshold — should be stable
+        current = {"triage_accuracy": {"score": 0.835, "misses": []}}
         previous = {"triage_accuracy": {"score": 0.85, "misses": []}}
         result = detect_regression(current, previous)
         assert result["status"] == "stable"
@@ -760,9 +761,9 @@ class TestPlannerEvalIntegration:
 
 class TestHealerScenarios:
 
-    def test_loads_10_scenarios(self):
+    def test_loads_15_scenarios(self):
         scenarios, skipped = load_healer_scenarios()
-        assert len(scenarios) == 10
+        assert len(scenarios) == 15
         assert skipped == 0
 
     def test_all_scenarios_have_required_fields(self):
@@ -1242,7 +1243,7 @@ class TestGeneratorScenarios:
     def test_loads_scenarios(self):
         from qa_agent.eval.eval_runner import load_generator_scenarios
         scenarios, skipped = load_generator_scenarios()
-        assert len(scenarios) == 3
+        assert len(scenarios) == 10
         assert skipped == 0
 
     def test_each_scenario_has_required_fields(self):
