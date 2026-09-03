@@ -5,8 +5,8 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 42
-- **Last seen:** 2026-08-30
+- **Occurrences:** 51
+- **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-15
 
 ## FP-002: Locator not found
@@ -14,8 +14,8 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 16
-- **Last seen:** 2026-08-30
+- **Occurrences:** 25
+- **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-15
 
 ## FP-003: Login failed
@@ -23,8 +23,8 @@
 - **Class:** app_defect
 - **Resolution:** defect:QA-999
 - **Routes:** /
-- **Occurrences:** 32
-- **Last seen:** 2026-08-30
+- **Occurrences:** 50
+- **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-15
 
 ## FP-004: TimeoutError: locator.click: Timeout Nms exceeded. - waiting for getByRole('butt
@@ -32,8 +32,8 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /checkout
-- **Occurrences:** 296
-- **Last seen:** 2026-08-31
+- **Occurrences:** 608
+- **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-28
 
 ## FP-005: TimeoutError: locator.fill: Timeout Nms exceeded. Call log: - waiting for getByL
@@ -41,8 +41,8 @@
 - **Class:** test_flake
 - **Resolution:** healed:timing_fix
 - **Routes:** /product
-- **Occurrences:** 20
-- **Last seen:** 2026-08-31
+- **Occurrences:** 44
+- **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-28
 
 ## FP-006: Error: locator.click: element is outside of the viewport - getByRole('button', {
@@ -50,6 +50,6 @@
 - **Class:** test_flake
 - **Resolution:** healed:timing_fix
 - **Routes:** /search
-- **Occurrences:** 20
-- **Last seen:** 2026-08-31
+- **Occurrences:** 44
+- **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-28
