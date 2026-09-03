@@ -24,8 +24,8 @@ export class SearchPage {
     // Add To Cart buttons on search result cards
     this.addToCartButtons = page.getByRole('button', { name: /add to cart/i });
 
-    // Price text in results
-    this.productPrices = page.getByText(/\$[\d,]+(\.\d{2})?/);
+    // Price text in results — scoped to main content to avoid matching promo banners
+    this.productPrices = page.getByRole('main').getByText(/\$[\d,]+(\.\d{2})?/);
 
     // Header search
     this.searchInput = page.getByRole('searchbox', { name: /submit/i });
