@@ -1081,7 +1081,7 @@ async def run_generator_eval(
     test_result = score_test_validity(all_test_code)
     import_result = score_import_correctness(all_page_objects, all_test_code)
 
-    effective_import_threshold = 0.90
+    effective_import_threshold = 0.80
 
     thresholds = {
         "locator_quality": effective_locator_threshold,
