@@ -679,6 +679,9 @@ async def _execute_test_run(specs: list, workers: int, retries: int, heal: bool,
             except Exception as e:
                 await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": f"[Health] Error: {e}"}))
 
+        # Broadcast health update directly (don't HTTP self-call)
+        await broadcast_to_dashboard(json.dumps({"event": "health:updated", "run_id": run_id}))
+
         _test_run_status["state"] = "complete"
         _test_run_status["exit_code"] = exit_code
         await broadcast_to_dashboard(json.dumps({"event": "runner:end", "exit_code": exit_code, "run_id": run_id}))
