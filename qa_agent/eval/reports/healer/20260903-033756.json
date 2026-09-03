@@ -1,0 +1,202 @@
+{
+  "eval_run_id": "eval-20260903-033756",
+  "agent": "healer",
+  "timestamp": "2026-09-03T03:37:56.215472+00:00",
+  "baseline_mode": false,
+  "scenarios_total": 15,
+  "scenarios_skipped_expired": 0,
+  "healer_accuracy": {
+    "score": 0.96,
+    "correct": 15,
+    "total": 15,
+    "misses": [],
+    "locator_score": 0.9333,
+    "timing_score": 1.0
+  },
+  "by_category": {
+    "locator_drift": {
+      "score": 1.0,
+      "correct": 10,
+      "total": 10
+    },
+    "test_flake": {
+      "score": 1.0,
+      "correct": 5,
+      "total": 5
+    }
+  },
+  "thresholds": {
+    "healer_accuracy": 0.75
+  },
+  "passed": true,
+  "regression_vs_previous": {
+    "status": "stable",
+    "severity": null,
+    "delta": 0.0,
+    "previous_score": 0.96,
+    "current_score": 0.96,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_delta": 0.02
+  },
+  "assertion_integrity": {
+    "score": 1.0,
+    "clean": 10,
+    "violations": 0,
+    "total": 10,
+    "violation_routes": []
+  },
+  "diff_minimality": {
+    "score": 0.5556,
+    "locator_changes": 20,
+    "non_locator_changes": 16,
+    "total_changes": 36
+  },
+  "fix_correctness": {
+    "score": 0.8,
+    "correct": 8,
+    "total": 10,
+    "misses": [
+      {
+        "scenario": "checkbox_renamed",
+        "expected": "Accept Terms and Conditions",
+        "found": false
+      },
+      {
+        "scenario": "image_alt_changed",
+        "expected": "Camping tent product image",
+        "found": false
+      }
+    ]
+  },
+  "old_locator_removed": {
+    "score": 1.0,
+    "removed": 10,
+    "still_present": 0,
+    "total": 10,
+    "failures": []
+  },
+  "fix_rate": {
+    "score": 0.8667,
+    "correct": 13,
+    "total": 15
+  },
+  "timing_fix_accuracy": {
+    "score": 1.0,
+    "correct": 5,
+    "total": 5,
+    "details": [
+      {
+        "scenario": "timing_scroll_before_visible",
+        "has_wait_for": true,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": true
+      },
+      {
+        "scenario": "timing_click_before_visible",
+        "has_wait_for": true,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": true
+      },
+      {
+        "scenario": "timing_fill_not_stable",
+        "has_wait_for": true,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": true
+      },
+      {
+        "scenario": "timing_element_outside_viewport",
+        "has_wait_for": true,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": true
+      },
+      {
+        "scenario": "timing_network_dependent_content",
+        "has_wait_for": true,
+        "no_hard_wait": true,
+        "assertions_preserved": true,
+        "correct": true
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "scenario": "button_submit_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "testid_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "label_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "link_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "heading_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "checkbox_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "input_placeholder_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "select_renamed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "image_alt_changed",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "element_moved_to_different_role",
+      "category": "locator_drift"
+    },
+    {
+      "scenario": "timing_scroll_before_visible",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_click_before_visible",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_fill_not_stable",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_element_outside_viewport",
+      "category": "test_flake"
+    },
+    {
+      "scenario": "timing_network_dependent_content",
+      "category": "test_flake"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 24485,
+    "output_tokens": 6490,
+    "total_tokens": 30975,
+    "cost_usd": 0.170805
+  },
+  "recommendations": [
+    {
+      "priority": "low",
+      "category": "overall",
+      "finding": "All scenarios pass. Triage accuracy is above threshold.",
+      "action": "No action needed. Consider adding more challenging golden scenarios."
+    }
+  ]
+}
