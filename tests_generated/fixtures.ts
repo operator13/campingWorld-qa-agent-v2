@@ -199,6 +199,33 @@ function generateHumanSteps(testInfo: TestInfo): string {
   const titleParts = testInfo.titlePath;
   const suiteName = titleParts.length > 1 ? titleParts[titleParts.length - 2] : '';
 
+  // If no steps recorded (e.g., beforeEach timeout), generate from error context
+  if (steps.length === 0 && testInfo.error) {
+    const errMsg = testInfo.error.message || '';
+    if (errMsg.includes('beforeEach') || errMsg.includes('navigate') || errMsg.includes('goto')) {
+      const urlMatch = errMsg.match(/navigating to "([^"]+)"/);
+      const pageName = urlMatch ? urlToPageName(new URL(urlMatch[1]).pathname) : 'the page';
+      lines.push(`1. Open the ${pageName}  ✗ FAILED`);
+      lines.push('');
+      lines.push('Expected: Page should have loaded within the timeout');
+      lines.push(`Actual: Page did not load within ${testInfo.timeout / 1000}s`);
+      lines.push('');
+      lines.push('Note: The page failed to load during test setup. This is usually');
+      lines.push('a site availability issue, not a test bug.');
+    } else {
+      lines.push(`1. Run test "${testInfo.title}"  ✗ FAILED`);
+      lines.push('');
+      lines.push(`Error: ${errMsg.split('\n')[0]}`);
+    }
+    lines.push('');
+    lines.push(`Test: ${testInfo.title}`);
+    lines.push(`Suite: ${suiteName}`);
+    lines.push(`Browser: ${testInfo.project.name}`);
+    lines.push(`Site: campingworld.com`);
+    lines.push(`Duration: ${((testInfo.duration || 0) / 1000).toFixed(1)}s`);
+    return lines.join('\n');
+  }
+
   // Walk through steps
   for (const step of steps) {
     const title = step.title || '';
@@ -271,6 +298,18 @@ function generateTechnicalSteps(testInfo: TestInfo): string {
   const steps = (testInfo as any)._steps || [];
   let stepNum = 1;
 
+  // Handle empty steps (e.g., beforeEach timeout)
+  if (steps.length === 0 && testInfo.error) {
+    const errMsg = testInfo.error.message || '';
+    lines.push(`1. ✗ ${errMsg.split('\n')[0]}`);
+    lines.push('');
+    lines.push(`Spec File: ${testInfo.file?.split('/').pop() || 'unknown'}:${testInfo.line || '?'}`);
+    lines.push(`Test: ${testInfo.title}`);
+    lines.push(`Status: ${testInfo.status}`);
+    lines.push(`Duration: ${((testInfo.duration || 0) / 1000).toFixed(1)}s`);
+    return lines.join('\n');
+  }
+
   for (const step of steps) {
     const title = step.title || '';
     const category = step.category || '';
@@ -333,20 +372,20 @@ export const test = base.extend({
   },
 });
 
-// Attach Steps to Reproduce on failure
+// Add Steps to Reproduce as annotations on failure — visible immediately in report
 test.afterEach(async ({}, testInfo) => {
   if (testInfo.status !== 'passed' && testInfo.status !== 'skipped') {
     try {
       const humanSteps = generateHumanSteps(testInfo);
-      await testInfo.attach('steps-to-reproduce', {
-        body: humanSteps,
-        contentType: 'text/plain',
-      });
-
       const technicalSteps = generateTechnicalSteps(testInfo);
-      await testInfo.attach('steps-to-reproduce-technical', {
-        body: technicalSteps,
-        contentType: 'text/plain',
+
+      testInfo.annotations.push({
+        type: '📋 Steps to Reproduce',
+        description: humanSteps,
+      });
+      testInfo.annotations.push({
+        type: '🔧 Technical Details',
+        description: technicalSteps,
       });
     } catch {
       // Don't let step generation failure mask the actual test failure
