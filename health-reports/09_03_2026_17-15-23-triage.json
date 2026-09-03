@@ -1,0 +1,31 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "search.spec.ts",
+      "test_title": "search for a different term shows new results",
+      "failure_class": "test_flake",
+      "confidence": 0.55,
+      "healed": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByRole('main')\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 10000ms\n  - waiting for getByRole('main')\n\n\n  53 |     await searchPage.navigate('sleeping bag');\n  54 |     await expect(page).toHaveURL(/sleeping.bag|search/i);\n> 55 |     await expect(searchPage.mainContent).toBeVisible();\n     |                                          ^\n  56 |   });\n  57 | });\n  58 |\n    at /U",
+      "reasoning": "C1 (0.1/0.2): The error is a TimeoutError on toBeVisible() for getByRole('main') \u2014 a moderate signal that could indicate either drift or flake. The call log says 'element(s) not found' but getByRole('main') is a very broad, stable semantic role that almost certainly exists on any rendered page, suggesting the page simply hadn't loaded yet rather than a selector mismatch. C2 (0.0/0.2): No DOM snapshot available, so we cannot confirm whether <main> is present or absent \u2014 capped accordingly. C3 (0.0/0.2): No matching historical pattern. C4 (0.0/0.2): No human review decisions to reference. C5 (0.1/0.2): The intermittent pattern (passed 1/4 recent runs, including a fully healthy run) strongly supports flakiness \u2014 the test passes when timing is favorable. The /search route is rated HIGH stability, making a structural DOM change unlikely. The URL assertion on line 54 passes (navigation succeeds), but the main content element times out \u2014 consistent with an async render delay after navigation rather than a missing element. Overall, the intermittent failure pattern and stable route history point to test_flake, but low confidence due to no DOM evidence.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.3,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.15,
+        "raw_score": 0.55,
+        "guards_applied": [],
+        "final_score": 0.55
+      },
+      "not_healed_reason": "Confidence 0.55 is below auto-heal threshold (0.75)"
+    }
+  ],
+  "timestamp": "2026-09-03T17:15:23.176773+00:00"
+}
