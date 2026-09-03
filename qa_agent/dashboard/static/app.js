@@ -391,9 +391,15 @@
     }
   }
 
+  const _evalProgressMax = {};
+
   function updateEvalProgress(agent, current, total) {
     const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
     if (!card) return;
+    // Only go forward, never backward (concurrent scenarios complete out of order)
+    const prev = _evalProgressMax[agent] || 0;
+    if (current <= prev) return;
+    _evalProgressMax[agent] = current;
     const pct = Math.round((current / total) * 100);
     const fill = card.querySelector('.eval-progress-fill');
     const text = card.querySelector('.eval-progress-text');
@@ -726,6 +732,7 @@
             break;
           case 'eval:start':
             evalRunning = true;
+            Object.keys(_evalProgressMax).forEach(k => delete _evalProgressMax[k]);
             disableAllEvalButtons();
             break;
           case 'eval:agent:start':
