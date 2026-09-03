@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-09-03T19:32:16.520171+00:00",
+  "run_id": "09_03_2026_19-31-52",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 9,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 9,
+  "trend": {
+    "delta": 0.0101,
+    "status": "improving",
+    "previous_score": 0.9899
+  },
+  "domains": [
+    {
+      "name": "Search",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 58656,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.5,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}
