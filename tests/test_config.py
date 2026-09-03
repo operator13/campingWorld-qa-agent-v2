@@ -19,9 +19,9 @@ def test_constants():
 def test_get_model_defaults():
     """get_model returns the mapped model for known nodes."""
     assert "sonnet" in get_model("design_reader")
-    assert "opus" in get_model("planner")
+    assert "sonnet" in get_model("planner")
     assert "sonnet" in get_model("generator")
-    assert "opus" in get_model("triage")
+    assert "sonnet" in get_model("triage")
 
 
 def test_get_model_unknown_fallback():

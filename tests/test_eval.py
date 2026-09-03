@@ -20,8 +20,8 @@ class TestACCoverage:
         """All ACs covered → 1.0."""
         acs = ["User can submit order", "Email is required"]
         tests = [
-            {"title": "Submit order", "steps": ["Fill email", "Submit"], "expected": ["Order confirmed"]},
-            {"title": "Email validation", "steps": ["Leave email empty"], "expected": ["Error: email is required"]},
+            {"title": "User submits order", "steps": ["User fills email", "User clicks submit order"], "expected": ["Order confirmed"]},
+            {"title": "Email is required validation", "steps": ["Leave email empty"], "expected": ["Error: email is required"]},
         ]
         result = score_ac_coverage(acs, tests)
         assert result["score"] == 1.0
@@ -31,7 +31,7 @@ class TestACCoverage:
         """Some ACs uncovered → fractional score."""
         acs = ["User can submit order", "Email is required", "Password must be 8 chars"]
         tests = [
-            {"title": "Submit order", "steps": ["Submit order"], "expected": ["Confirmed"]},
+            {"title": "User submits order successfully", "steps": ["User clicks submit order"], "expected": ["Order confirmed"]},
         ]
         result = score_ac_coverage(acs, tests)
         assert 0 < result["score"] < 1.0
@@ -158,7 +158,7 @@ class TestFullEval:
         result = run_full_eval(
             acceptance_criteria=["User can submit order"],
             test_cases=[
-                {"title": "Submit order", "steps": ["Submit"], "expected": ["Order confirmed"]},
+                {"title": "User submits order", "steps": ["User clicks submit order"], "expected": ["Order confirmed"]},
             ],
             page_objects={"/checkout": "page.getByRole('button', { name: 'Submit' });"},
             triage_results=[{"failure_class": "locator_drift", "confidence": 0.9}],
