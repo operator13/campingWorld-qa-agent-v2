@@ -1,0 +1,31 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "good-sam.spec.ts",
+      "test_title": "breadcrumb navigation is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false,
+      "error": "Test timeout of 30000ms exceeded while running \"beforeEach\" hook.\n\n   5 |   let goodSamPage: GoodSamPage;\n   6 |\n>  7 |   test.beforeEach(async ({ page }) => {\n     |                  ^\n   8 |     goodSamPage = new GoodSamPage(page);\n   9 |     await goodSamPage.navigate();\n  10 |   });\n    at /Users/oantazo/Desktop/claud_projects/campingWorld/qa-automation-agent/tests_generated/good-sam.spec.ts:7:18",
+      "reasoning": "The failure is a TimeoutError in the beforeEach hook during page navigation (goodSamPage.navigate()), not during a locator lookup or assertion. This is a classic flake pattern \u2014 the page simply didn't load within 30s. C1=0.1: TimeoutError is a moderate signal, consistent with flake (slow network/server) rather than locator drift or app defect. C2=0.0: No DOM snapshot available, capped accordingly. C3=0.0: No identical historical pattern match. C4=0.0: No human decisions to reference. C5=0.1: The historical run pattern strongly supports flake \u2014 the spec passed fully in 3/5 recent runs with intermittent DEGRADED/CRITICAL states, and the memory explicitly flags this as an intermittent pattern. The timeout occurs at navigation, not at a selector, ruling out locator_drift. No HTTP errors or assertion mismatches are reported, ruling out app_defect. The pre-computed score of 0.15 is adjusted slightly upward to 0.2 given the strong intermittent run history supporting flake classification.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.1,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.05,
+        "raw_score": 0.25,
+        "guards_applied": [],
+        "final_score": 0.25
+      },
+      "not_healed_reason": "Confidence 0.20 is below auto-heal threshold (0.75)"
+    }
+  ],
+  "timestamp": "2026-09-03T18:33:36.983608+00:00"
+}
