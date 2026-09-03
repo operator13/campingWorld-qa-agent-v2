@@ -1,0 +1,51 @@
+{
+  "triaged": 2,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 2,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "footer.spec.ts",
+      "test_title": "footer contentinfo landmark is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false,
+      "error": "Test timeout of 30000ms exceeded while running \"beforeEach\" hook.\n\n   5 |   let footerPage: FooterPage;\n   6 |\n>  7 |   test.beforeEach(async ({ page }) => {\n     |                  ^\n   8 |     footerPage = new FooterPage(page);\n   9 |     await footerPage.navigate();\n  10 |   });\n    at /Users/oantazo/Desktop/claud_projects/campingWorld/qa-automation-agent/tests_generated/footer.spec.ts:7:18",
+      "reasoning": "The failure is a 30s timeout in the beforeEach hook during `footerPage.navigate()`, which is a page navigation/load timeout \u2014 not a selector error and not an assertion value mismatch. C1 (0.1): TimeoutError is a moderate signal; it could be network slowness, server hiccup, or async load delay rather than a broken selector or app defect. C2 (0.0): No DOM snapshot available, so we can't confirm element presence or absence. C3 (0.0): No matching historical pattern. C4 (0.0): No human decisions to reference. C5 (0.1): The historical run pattern (3/5 fully passing, intermittent failures) strongly supports flakiness \u2014 the spec passed 13/13 in multiple recent runs and only occasionally degrades. The timeout is in navigation, not in a locator lookup, which rules out locator_drift. No console errors or HTTP 4xx/5xx are reported, which argues against app_defect. The intermittent pattern is the strongest signal here. Pre-computed score is 0.15; I adjust slightly upward to 0.2 given the intermittent run history supporting flake classification, but remain capped low due to no DOM evidence and no historical match.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.1,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.05,
+        "raw_score": 0.25,
+        "guards_applied": [],
+        "final_score": 0.25
+      },
+      "not_healed_reason": "Confidence 0.20 is below auto-heal threshold (0.75)"
+    },
+    {
+      "spec_file": "search.spec.ts",
+      "test_title": "product prices are displayed in results",
+      "failure_class": "test_flake",
+      "confidence": 0.55,
+      "healed": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator:  getByText(/\\$[\\d,]+(\\.\\d{2})?/).first()\nExpected: visible\nReceived: hidden\nTimeout:  10000ms\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 10000ms\n  - waiting for getByText(/\\$[\\d,]+(\\.\\d{2})?/).first()\n    22 \u00d7 locator resolved to <div>Labor Day of Savings - $25 off your order over $1\u2026</div>\n       - unexpected value \"hidden\"\n\n\n  28 |\n  29 |   test('product prices are displayed in results', async () => {\n> 30 |     await expect(searchPag",
+      "reasoning": "C1 (0.1): The error is `toBeVisible` failing with 'hidden' \u2014 the locator *does* resolve (22 times it found a matching element: a promotional banner div containing a dollar amount), but that element is hidden. This is not a selector-not-found error, so it's not locator_drift. The regex `/\\$[\\d,]+(\\.[\\d]{2})?/` is too broad \u2014 it matches the promotional banner 'Labor Day of Savings - $25 off your order over $1\u2026' instead of actual product price elements. C2 (0.0): No DOM snapshot provided beyond the call log snippet; we can see the matched element is a promo banner, not a product price card. C3 (0.0): No matching historical pattern. C4 (0.0): No human decisions to reference. C5 (0.1): The intermittent pattern (passed 1/4 recent runs) and the fact that the locator resolves but to the wrong (hidden) element both point toward flakiness \u2014 the regex is ambiguous and may match different elements depending on page load state. The test is not testing what it intends to test (product prices), and the matched element being hidden suggests the promo banner is conditionally rendered. This is best classified as test_flake due to the intermittent history and overly broad locator matching unintended elements, though a locator fix (more specific selector for product prices) would also be warranted.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.3,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.15,
+        "raw_score": 0.55,
+        "guards_applied": [],
+        "final_score": 0.55
+      },
+      "not_healed_reason": "Confidence 0.55 is below auto-heal threshold (0.75)"
+    }
+  ],
+  "timestamp": "2026-09-03T18:16:23.405992+00:00"
+}
