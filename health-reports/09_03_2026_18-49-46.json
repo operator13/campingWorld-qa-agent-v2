@@ -1,0 +1,190 @@
+{
+  "timestamp": "2026-09-03T18:54:25.256880+00:00",
+  "run_id": "09_03_2026_18-49-46",
+  "overall_score": 0.9899,
+  "overall_status": "HEALTHY",
+  "total_passed": 126,
+  "total_failed": 1,
+  "total_skipped": 0,
+  "total_tests": 127,
+  "trend": {
+    "delta": -0.0034,
+    "status": "stable",
+    "previous_score": 0.9933
+  },
+  "domains": [
+    {
+      "name": "Cart",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "total": 8,
+      "duration_ms": 45752,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 2.0,
+      "is_critical": true
+    },
+    {
+      "name": "Checkout",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "total": 4,
+      "duration_ms": 24917,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 2.0,
+      "is_critical": true
+    },
+    {
+      "name": "Footer",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "total": 13,
+      "duration_ms": 84666,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Good Sam",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "duration_ms": 43684,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Homepage",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "total": 13,
+      "duration_ms": 72572,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Nav",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "total": 14,
+      "duration_ms": 81720,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Product",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 61750,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Register",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "duration_ms": 47747,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Rv Parts",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "total": 5,
+      "duration_ms": 37135,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Rvs For Sale",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10,
+      "duration_ms": 53647,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Rvs For Sale Detail",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10,
+      "duration_ms": 78995,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Search",
+      "passed": 8,
+      "failed": 1,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 76869,
+      "score": 0.8889,
+      "status": "DEGRADED",
+      "weight": 1.5,
+      "is_critical": false
+    },
+    {
+      "name": "Sign In",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10,
+      "duration_ms": 75217,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.5,
+      "is_critical": true
+    },
+    {
+      "name": "Store Locator",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "total": 10,
+      "duration_ms": 40087,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": [
+    "Cart",
+    "Checkout",
+    "Sign In"
+  ]
+}
