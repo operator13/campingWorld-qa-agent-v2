@@ -1,0 +1,31 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "search.spec.ts",
+      "test_title": "product prices are displayed in results",
+      "failure_class": "test_flake",
+      "confidence": 0.55,
+      "healed": false,
+      "error": "Error: expect(locator).toBeVisible() failed\n\nLocator:  getByText(/\\$[\\d,]+(\\.\\d{2})?/).first()\nExpected: visible\nReceived: hidden\nTimeout:  10000ms\n\nCall log:\n  - Expect \"toBeVisible\" with timeout 10000ms\n  - waiting for getByText(/\\$[\\d,]+(\\.\\d{2})?/).first()\n    22 \u00d7 locator resolved to <div>Labor Day of Savings - $25 off your order over $1\u2026</div>\n       - unexpected value \"hidden\"\n\n\n  28 |\n  29 |   test('product prices are displayed in results', async () => {\n> 30 |     await expect(searchPag",
+      "reasoning": "C1 (0.2): The locator resolves successfully \u2014 the call log shows '22 \u00d7 locator resolved to <div>Labor Day of Savings - $25 off your order over $1\u2026</div>' \u2014 meaning the selector is correct but the element is hidden, not missing. This is a visibility/timing issue, not a selector mismatch. C2 (0.0): No DOM snapshot provided; the element is found but hidden, which could indicate async rendering or a promotional banner matching the price regex before product prices load. C3 (0.1): The historical pattern shows intermittent failures (2/6 runs fully passing, 4/6 degraded with 8/9), strongly suggesting flakiness rather than a consistent defect. C5 (0.1): The intermittent history and the fact that the locator resolves (just to the wrong/hidden element first) both point to a race condition \u2014 the regex matches a hidden promotional element before product price elements become visible. The test likely needs a more specific locator scoped to product cards, or a wait strategy. Adjusted slightly upward from 0.45 to 0.50 given the strong intermittent pattern evidence from run history.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.3,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.15,
+        "raw_score": 0.55,
+        "guards_applied": [],
+        "final_score": 0.55
+      },
+      "not_healed_reason": "Confidence 0.55 is below auto-heal threshold (0.75)"
+    }
+  ],
+  "timestamp": "2026-09-03T18:54:39.197348+00:00"
+}
