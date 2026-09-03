@@ -1100,6 +1100,17 @@ async def run_generator_eval(
             and import_result["score"] >= effective_import_threshold
         )
 
+    # Composite score — average of all 4 sub-metrics (the real score)
+    composite_score = round(
+        (
+            locator_result["score"]
+            + pom_result["score"]
+            + test_result["score"]
+            + import_result["score"]
+        ) / 4,
+        4,
+    )
+
     run_id = f"eval-generator-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}"
     scorecard: dict[str, Any] = {
         "eval_run_id": run_id,
@@ -1108,6 +1119,13 @@ async def run_generator_eval(
         "baseline_mode": baseline_mode,
         "scenarios_total": total,
         "scenarios_skipped_expired": skipped,
+        "generator_accuracy": {
+            "score": composite_score,
+            "locator_quality": locator_result["score"],
+            "pom_validity": pom_result["score"],
+            "test_validity": test_result["score"],
+            "import_correctness": import_result["score"],
+        },
         "locator_quality": locator_result,
         "pom_validity": pom_result,
         "test_validity": test_result,

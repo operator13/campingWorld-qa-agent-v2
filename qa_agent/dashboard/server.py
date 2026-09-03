@@ -478,11 +478,11 @@ async def eval_summary() -> JSONResponse:
             summary[agent] = {"score": None, "passed": None}
             continue
 
-        if agent == "generator":
+        key = f"{agent}_accuracy"
+        score_obj = data.get(key, {})
+        # Fallback for older generator reports that don't have generator_accuracy
+        if agent == "generator" and not score_obj:
             score_obj = data.get("locator_quality", {})
-        else:
-            key = f"{agent}_accuracy"
-            score_obj = data.get(key, {})
 
         score = score_obj.get("score") if isinstance(score_obj, dict) else None
         passed = data.get("passed")
