@@ -296,11 +296,13 @@
 
       const runBtn = `<button class="eval-run-btn" data-agent="${agent}" onclick="window._runEval('${agent}')">&#9654; RUN</button>`;
 
+      const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${agent}')">i</span>`;
+
       if (!data || data.score === null) {
         return `
           <div class="eval-card" data-agent="${agent}">
             <div class="eval-card-header">
-              <div class="eval-agent-name">${agent.toUpperCase()}</div>
+              <div class="eval-agent-name">${agent.toUpperCase()} ${infoIcon}</div>
               ${runBtn}
             </div>
             <div class="eval-score">--</div>
@@ -322,7 +324,7 @@
       return `
         <div class="eval-card" data-agent="${agent}">
           <div class="eval-card-header">
-            <div class="eval-agent-name">${agent.toUpperCase()}</div>
+            <div class="eval-agent-name">${agent.toUpperCase()} ${infoIcon}</div>
             ${runBtn}
           </div>
           <div class="eval-score ${scoreClass}">${score.toFixed(1)}%</div>
@@ -356,6 +358,26 @@
   }
 
   // Exposed globally for inline onclick on RUN buttons
+  window._toggleEvalTooltip = function(agent) {
+    // Close any open tooltips first
+    document.querySelectorAll('.eval-tooltip.tooltip-open').forEach(t => {
+      if (t.closest('.eval-card')?.dataset.agent !== agent) {
+        t.classList.remove('tooltip-open');
+      }
+    });
+    const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+    if (!card) return;
+    const tooltip = card.querySelector('.eval-tooltip');
+    if (tooltip) tooltip.classList.toggle('tooltip-open');
+  };
+
+  // Close tooltip when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.eval-tooltip') && !e.target.closest('.eval-info-icon')) {
+      document.querySelectorAll('.eval-tooltip.tooltip-open').forEach(t => t.classList.remove('tooltip-open'));
+    }
+  });
+
   window._runEval = function(agent) {
     fetch('/api/eval/run', {
       method: 'POST',

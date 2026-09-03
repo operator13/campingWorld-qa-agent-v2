@@ -607,29 +607,31 @@ body::before {
 }
 
 /* Info icon */
+/* Info icon — always visible, click to open tooltip */
 .eval-info-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 1px solid rgba(0, 255, 200, 0.4);
   font-size: 0.5rem;
   font-style: italic;
   color: var(--neon-cyan);
-  opacity: 0.5;
-  cursor: help;
+  opacity: 0.7;
+  cursor: pointer;
   vertical-align: middle;
-  margin-left: 4px;
-  transition: opacity 0.2s ease;
+  margin-left: 6px;
+  transition: opacity 0.2s ease, background 0.2s ease;
 }
 
-.eval-card:hover .eval-info-icon {
+.eval-info-icon:hover {
   opacity: 1;
+  background: rgba(0, 255, 200, 0.15);
 }
 
-/* Tooltip popup — floating overlay */
+/* Tooltip popup — click to open, not hover */
 .eval-tooltip {
   visibility: hidden;
   opacity: 0;
@@ -647,7 +649,7 @@ body::before {
   border-radius: 10px;
   box-shadow: 0 0 30px rgba(0, 255, 200, 0.15), 0 10px 40px rgba(0, 0, 0, 0.7);
   text-align: left;
-  pointer-events: none;
+  pointer-events: auto;
   transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
 }
 
@@ -664,7 +666,7 @@ body::before {
   border-right: 1px solid rgba(0, 255, 200, 0.25);
 }
 
-.eval-card:hover .eval-tooltip {
+.eval-tooltip.tooltip-open {
   visibility: visible;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
