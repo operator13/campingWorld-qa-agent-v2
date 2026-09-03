@@ -296,7 +296,7 @@
 
       const runBtn = `<button class="eval-run-btn" data-agent="${agent}" onclick="window._runEval('${agent}')">&#9654; RUN</button>`;
 
-      const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${agent}')">i</span>`;
+      const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${agent}')">&#9432;</span>`;
 
       if (!data || data.score === null) {
         return `
