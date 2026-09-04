@@ -276,6 +276,132 @@ Click "View Trace" to see the full LLM call:
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
+#### 5. Experiment Results Table (LangSmith-Style)
+
+An interactive data table showing every scenario in an eval run — inspired by LangSmith's experiment view. Heat map coloring, sortable columns, expandable rows.
+
+**Full Dashboard Visual:**
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  EXPERIMENT RESULTS — Triage eval-20260903-182843                                        │
+│                                                                                          │
+│  [Compact] [Full] [Diff]    Agent: [Triage ▾]    [✓ Heat Map] [⊞ Columns]  [+ Compare] │
+│                                                                                          │
+│  ┌───────────────────────┬─────────────┬──────────────┬──────────┬──────┬──────┬───────┐ │
+│  │ Scenario              │ Expected    │ Got          │ Accuracy │ Conf │ Lat  │Tokens │ │
+│  │                       │             │              │          │      │      │       │ │
+│  ├───────────────────────┼─────────────┼──────────────┼──────────┼──────┼──────┼───────┤ │
+│  │ drift_button_renamed  │ loc_drift   │ loc_drift    │ ██ 1.00  │ 0.85 │ 2.3s │ 1,842 │ │
+│  │ drift_testid_changed  │ loc_drift   │ loc_drift    │ ██ 1.00  │ 0.82 │ 2.1s │ 1,756 │ │
+│  │ drift_label_text      │ loc_drift   │ loc_drift    │ ██ 1.00  │ 0.88 │ 2.4s │ 1,901 │ │
+│  │ defect_assertion_val  │ app_defect  │ app_defect   │ ██ 1.00  │ 0.91 │ 1.9s │ 1,623 │ │
+│  │ defect_http_500       │ app_defect  │ app_defect   │ ██ 1.00  │ 0.87 │ 2.0s │ 1,712 │ │
+│  │ flake_scroll_timeout  │ test_flake  │ test_flake   │ ██ 1.00  │ 0.50 │ 2.2s │ 1,845 │ │
+│  │ flake_click_timeout   │ test_flake  │ test_flake   │ ██ 1.00  │ 0.52 │ 2.1s │ 1,798 │ │
+│  │ unknown_generic_to..  │ unknown     │ test_flake   │ ░░ 0.00  │ 0.50 │ 2.5s │ 1,934 │ │
+│  │ unknown_ci_env_to..   │ unknown     │ test_flake   │ ░░ 0.00  │ 0.45 │ 2.3s │ 1,867 │ │
+│  │ unknown_element_det.. │ unknown     │ test_flake   │ ░░ 0.00  │ 0.05 │ 2.0s │ 1,654 │ │
+│  │ ...                   │             │              │          │      │      │       │ │
+│  └───────────────────────┴─────────────┴──────────────┴──────────┴──────┴──────┴───────┘ │
+│                                                                                          │
+│  Summary: 30/35 correct (85.7%)  │  Avg latency: 2.2s  │  Total tokens: 67,518          │
+│                                                                                          │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Column Definitions:**
+
+| Column | Data Source | Heat Map Color |
+|--------|-----------|---------------|
+| **Scenario** | Golden scenario name (clickable → expands row with full details) | — |
+| **Expected** | `expected_class` from golden scenario | — |
+| **Got** | Agent's actual `failure_class` output | Green if matches expected, red if mismatch |
+| **Accuracy** | 1.0 if correct, 0.0 if wrong | Green (1.0) → Red (0.0) gradient |
+| **Conf** | Agent's confidence score | Green (≥0.75) → Yellow (0.5-0.74) → Red (<0.5) |
+| **Lat** | Per-scenario LLM call latency | Green (<2s) → Yellow (2-5s) → Red (>5s) |
+| **Tokens** | Input + output tokens for this scenario | — (informational) |
+
+**Per-Agent Column Variants:**
+
+| Agent | Columns |
+|-------|---------|
+| **Triage** | Scenario, Expected Class, Got Class, Accuracy, Confidence, C1-C5 Breakdown, Latency, Tokens |
+| **Planner** | Scenario, Goal, AC Coverage, Plan Quality, Test Count, Latency, Tokens |
+| **Generator** | Scenario, Locator Quality, POM Validity, Test Validity, Import Correctness, Latency, Tokens |
+| **Healer** | Scenario, Fix Type, Fix Present, Assertions Preserved, No Hard Waits, Latency, Tokens |
+
+**View Modes:**
+
+| Mode | What It Shows |
+|------|--------------|
+| **Compact** | One row per scenario — score columns only, no details |
+| **Full** | Expandable rows — click to see input error, LLM response, reasoning |
+| **Diff** | Two experiments side-by-side — highlight cells that changed between runs |
+
+**Expanded Row (click a scenario):**
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│  ▼ unknown_generic_timeout_no_dom                              ░░ MISS           │
+│                                                                                   │
+│  ── Input ──────────────────────────────────────────────────────────────────────  │
+│  Error: TimeoutError: page.waitForNavigation: Timeout 30000ms exceeded.          │
+│                                                                                   │
+│  ── Expected ───────────────────────────────────────────────────────────────────  │
+│  Class: unknown    Confidence min: 0.0                                           │
+│                                                                                   │
+│  ── Got ────────────────────────────────────────────────────────────────────────  │
+│  Class: test_flake    Confidence: 0.50                                           │
+│  Reasoning: "Navigation timeout pattern matches flake — but no DOM evidence..." │
+│                                                                                   │
+│  ── Confidence Breakdown ───────────────────────────────────────────────────────  │
+│  C1: 0.10  C2: 0.00  C3: 0.20  C4: 0.10  C5: 0.10  Raw: 0.50  Guards: none    │
+│                                                                                   │
+│  ── Trace ──────────────────────────────────────────────────────────────────────  │
+│  Model: claude-sonnet-4-6    Latency: 2.5s    Tokens: 1,934    Cost: $0.0081    │
+│  [View Full Trace]                                                                │
+└───────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Diff View (comparing two experiments):**
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  DIFF: eval-20260903-a vs eval-20260903-b                                                │
+│                                                                                          │
+│  ┌───────────────────────┬──────────────────────┬──────────────────────┬────────────────┐ │
+│  │ Scenario              │ Run A (Sep 3 14:28)  │ Run B (Sep 3 18:15)  │ Change        │ │
+│  ├───────────────────────┼──────────────────────┼──────────────────────┼────────────────┤ │
+│  │ drift_testid_changed  │ ██ loc_drift  0.82   │ ░░ test_flake 0.71  │ ▼ REGRESSION  │ │
+│  │ unknown_generic_to..  │ ░░ test_flake 0.50   │ ██ unknown    0.30  │ ▲ IMPROVEMENT │ │
+│  │ flake_fill_timeout    │ ██ test_flake 0.70   │ ██ test_flake 0.72  │ ─ stable      │ │
+│  │ ...                   │ (28 stable scenarios) │                     │ ─ stable      │ │
+│  └───────────────────────┴──────────────────────┴──────────────────────┴────────────────┘ │
+│                                                                                          │
+│  Filter: [All] [▼ Regressions only] [▲ Improvements only] [─ Changed only]             │
+│                                                                                          │
+│  Summary: 1 regression, 1 improvement, 33 stable                                        │
+│           Score: 85.7% → 82.9% (▼ 2.8%)                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Cyberpunk Styling:**
+
+- Dark glass background matching existing dashboard cards
+- Heat map: neon green (1.0) → amber (0.5) → neon red (0.0)
+- Expanded rows: darker inset background with monospace code blocks
+- Regression cells: red glow border pulse
+- Improvement cells: green glow
+- Sortable column headers with cyan arrow indicators
+- Sticky header row for scrolling through 35+ scenarios
+
+**Mobile (iPhone):**
+
+- Table scrolls horizontally with fixed first column (scenario name)
+- Compact mode only (no Full/Diff on mobile)
+- Tap row to expand details instead of click
+
 ### Pros
 - No third-party dependency — all data stays local
 - Integrated into our cyberpunk dashboard
