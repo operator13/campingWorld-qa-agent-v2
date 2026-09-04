@@ -5,7 +5,7 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 51
+- **Occurrences:** 58
 - **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-15
 
@@ -14,7 +14,7 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 25
+- **Occurrences:** 32
 - **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-15
 
@@ -23,7 +23,7 @@
 - **Class:** app_defect
 - **Resolution:** defect:QA-999
 - **Routes:** /
-- **Occurrences:** 50
+- **Occurrences:** 64
 - **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-15
 
@@ -32,7 +32,7 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /checkout
-- **Occurrences:** 608
+- **Occurrences:** 686
 - **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-28
 
@@ -41,7 +41,7 @@
 - **Class:** test_flake
 - **Resolution:** healed:timing_fix
 - **Routes:** /product
-- **Occurrences:** 44
+- **Occurrences:** 50
 - **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-28
 
@@ -50,6 +50,6 @@
 - **Class:** test_flake
 - **Resolution:** healed:timing_fix
 - **Routes:** /search
-- **Occurrences:** 44
+- **Occurrences:** 50
 - **Last seen:** 2026-09-03
 - **Stale after:** 2026-11-28
