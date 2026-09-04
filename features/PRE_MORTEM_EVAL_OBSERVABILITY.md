@@ -163,43 +163,6 @@ If eval is stopped mid-run, some traces exist without a scorecard. Experiments l
 | 18 | Orphaned partial traces | LOW | OPEN | Phase EO1 — batch write or mark partial |
 | 19 | No auth on trace API | LOW | OPEN | Phase EO4 — localhost binding |
 
-**P0 items — architectural decisions to address during build (no code exists yet):**
-- #1, #2, #15: Build the tracer with `contextvars.ContextVar` from the start — never use AuditStore's shared class-level state for per-scenario capture
-- #3: Add `qa_agent/eval/traces/` to `.gitignore` on day one — never git-track traces
-- #4: Design the tracer to capture prompts/responses independently of the `AUDIT_RAW` gate
+**P0 items to fix before building:** #1, #2, #3, #4, #15 (all HIGH — shared root cause: AuditStore architecture + storage decisions)
 
-**Progress: 0/19 addressed (0%) — all items are design constraints for the build, not fixes to existing code**
-
----
-
-## Lessons Applied from Retrospective Agent Pre-Mortem
-
-The [Retrospective Agent pre-mortem](PRE_MORTEM_RETROSPECTIVE_AGENT.md) identified 22 issues, 6 of which were fixed before building. Key lessons that apply to this feature:
-
-### Shared State Concurrency (Retrospective #4 → Eval Obs #1, #2, #15)
-
-The Retrospective Agent pre-mortem found a **two-source-of-truth problem** when syncing local memory files with the Dreaming memory store (#4). The same pattern appears here — AuditStore's class-level shared state creates a single-source-of-truth problem when 5 concurrent scenarios try to use it simultaneously. The mitigation is the same principle: **isolate state per operation** (three-way merge for Retrospective, `contextvars` for Eval Observability).
-
-### Git Repo Bloat (Retrospective #1 → Eval Obs #3)
-
-The Retrospective pre-mortem found TIMING_FIXES.md had 100 duplicate rows bloating the repo (#1). The same risk exists here at much larger scale — full LLM traces at 8-12KB per scenario would add ~800KB per eval run. The fix is the same principle: **don't git-track high-volume generated data**. TIMING_FIXES.md was deduped; traces should be `.gitignore`'d entirely.
-
-### Data Quality Before Analysis (Retrospective #1, #2 → Eval Obs #9, #10)
-
-The Retrospective pre-mortem emphasized that analysis on bad data produces bad recommendations (duplicated TIMING_FIXES poisoned statistics). The same applies here — empty traces (#9) and inaccurate costs (#10) would undermine the experiment comparison's value. Fix: **validate trace completeness before storing**, same as dedup was added to memory writes.
-
-### Regression Threshold Sensitivity (Retrospective #15 → Eval Obs #6)
-
-The Retrospective pre-mortem found the "any amount" eval drop threshold was too strict (#15, fixed by changing to 2%). The experiment comparison engine faces a similar sensitivity — scenario renames (#6) could trigger false regression alerts. Fix: **use stable IDs and fuzzy matching**, same principle as adding tolerance to regression detection.
-
-### Rollback Safety (Retrospective #6 → Eval Obs #18)
-
-The Retrospective pre-mortem found `git reset --hard` was dangerous for rollbacks (#6, fixed by using `git revert`). The Eval Observability feature has a similar orphaned-state problem — interrupted evals leave partial traces (#18). Fix: **batch write traces or mark as partial**, same principle as clean rollback without data loss.
-
-### Privacy / Sensitivity (Retrospective #12 → Eval Obs #12)
-
-Not explicitly in the Retrospective pre-mortem, but the enriched triage reports (#2) contain full error messages, C1-C5 breakdowns, and reasoning. Eval Observability traces contain even more sensitive data — full LLM prompts with DOM snapshots and memory context. Fix: **sanitize before storing**, use existing `sanitizer.py`.
-
-### Stale State Auto-Recovery (Dashboard eval stuck → Eval Obs #18)
-
-We already hit the problem of eval state getting stuck at "running" when a CLI eval was interrupted (fixed with 5-minute auto-reset). The same pattern applies to partial traces — the system must self-recover from interrupted operations, not leave zombie state.
+**Progress: 0/19 fixed (0%)**
