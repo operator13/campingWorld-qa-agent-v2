@@ -108,3 +108,58 @@ After building EVAL_OBSERVABILITY (Option B — in-house), here's the updated ga
 - "Save as Golden Scenario" button on failure review panel → closes one-click dataset gap
 - Prompt editor section on dashboard → closes prompt playground gap
 - Retrospective Agent + Dreaming → closes AI discovery gap
+
+---
+
+## Braintrust Philosophy: "Evals Are a Team Sport"
+
+Braintrust emphasizes that evals are not just an engineer's job — different roles contribute to different parts of the eval lifecycle:
+
+```
+                    ┌──────────────────────────────────────────┐
+                    │       EVAL ACTIVITIES                     │
+                    ├──────────────────────────────────────────┤
+  AI Engineer ──────┤  Get real world data into eval platform  │
+       │            │  Label sample data                       │
+       ├────────────┤  Develop hypotheses                      │
+       │            │  Decide on success criteria              │
+  Product Manager ──┤  Tweak simpler tasks such as prompts     │
+       │            │  Tweak advanced tasks such as tool calls │
+  Subject Matter ───┤  Develop scorers                         │
+    Experts         │  Analyze results                         │
+       │            └──────────────────────────────────────────┘
+  Data Analysts ────┘
+```
+
+### How Our System Handles Each Activity
+
+| Eval Activity | Braintrust (Who) | Our System (How) | Gap |
+|---|---|---|---|
+| **Get real world data into eval platform** | AI Engineer | Triage reports capture real test failures with errors, confidence breakdowns, reasoning. Health reports capture domain-level pass/fail data | Partial — data exists but isn't automatically converted to golden scenarios |
+| **Label sample data** | AI Engineer + SME | Golden scenarios in JSON files with `expected_class`, `expected_confidence_min` — manually labeled | Manual process. No labeling UI. Braintrust has one-click labeling from production traces |
+| **Develop hypotheses** | AI Engineer + PM | Retrospective Agent (spec'd) analyzes patterns: "beforeEach timeouts are misclassified", "Strategy D never works" | Spec'd but not built. Currently hypotheses come from manual review |
+| **Decide on success criteria** | PM + AI Engineer | Thresholds defined in code: triage 75%, generator locator 85%/POM 80%/test 80%/import 80%, healer 75%, regression 2% | Hard-coded in `eval_runner.py`. No UI for PMs to adjust thresholds without code changes |
+| **Tweak simpler tasks (prompts)** | PM + SME | Edit TRIAGE.md, HEALER.md, PLANNER.md, GENERATOR.md in markdown. Re-run evals to see impact | No prompt playground. PMs would need to edit markdown files and use CLI/dashboard to run evals |
+| **Tweak advanced tasks (tool calls)** | AI Engineer | Modify agent nodes (triage.py, healer.py), confidence patterns, guardrails. Re-run evals | Code changes only — requires engineering. No visual tool call editor |
+| **Develop scorers** | AI Engineer + Data Analyst | Custom scorers in `qa_agent/eval/run_eval.py`: `score_ac_coverage`, `score_triage_accuracy`, `score_locator_quality`, etc. | Python only. No LLM-as-judge. No visual scorer builder |
+| **Analyze results** | Data Analyst + AI Engineer | Dashboard shows scores + cumulative tokens/cost. Eval reports in JSON. Retrospective Agent (spec'd) for pattern analysis | Spec'd but not built — EVAL_OBSERVABILITY adds heat map tables, experiment comparison, trace viewer |
+
+### Key Insight: We're a One-Person Team Operating as Four Roles
+
+Braintrust assumes 4 distinct roles. In our system, one person (you) performs all four:
+
+| Role | What You Do |
+|------|-------------|
+| **AI Engineer** | Build agents, design prompts, create golden scenarios, fix failing evals |
+| **Product Manager** | Decide what to test, set quality thresholds, prioritize which domains matter |
+| **Subject Matter Expert** | Know CampingWorld's site behavior, identify flaky vs real failures |
+| **Data Analyst** | Review eval scores, track cost trends, identify regressions |
+
+This is why our dashboard consolidates everything into one view — you're all four roles simultaneously. Braintrust's multi-role design assumes handoffs between people; our system assumes one person doing everything from the same screen.
+
+### What This Means for Our Architecture
+
+1. **The dashboard IS our eval platform** — not a separate tool. Test runner + eval runner + health scoring + agent cards all in one place
+2. **Prompt editing should be on the dashboard** — not in a separate IDE. A PM-accessible prompt editor would let you tweak and test without switching contexts
+3. **Golden scenario creation should be one-click** — when a triage report shows an interesting failure, a "Save as Golden Scenario" button on the dashboard would eliminate manual JSON editing
+4. **Threshold adjustment should be in the UI** — currently hard-coded. A settings panel for "triage threshold: 75%" would let the PM role adjust without code changes
