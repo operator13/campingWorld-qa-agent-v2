@@ -565,6 +565,18 @@ Every phase has dedicated tests that validate real behavior — not just "does i
 | `test_trace_file_is_valid_json` | Every trace file must parse as valid JSON. Corrupt files fail loudly, not silently | A corrupt trace file that silently fails wastes debugging time |
 | `test_trace_includes_model_name` | Verify the trace records which model was used (`claude-sonnet-4-6` vs `claude-opus-4-6`) | When comparing experiments across model changes, you need to know which model produced each result |
 | `test_traces_for_failed_scenarios_include_error` | For scenarios where the LLM call throws an exception, verify the trace captures the error message, not just an empty response | The most important traces to inspect are the failures — if they have no error context, debugging is blind |
+| `test_concurrent_traces_no_cross_contamination` | Run 5 triage scenarios concurrently. Verify each trace contains ONLY its own LLM call data — Scenario A's tokens must not appear in Scenario B's trace. Compare each trace's `input_prompt` against its scenario's error message to confirm they match | [PM#1, PM#15] The entire tracer is worthless if concurrent scenarios bleed into each other. This is the most critical test |
+| `test_concurrent_traces_each_have_own_token_count` | Run 5 scenarios concurrently. Sum all 5 traces' `input_tokens` — must equal the run-level total. Each individual trace must have `input_tokens > 0` (not 0 from a stolen consume) | [PM#2] If concurrent traces show 0 tokens for some scenarios, per-scenario cost tracking is broken |
+| `test_trace_includes_system_prompt` | Verify the trace's `input_prompt` contains the TRIAGE.md system prompt content (check for key phrases like "locator_drift", "app_defect", "confidence scoring"), not just the human message | [PM#5] Without the system prompt, you can't debug classification logic changes. This was the #1 complaint about the old audit trail |
+| `test_trace_captures_cache_token_breakdown` | Verify the trace includes `cache_read_input_tokens` and `cache_creation_input_tokens` fields from `response.usage_metadata`, not just `input_tokens` | [PM#10] Anthropic's prompt caching prices cached tokens at 10% — without this breakdown, per-scenario costs are overstated by up to 90% |
+| `test_trace_captures_prompt_before_timeout` | Mock an LLM call that times out after recording the prompt but before returning a response. Verify the trace has the full `input_prompt` but `output_response` is null with `error: "TimeoutError"` | [PM#9] Timeout scenarios are the hardest to debug — if the trace has no prompt data, you can't see what was sent |
+| `test_trace_captures_pre_call_error` | Mock a scenario where `MemoryStore()` throws an exception before the LLM call. Verify the trace has `error: "MemoryError: ..."`, `input_prompt: null`, `output_response: null` — not an empty trace file | [PM#9] Pre-call errors are different from LLM errors — the trace must distinguish them |
+| `test_trace_captures_post_call_parse_error` | Mock a scenario where the LLM returns unparseable JSON. Verify the trace has the full `input_prompt`, the raw `output_response` (the bad JSON), and `error: "JSONDecodeError: ..."` | [PM#9] Parse errors mean the LLM responded but we couldn't extract the answer — the raw response is the clue |
+| `test_trace_sanitizes_pii` | Create a scenario with a DOM snapshot containing an email address (test@example.com). Verify the stored trace has the email redacted or removed by `sanitizer.py` | [PM#12] Traces contain full prompts with DOM data — PII must be stripped before writing to disk |
+| `test_trace_not_in_git` | Run an eval, verify `qa_agent/eval/traces/` is in `.gitignore`. Run `git status` and confirm no trace files appear as untracked | [PM#3] If traces accidentally get committed, 800KB per run bloats the repo permanently |
+| `test_trace_retention_cleanup` | Create 25 fake trace runs for triage. Call the cleanup function. Verify only the 20 most recent remain — 5 oldest deleted | [PM#11] Without cleanup, traces accumulate indefinitely. After 3 months = 500MB on disk |
+| `test_healer_trace_has_purpose_field` | Run a healer eval scenario. Verify each LLM call in the trace has a `purpose` field ("locator_fix" or "timing_fix") | [PM#8] Generator/healer make multiple calls per scenario — without `purpose`, you can't tell which call produced which artifact |
+| `test_partial_run_trace_marked_incomplete` | Start an eval, cancel after 10/35 scenarios. Verify the trace metadata has `"complete": false, "scenarios_expected": 35, "scenarios_completed": 10` | [PM#18] Partial traces without metadata look like full runs with missing scenarios — confuses the comparison engine |
 
 ### Phase EO2 Tests — Experiment Comparison Engine
 
@@ -582,6 +594,10 @@ Every phase has dedicated tests that validate real behavior — not just "does i
 | `test_compare_different_agents` | Comparing triage Run A vs planner Run B returns an error or empty diff (different agents can't be compared) | Preventing nonsensical comparisons that would confuse users |
 | `test_compare_identical_runs` | Comparing a run against itself returns zero regressions, zero improvements, all stable | Edge case — should produce a clean "no changes" result |
 | `test_output_as_json_and_markdown` | Comparison produces both JSON (machine-readable) and markdown (human-readable) output | JSON feeds the dashboard API, markdown goes in reports |
+| `test_generator_comparison_diffs_sub_metrics` | Compare two generator runs where `locator_quality` regressed but `pom_validity` improved. Verify comparison shows BOTH changes, not just the composite score delta | [PM#13] Generic diffs hide sub-metric regressions. A composite "improvement" could mask a locator quality drop |
+| `test_healer_comparison_shows_fix_type_changes` | Compare two healer runs where a scenario changed from locator fix to timing fix. Verify comparison shows the fix type change | [PM#13] Different fix types have different implications — switching from locator to timing fix needs visibility |
+| `test_compare_rejects_partial_runs` | Attempt to compare a partial run (10/35 scenarios) against a full run. Without `--force`, returns error "Cannot compare partial run" | [PM#18] Comparing partial runs produces misleading diffs — 25 scenarios show as "removed" when they just didn't run |
+| `test_scenario_rename_fuzzy_match` | Run A has scenario "flake_scroll_timeout", Run B renamed it to "flake_scroll_into_view_timeout". Comparison matches them as the same scenario via fuzzy match, not as removed+new | [PM#6] Scenario renames are common during golden dataset maintenance — shouldn't trigger false regression alerts |
 
 ### Phase EO3 Tests — Dashboard Experiment History API
 
@@ -595,6 +611,8 @@ Every phase has dedicated tests that validate real behavior — not just "does i
 | `test_compare_endpoint_returns_diff` | `POST /api/eval/compare` with two run IDs returns the comparison JSON from Phase EO2 | The dashboard needs an API to drive the comparison view |
 | `test_compare_endpoint_rejects_invalid_ids` | Comparing non-existent run IDs returns 404, not a crash | Bad input shouldn't crash the server |
 | `test_experiments_include_scenario_count` | Each experiment entry shows how many scenarios passed/failed/total | "85.7% on 35 scenarios" is more meaningful than just "85.7%" |
+| `test_experiments_endpoint_cached` | Call `GET /api/eval/experiments` twice within 1 second. Second call returns in < 50ms (cached). Add a new scorecard file, call again — returns updated list (cache invalidated) | [PM#16] Scanning 500+ files on every request makes the dashboard sluggish |
+| `test_experiments_paginated` | Request `?page=1&limit=10` returns 10 results. Request `?page=2&limit=10` returns next 10. Total count header included | [PM#16] Without pagination, 1000 experiments loads all at once — slow and memory-heavy |
 
 ### Phase EO4 Tests — Trace Viewer API
 
@@ -608,6 +626,7 @@ Every phase has dedicated tests that validate real behavior — not just "does i
 | `test_trace_response_includes_raw_and_parsed` | The trace includes both the raw LLM response string and the parsed structured output (failure_class, confidence) | Raw response shows what the LLM said; parsed shows what we extracted. Mismatches between them reveal parser bugs |
 | `test_side_by_side_trace_comparison` | Request traces for the same scenario from two different runs. Both return successfully and can be displayed side-by-side | The most powerful debugging view — see exactly what changed in the prompt/response between two runs |
 | `test_trace_includes_memory_context` | If the agent injected memory context (calibration, similar failures, stability data) into the prompt, the trace captures it | Memory injection is invisible during eval — traces make it visible, so you can see if bad memory caused a misclassification |
+| `test_trace_endpoint_localhost_only` | Attempt to access `/api/eval/trace/` from a non-localhost origin (or verify the endpoint checks `request.client.host`). Should reject or warn | [PM#19] Traces contain full prompts — shouldn't be accessible from the network |
 
 ---
 
@@ -620,5 +639,6 @@ Every phase has dedicated tests that validate real behavior — not just "does i
 5. Trace viewer shows full prompt/response for debugging misclassifications
 6. Zero external dependencies (Option B)
 7. Works with existing EVAL ALL button and event-driven updates
-8. All Phase EO1-EO4 tests pass (32 tests covering trace capture, comparison, API, and viewer)
+8. All Phase EO1-EO4 tests pass (50 tests: 22 tracer, 14 comparison, 8 API, 7 trace viewer)
 9. No test is trivial — every test validates behavior that would cause real debugging pain if broken
+10. All 19 pre-mortem issues covered by at least one test (marked with [PM#N])
