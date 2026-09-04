@@ -450,43 +450,60 @@ An interactive data table showing every scenario in an eval run — inspired by 
 
 ## Build Phases (Option B — In-House)
 
-### Phase EO1 — Per-Scenario Tracing (~0.5 day)
+> Pre-mortem findings from [PRE_MORTEM_EVAL_OBSERVABILITY.md](PRE_MORTEM_EVAL_OBSERVABILITY.md) are integrated into each phase below. Each task that addresses a pre-mortem issue is marked with `[PM#N]`.
 
-| # | Task |
-|---|------|
-| 1 | Create `qa_agent/eval/tracer.py` — capture LLM input/output/tokens/latency per call |
-| 2 | Hook tracer into `AuditStore.record_llm_call()` to capture full prompt/response |
-| 3 | Store traces in `qa_agent/eval/traces/{agent}/{run_id}.json` |
-| 4 | Each trace includes: scenario name, model, input prompt, output response, tokens, latency, cost |
-| 5 | Run eval suite — verify traces are captured for all 68 scenarios |
+### Phase EO1 — Per-Scenario Tracing (~1 day)
+
+**Critical architectural decision:** Do NOT hook into `AuditStore._current_node_llm_calls` — it's class-level shared state that cross-contaminates across concurrent scenarios. Build an independent per-scenario capture mechanism.
+
+| # | Task | Pre-Mortem |
+|---|------|-----------|
+| 1 | Create `qa_agent/eval/tracer.py` using `contextvars.ContextVar` for per-asyncio-task trace isolation — each concurrent scenario gets its own trace buffer | [PM#1, PM#15] |
+| 2 | Capture tokens directly from `response.usage_metadata` (including `cache_read_input_tokens` and `cache_creation_input_tokens` for accurate cost) — never rely on AuditStore's shared accumulators | [PM#2, PM#10] |
+| 3 | Capture the FULL message list (SystemMessage + HumanMessage) in each trace, not just the human message — system prompt changes are often the cause of regressions | [PM#5] |
+| 4 | Capture the prompt BEFORE making the LLM call, so timeout/error scenarios still have the input recorded. Record exception message + stack trace for failed calls. Differentiate: pre-call error, call timeout, post-call parse error | [PM#9] |
+| 5 | Bypass the `AUDIT_RAW` environment gate — the tracer captures prompts/responses independently via its own path, not through `_consume_at3_context()` | [PM#4] |
+| 6 | Add `qa_agent/eval/traces/` to `.gitignore` — NEVER git-track trace files. Implement retention policy: keep last 20 runs per agent, auto-delete older traces | [PM#3, PM#11] |
+| 7 | Sanitize trace data before storing — run prompts through `sanitizer.py` to strip PII from DOM snapshots and error messages. Trace files are unencrypted on disk | [PM#12] |
+| 8 | Store traces in `qa_agent/eval/traces/{agent}/{run_id}.json` with per-call `purpose` field for multi-call agents (generator: "pom_generation", "test_generation"; healer: "locator_fix", "timing_fix") | [PM#8] |
+| 9 | Use `asyncio.Lock` around progress counter increments to prevent duplicate progress numbers on dashboard | [PM#14] |
+| 10 | Handle interrupted evals: write traces in batch after all scenarios complete, OR mark partial runs with `"complete": false, "scenarios_expected": N, "scenarios_completed": M` metadata | [PM#18] |
+| 11 | Each trace includes: scenario name, agent, run_id, model, full input prompt (system + human), full output response (raw + parsed), input_tokens, output_tokens, cache_read_tokens, latency_ms, cost_usd, purpose, error (if any) | — |
+| 12 | Run full eval suite — verify traces captured for all 68 scenarios with no cross-contamination between concurrent scenarios | — |
 
 ### Phase EO2 — Experiment Comparison Engine (~0.5 day)
 
-| # | Task |
-|---|------|
-| 1 | Create `qa_agent/eval/experiment_compare.py` — diff two eval scorecards |
-| 2 | Identify: regressions (pass→fail), improvements (fail→pass), stable |
-| 3 | For changed scenarios, show before/after classification + confidence |
-| 4 | CLI command: `qa-agent eval compare {run-a} {run-b}` |
-| 5 | Output as markdown table + JSON |
+| # | Task | Pre-Mortem |
+|---|------|-----------|
+| 1 | Create `qa_agent/eval/experiment_compare.py` — diff two eval scorecards | — |
+| 2 | Identify: regressions (pass→fail), improvements (fail→pass), stable, new (added scenario), removed (deleted scenario) | [PM#6] |
+| 3 | Use stable scenario IDs (not just names) for matching. Warn when comparing runs with different scenario counts. Handle renames gracefully — fuzzy match on scenario name similarity | [PM#6] |
+| 4 | Implement per-agent comparison strategies — triage: per-scenario class + confidence diff; generator: per-sub-metric diff (locator/POM/test/import); healer: per-scenario fix + per-metric diff. Don't use a single generic diff that misses sub-metric regressions | [PM#13] |
+| 5 | For changed scenarios, show before/after: classification, confidence, confidence delta, token count, latency, cost | — |
+| 6 | CLI command: `qa-agent eval compare {run-a} {run-b}` | — |
+| 7 | Output as markdown table + JSON | — |
+| 8 | Refuse to compare partial runs (incomplete traces) unless `--force` flag is passed | [PM#18] |
 
 ### Phase EO3 — Dashboard Experiment History (~0.5 day)
 
-| # | Task |
-|---|------|
-| 1 | `GET /api/eval/experiments` — list all eval runs with scores and deltas |
-| 2 | Experiment history table on dashboard (sortable, per-agent filter) |
-| 3 | Select two runs → click COMPARE → show diff view |
-| 4 | Highlight regressions in red, improvements in green |
+| # | Task | Pre-Mortem |
+|---|------|-----------|
+| 1 | `GET /api/eval/experiments` — list eval runs with scores, deltas, scenario counts. Cache results in memory with file-watcher invalidation. Add pagination (`?page=1&limit=20`) | [PM#16] |
+| 2 | Experiment history table on dashboard (sortable, per-agent filter) | — |
+| 3 | Select two runs → click COMPARE → show diff view with per-agent column templates (triage columns differ from generator columns) | [PM#17] |
+| 4 | Highlight regressions in red, improvements in green. Filter: All / Regressions only / Improvements only / Changed only | — |
+| 5 | LangSmith-style results table: per-scenario rows with heat map coloring (green→amber→red gradient), sortable columns, 3 view modes (Compact/Full/Diff) | — |
+| 6 | Mobile: Compact mode only, horizontal scroll with fixed scenario column, disable `backdrop-filter` for performance. Paginate to 10 rows. Test on real iPhone hardware | [PM#7] |
 
 ### Phase EO4 — Dashboard Trace Viewer (~0.5 day)
 
-| # | Task |
-|---|------|
-| 1 | `GET /api/eval/trace/{run_id}/{scenario}` — serve trace JSON |
-| 2 | Trace viewer panel: input prompt, output response, tokens, latency |
-| 3 | Click "View Trace" from comparison view or experiment history |
-| 4 | Side-by-side trace comparison for two runs of the same scenario |
+| # | Task | Pre-Mortem |
+|---|------|-----------|
+| 1 | `GET /api/eval/trace/{run_id}/{scenario}` — serve trace JSON. Bind to localhost only for security | [PM#19] |
+| 2 | Trace viewer panel: full system prompt + human message, full output response (raw + parsed), tokens (with cache breakdown), latency, cost, model, purpose | [PM#5] |
+| 3 | For error scenarios: show the captured prompt (recorded before the call), exception type, error message, stack trace | [PM#9] |
+| 4 | Click "View Trace" from comparison view or experiment history | — |
+| 5 | Side-by-side trace comparison for two runs of the same scenario — highlight prompt differences | — |
 
 ### Phase EO5 — LangSmith Integration (Future — if needed)
 
@@ -497,6 +514,34 @@ An interactive data table showing every scenario in an eval run — inspired by 
 | 3 | Upload golden datasets to LangSmith |
 | 4 | Run experiments through LangSmith evaluate() |
 | 5 | Link LangSmith traces from our dashboard |
+
+---
+
+## Pre-Mortem Coverage Summary
+
+All 19 pre-mortem issues from [PRE_MORTEM_EVAL_OBSERVABILITY.md](PRE_MORTEM_EVAL_OBSERVABILITY.md) are addressed in the build phases above:
+
+| Issue | Severity | Addressed In |
+|-------|----------|-------------|
+| #1 Concurrent trace cross-contamination | HIGH | EO1 task 1 — `contextvars.ContextVar` |
+| #2 No per-scenario token accumulators | HIGH | EO1 task 2 — capture from `response.usage_metadata` |
+| #3 Git repo bloat | HIGH | EO1 task 6 — `.gitignore` + retention policy |
+| #4 AUDIT_RAW blocks capture | HIGH | EO1 task 5 — independent capture path |
+| #5 Missing system prompt | MEDIUM | EO1 task 3, EO4 task 2 — full message list |
+| #6 Scenario rename breaks comparison | MEDIUM | EO2 tasks 2-3 — stable IDs + fuzzy match |
+| #7 Mobile table performance | MEDIUM | EO3 task 6 — compact mode, pagination, no backdrop-filter |
+| #8 Multi-agent trace format | MEDIUM | EO1 task 8 — `purpose` field per call |
+| #9 Empty traces for errors | MEDIUM | EO1 task 4, EO4 task 3 — capture before call |
+| #10 Cost inaccuracy with caching | MEDIUM | EO1 task 2 — cache token breakdown |
+| #11 No trace cleanup | MEDIUM | EO1 task 6 — retention policy (last 20 runs) |
+| #12 Privacy in traces | MEDIUM | EO1 task 7 — sanitize via `sanitizer.py` |
+| #13 Scorecard structure variance | MEDIUM | EO2 task 4 — per-agent comparison strategies |
+| #14 Progress counter race | LOW | EO1 task 9 — `asyncio.Lock` |
+| #15 _consume_llm_calls conflict | HIGH | EO1 task 1 — independent capture, never use shared state |
+| #16 No API pagination | LOW | EO3 task 1 — cache + pagination |
+| #17 Asymmetric diff columns | LOW | EO3 task 3 — per-agent column templates |
+| #18 Orphaned partial traces | LOW | EO1 task 10, EO2 task 8 — batch write or mark partial |
+| #19 No auth on trace API | LOW | EO4 task 1 — localhost binding |
 
 ---
 
