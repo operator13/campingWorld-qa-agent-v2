@@ -374,6 +374,72 @@ Click "View Trace" to see the full LLM call:
 
 ---
 
+## Test Plan (Option B)
+
+Every phase has dedicated tests that validate real behavior — not just "does it import" but "does it produce correct, useful output."
+
+### Phase EO1 Tests — Per-Scenario Tracing
+
+**File:** `tests/test_eval_tracer.py`
+
+| Test | What It Validates | Why It Matters |
+|------|------------------|----------------|
+| `test_trace_captures_full_prompt` | After running a single triage scenario through the tracer, verify the trace JSON contains the complete input prompt (system prompt + human message) — not truncated, not empty | A truncated prompt is useless for debugging. If someone inspects why triage misclassified, they need the full prompt |
+| `test_trace_captures_full_response` | Verify the trace contains the complete LLM response including `failure_class`, `confidence`, and `reasoning` — parsed from the raw response | Without the full response, you can't see what the LLM actually said vs what the parser extracted |
+| `test_trace_records_accurate_token_count` | Compare trace's recorded `input_tokens` and `output_tokens` against `response.usage_metadata`. Must match exactly, not be 0 | Token counts drive cost calculation. If traces show 0 tokens, the cost data is worthless |
+| `test_trace_records_latency` | Verify `latency_ms` is > 0 and < 60000 (reasonable range). Compare against wall-clock time of the LLM call ± 100ms | Latency is critical for identifying slow scenarios. A latency of 0 or -1 means the timer is broken |
+| `test_trace_records_cost` | Verify `cost_usd` matches `estimate_cost(model, input_tokens, output_tokens)` from `config.py` | Cost must be calculated from real token counts with correct model pricing, not hardcoded |
+| `test_trace_links_to_scenario` | Verify each trace contains `scenario_name`, `agent`, `run_id` and that `scenario_name` matches a real golden scenario | Unlinked traces are useless — you need to know which scenario produced which trace |
+| `test_traces_written_for_all_scenarios` | Run full triage eval (35 scenarios), verify exactly 35 trace files exist with no duplicates and no missing | If only 30/35 scenarios have traces, 5 failures are invisible |
+| `test_trace_file_is_valid_json` | Every trace file must parse as valid JSON. Corrupt files fail loudly, not silently | A corrupt trace file that silently fails wastes debugging time |
+| `test_trace_includes_model_name` | Verify the trace records which model was used (`claude-sonnet-4-6` vs `claude-opus-4-6`) | When comparing experiments across model changes, you need to know which model produced each result |
+| `test_traces_for_failed_scenarios_include_error` | For scenarios where the LLM call throws an exception, verify the trace captures the error message, not just an empty response | The most important traces to inspect are the failures — if they have no error context, debugging is blind |
+
+### Phase EO2 Tests — Experiment Comparison Engine
+
+**File:** `tests/test_experiment_compare.py`
+
+| Test | What It Validates | Why It Matters |
+|------|------------------|----------------|
+| `test_identifies_regression` | Given Run A (scenario X passes) and Run B (scenario X fails), comparison reports scenario X as a regression with before/after details | The entire point of comparison — catch when a change breaks something |
+| `test_identifies_improvement` | Given Run A (scenario Y fails) and Run B (scenario Y passes), comparison reports scenario Y as an improvement | Improvements should be celebrated and tracked, not just regressions |
+| `test_identifies_stable_scenarios` | Given Run A and Run B where scenario Z passes in both, comparison reports it as stable with no change | Stable scenarios shouldn't clutter the diff — only show what changed |
+| `test_handles_new_scenarios_in_run_b` | Run B has 5 new scenarios that didn't exist in Run A. Comparison reports them as "new" not "regression" | Adding golden scenarios shouldn't trigger false regression alerts |
+| `test_handles_removed_scenarios_in_run_b` | Run A has scenario W that's missing from Run B. Comparison reports it as "removed" not "improvement" | Removing a scenario isn't a fix — it's a coverage reduction |
+| `test_confidence_delta_shown_for_regressions` | For a regression, comparison shows exact confidence values: "before: 0.85, after: 0.71, Δ: -0.14" | Knowing HOW MUCH worse a scenario got is critical — 0.85→0.84 is noise, 0.85→0.40 is catastrophic |
+| `test_classification_change_shown` | For a regression where `failure_class` changed (e.g., `locator_drift` → `test_flake`), comparison shows both classes | The regression type matters — wrong class vs low confidence are different problems |
+| `test_compare_different_agents` | Comparing triage Run A vs planner Run B returns an error or empty diff (different agents can't be compared) | Preventing nonsensical comparisons that would confuse users |
+| `test_compare_identical_runs` | Comparing a run against itself returns zero regressions, zero improvements, all stable | Edge case — should produce a clean "no changes" result |
+| `test_output_as_json_and_markdown` | Comparison produces both JSON (machine-readable) and markdown (human-readable) output | JSON feeds the dashboard API, markdown goes in reports |
+
+### Phase EO3 Tests — Dashboard Experiment History API
+
+**File:** `tests/test_eval_experiments_api.py`
+
+| Test | What It Validates | Why It Matters |
+|------|------------------|----------------|
+| `test_experiments_endpoint_returns_all_runs` | `GET /api/eval/experiments` returns a list of all eval runs sorted by timestamp descending | Users need to see all runs to pick which ones to compare |
+| `test_each_experiment_has_score_and_delta` | Each experiment entry includes `score`, `previous_score`, `delta`, `agent`, `timestamp`, `passed` | Without delta, you can't see trend at a glance |
+| `test_experiments_filterable_by_agent` | `GET /api/eval/experiments?agent=triage` returns only triage runs | With 4 agents × many runs, filtering is essential |
+| `test_compare_endpoint_returns_diff` | `POST /api/eval/compare` with two run IDs returns the comparison JSON from Phase EO2 | The dashboard needs an API to drive the comparison view |
+| `test_compare_endpoint_rejects_invalid_ids` | Comparing non-existent run IDs returns 404, not a crash | Bad input shouldn't crash the server |
+| `test_experiments_include_scenario_count` | Each experiment entry shows how many scenarios passed/failed/total | "85.7% on 35 scenarios" is more meaningful than just "85.7%" |
+
+### Phase EO4 Tests — Trace Viewer API
+
+**File:** `tests/test_eval_trace_api.py`
+
+| Test | What It Validates | Why It Matters |
+|------|------------------|----------------|
+| `test_trace_endpoint_returns_full_trace` | `GET /api/eval/trace/{run_id}/{scenario}` returns the complete trace JSON with prompt, response, tokens, latency | The trace viewer needs the full data to display |
+| `test_trace_endpoint_404_for_missing` | Request a trace for a non-existent run or scenario returns 404 | Clean error handling, not a crash with stack trace |
+| `test_trace_prompt_not_truncated` | The returned trace's `input_prompt` field is complete — contains the full system prompt + human message, not cut off at 1000 chars | Truncated prompts defeat the purpose of tracing — you need to see what the LLM actually received |
+| `test_trace_response_includes_raw_and_parsed` | The trace includes both the raw LLM response string and the parsed structured output (failure_class, confidence) | Raw response shows what the LLM said; parsed shows what we extracted. Mismatches between them reveal parser bugs |
+| `test_side_by_side_trace_comparison` | Request traces for the same scenario from two different runs. Both return successfully and can be displayed side-by-side | The most powerful debugging view — see exactly what changed in the prompt/response between two runs |
+| `test_trace_includes_memory_context` | If the agent injected memory context (calibration, similar failures, stability data) into the prompt, the trace captures it | Memory injection is invisible during eval — traces make it visible, so you can see if bad memory caused a misclassification |
+
+---
+
 ## Success Criteria
 
 1. Every eval scenario captures full LLM trace (input, output, tokens, latency, cost)
@@ -383,3 +449,5 @@ Click "View Trace" to see the full LLM call:
 5. Trace viewer shows full prompt/response for debugging misclassifications
 6. Zero external dependencies (Option B)
 7. Works with existing EVAL ALL button and event-driven updates
+8. All Phase EO1-EO4 tests pass (32 tests covering trace capture, comparison, API, and viewer)
+9. No test is trivial — every test validates behavior that would cause real debugging pain if broken
