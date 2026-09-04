@@ -115,21 +115,7 @@ After building EVAL_OBSERVABILITY (Option B — in-house), here's the updated ga
 
 Braintrust emphasizes that evals are not just an engineer's job — different roles contribute to different parts of the eval lifecycle:
 
-```
-                    ┌──────────────────────────────────────────┐
-                    │       EVAL ACTIVITIES                     │
-                    ├──────────────────────────────────────────┤
-  AI Engineer ──────┤  Get real world data into eval platform  │
-       │            │  Label sample data                       │
-       ├────────────┤  Develop hypotheses                      │
-       │            │  Decide on success criteria              │
-  Product Manager ──┤  Tweak simpler tasks such as prompts     │
-       │            │  Tweak advanced tasks such as tool calls │
-  Subject Matter ───┤  Develop scorers                         │
-    Experts         │  Analyze results                         │
-       │            └──────────────────────────────────────────┘
-  Data Analysts ────┘
-```
+![Braintrust - Evals are a team sport](braintrust-evals-team-sport.png)
 
 ### How Our System Handles Each Activity
 
