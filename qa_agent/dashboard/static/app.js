@@ -17,12 +17,11 @@
     connectWebSocket();
     initRunnerControls();
     initEvalControls();
-    // ECC Development Agent Evals — render cards, fetch data, sync running state
+    // ECC Development Agent Evals — render cards, sync running state, then fetch data
     renderEccDetectionCards({});
     renderEccGenerativeCards({});
-    fetchEccEvalScores();
     initEccEvalControls();
-    syncEccEvalStatus();
+    syncEccEvalStatus().then(() => fetchEccEvalScores());
     // Replay last test run results for late-joining clients
     _replayLastRun();
   });
@@ -1150,29 +1149,28 @@
   }
 
   function updateEccCompletedCards(scores) {
-    // Only update cards that have completed (not currently showing Running...)
-    const allAgents = ECC_DETECTION_AGENTS.concat(ECC_GENERATIVE_AGENTS);
-    allAgents.forEach(agent => {
-      const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
-      if (!card) return;
-      if (card.classList.contains('eval-running')) return; // skip running cards
-      const d = scores[agent] || {};
-      if (d.score == null) return; // no data yet
-      // Re-render just this card's content
-      const s = d.scores || {};
-      const score = (d.score * 100).toFixed(1);
-      const passed = d.passed;
-      const scoreEl = card.querySelector('.eval-score');
-      const badgeEl = card.querySelector('.eval-badge');
-      if (scoreEl) {
-        scoreEl.textContent = score + '%';
-        scoreEl.className = 'eval-score ' + (passed ? 'score-pass' : 'score-fail');
-      }
-      if (badgeEl) {
-        badgeEl.textContent = passed ? 'PASS' : 'FAIL';
-        badgeEl.className = 'eval-badge ' + (passed ? 'badge-pass' : 'badge-fail');
-      }
+    // Full re-render for non-running cards, skip running ones
+    const runningAgents = new Set();
+    document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
+      if (card.dataset.agent) runningAgents.add(card.dataset.agent);
     });
+
+    // Re-render detection cards that aren't running
+    const detGrid = document.getElementById('ecc-detection-grid');
+    if (detGrid) {
+      const detScores = {};
+      ECC_DETECTION_AGENTS.forEach(a => { detScores[a] = scores[a]; });
+      // Only re-render if no detection agents are running
+      const detRunning = ECC_DETECTION_AGENTS.some(a => runningAgents.has(a));
+      if (!detRunning) renderEccDetectionCards(scores);
+    }
+
+    // Re-render generative cards that aren't running
+    const genGrid = document.getElementById('ecc-generative-grid');
+    if (genGrid) {
+      const genRunning = ECC_GENERATIVE_AGENTS.some(a => runningAgents.has(a));
+      if (!genRunning) renderEccGenerativeCards(scores);
+    }
   }
 
   function fmtPct(v) { return v != null ? (v * 100).toFixed(1) + '%' : '--'; }
