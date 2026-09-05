@@ -1127,21 +1127,52 @@
     'e2e-runner', 'refactor-cleaner',
   ];
 
+  let _eccEvalRunning = false;
+
   async function fetchEccEvalScores() {
     try {
       const res = await fetch('/api/eval/ecc/scores');
       if (!res.ok) {
-        renderEccDetectionCards({});
-        renderEccGenerativeCards({});
+        if (!_eccEvalRunning) { renderEccDetectionCards({}); renderEccGenerativeCards({}); }
         return;
       }
       const data = await res.json();
-      renderEccDetectionCards(data);
-      renderEccGenerativeCards(data);
+      if (_eccEvalRunning) {
+        // Update only completed cards — don't touch running ones
+        updateEccCompletedCards(data);
+      } else {
+        renderEccDetectionCards(data);
+        renderEccGenerativeCards(data);
+      }
     } catch (err) {
-      renderEccDetectionCards({});
-      renderEccGenerativeCards({});
+      if (!_eccEvalRunning) { renderEccDetectionCards({}); renderEccGenerativeCards({}); }
     }
+  }
+
+  function updateEccCompletedCards(scores) {
+    // Only update cards that have completed (not currently showing Running...)
+    const allAgents = ECC_DETECTION_AGENTS.concat(ECC_GENERATIVE_AGENTS);
+    allAgents.forEach(agent => {
+      const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+      if (!card) return;
+      if (card.classList.contains('eval-running')) return; // skip running cards
+      const d = scores[agent] || {};
+      if (d.score == null) return; // no data yet
+      // Re-render just this card's content
+      const s = d.scores || {};
+      const score = (d.score * 100).toFixed(1);
+      const passed = d.passed;
+      const scoreEl = card.querySelector('.eval-score');
+      const badgeEl = card.querySelector('.eval-badge');
+      if (scoreEl) {
+        scoreEl.textContent = score + '%';
+        scoreEl.className = 'eval-score ' + (passed ? 'score-pass' : 'score-fail');
+      }
+      if (badgeEl) {
+        badgeEl.textContent = passed ? 'PASS' : 'FAIL';
+        badgeEl.className = 'eval-badge ' + (passed ? 'badge-pass' : 'badge-fail');
+      }
+    });
   }
 
   function fmtPct(v) { return v != null ? (v * 100).toFixed(1) + '%' : '--'; }
@@ -1228,6 +1259,7 @@
       if (!res.ok) return;
       const status = await res.json();
       if (status.state === 'running') {
+        _eccEvalRunning = true;
         setEccEvalRunning();
         const completed = new Set(status.completed || []);
         const allAgents = ECC_DETECTION_AGENTS.concat(ECC_GENERATIVE_AGENTS);
@@ -1289,8 +1321,10 @@
   // Add ECC eval WebSocket event handlers
   function handleEccEvalEvent(data) {
     if (data.event === 'ecc_eval:start') {
+      _eccEvalRunning = true;
       setEccEvalRunning();
     } else if (data.event === 'ecc_eval:agent:start') {
+      _eccEvalRunning = true;
       setEccEvalRunning();
       if (data.agent) setEvalCardRunning(data.agent);
     } else if (data.event === 'ecc_eval:log') {
@@ -1303,6 +1337,7 @@
       if (data.agent) setEvalCardComplete(data.agent);
       fetchEccEvalScores();
     } else if (data.event === 'ecc_eval:complete') {
+      _eccEvalRunning = false;
       setEccEvalIdle(data.completed + '/' + data.total + ' COMPLETE');
       // Restore any cards still stuck in running state
       document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
