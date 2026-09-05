@@ -2,7 +2,7 @@
 
 [![Tests](https://img.shields.io/badge/Playwright-127%20tests%20%C2%B7%2014%20domains-2EAD33?logo=playwright)](https://playwright.dev/)
 [![Health](https://img.shields.io/badge/health%20score-live%20dashboard-00ffc8)](https://github.com)
-[![Agents](https://img.shields.io/badge/agents-4%20evaluated-4f46e5)](https://github.com)
+[![Agents](https://img.shields.io/badge/agents-16%20evaluated-4f46e5)](https://github.com)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-4f46e5?logo=python)](https://langchain-ai.github.io/langgraph/)
 [![Claude](https://img.shields.io/badge/Claude-Opus%20%2B%20Sonnet-d97706?logo=anthropic)](https://anthropic.com/)
 [![Docker](https://img.shields.io/badge/Docker-dashboard-2496ED?logo=docker)](https://docker.com/)
@@ -32,8 +32,9 @@ An **AI-powered QA automation framework** that generates Playwright tests, runs 
 2. **Execute** — Runs 127 tests across 14 domains of campingworld.com
 3. **Score** — Computes weighted health scores per domain with critical path weighting
 4. **Heal** — Triages failures, auto-fixes locator drift AND timing flakes, defers to humans when unsure
-5. **Evaluate** — Benchmarks 4 AI agents against golden datasets with cumulative token/cost tracking
-6. **Monitor** — Live dashboard with event-driven WebSocket push, accessible from desktop and mobile
+5. **Evaluate** — Benchmarks 16 AI agents (4 pipeline + 12 development) against 201 golden scenarios with cumulative token/cost tracking
+6. **Secure** — 9 security vulnerabilities patched across dashboard (path traversal, code injection, auth, XSS, WebSocket relay)
+7. **Monitor** — Live dashboard with event-driven WebSocket push, accessible from desktop and mobile
 
 ---
 
@@ -59,12 +60,27 @@ A real-time cyberpunk-themed dashboard for monitoring and controlling the entire
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘              │
 ├──────────────────────────┼───────────────────────────────────────────┤
 │  TEST RUNNER             │  RUN HISTORY                             │
-│  Workers [1][2][●3][4]   │  2026-08-31 23:02  127  126  1  99.3%  │
-│  Retries [●0][1]         │  2026-08-31 23:02    1    0  1  HEAL   │
-│  Self-Heal [OFF][●ON]    │  2026-08-31 20:55  127  127  0 100.0%  │
+│  Workers [1][2][●3][4]   │  2026-09-05 03:08  127  127  0 100.0%  │
+│  Retries [●0][1]         │  2026-09-05 02:03  127  127  0 100.0%  │
+│  Self-Heal [OFF][●ON]    │  2026-09-04 19:56  127  127  0 100.0%  │
 │  [▶ RUN SELECTED][▶ ALL] │  ← Click any row to view HTML report    │
 │  [CLEAR]                 │                                         │
-└──────────────────────────┴───────────────────────────────────────────┘
+├──────────────────────────┴───────────────────────────────────────────┤
+│  DEVELOPMENT AGENT EVALS                   [▶ EVAL ECC AGENTS]      │
+│  DETECTION AGENTS                                                   │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐              │
+│  │SECURITY- │ │CODE-     │ │SILENT-   │ │PYTHON-   │              │
+│  │REVIEWER  │ │REVIEWER  │ │FAILURE-  │ │REVIEWER  │              │
+│  │100% PASS │ │75%  PASS │ │HUNTER    │ │100% PASS │              │
+│  │Recall 21 │ │Recall 12 │ │100% PASS │ │Recall 10 │              │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘              │
+│  GENERATIVE AGENTS                                                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐│
+│  │PLANNER   │ │TDD-GUIDE │ │BUILD-ERR │ │E2E-      │ │REFACTOR- ││
+│  │(ECC)     │ │79% PASS  │ │97% PASS  │ │RUNNER    │ │CLEANER   ││
+│  │12% FAIL  │ │Quality   │ │Quality   │ │97% PASS  │ │100% PASS ││
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘│
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Dashboard Features
@@ -73,8 +89,10 @@ A real-time cyberpunk-themed dashboard for monitoring and controlling the entire
 |---------|-------------|
 | **Health Gauge** | SVG circular gauge with weighted overall score |
 | **Domain Cards** | 14 cards showing per-domain pass rate, test counts, status |
-| **Agent Eval Cards** | 4 cards with accuracy, cumulative tokens/cost, hover tooltips with agent details |
-| **Eval Runner** | Trigger per-agent or all evals from browser with progress bars (desktop only) |
+| **Pipeline Eval Cards** | 4 cards with accuracy, cumulative tokens/cost, hover tooltips with agent details |
+| **ECC Dev Agent Evals** | 12 cards (7 detection + 5 generative) with recall/precision/FP rate, quality dimensions, tokens/cost, tooltips |
+| **Eval Runner** | Trigger per-agent or all evals from browser with progress bars |
+| **ECC Eval Runner** | Trigger individual or all 12 ECC agent evals with parallel execution and live progress |
 | **Test Runner** | Select domains, configure workers/retries, trigger from browser |
 | **Self-Heal Toggle** | Auto-triage and fix failures after test run completes |
 | **Run History** | Clickable rows open Playwright HTML reports; Self-Heal rows show triage stats |
@@ -120,6 +138,12 @@ open http://<your-local-ip>:8080             # iPhone/iPad on same WiFi
 | `POST` | `/api/tests/clear` | Clear runner state (syncs across devices) |
 | `GET` | `/api/tests/status` | Current runner state |
 | `GET` | `/api/tests/lastrun` | Last run's log for late-joining clients |
+| `GET` | `/api/eval/ecc/scores` | All 12 ECC agent scores + metrics |
+| `GET` | `/api/eval/ecc/scores/{agent}` | Specific ECC agent scorecard |
+| `POST` | `/api/eval/ecc/run` | Trigger ECC evals (per-agent, per-tier, or all) |
+| `GET` | `/api/eval/ecc/status` | Current ECC eval running state |
+| `GET` | `/api/eval/ecc/history/{agent}` | Historical ECC eval data for trends |
+| `POST` | `/api/eval/ecc/broadcast` | CLI-to-dashboard event relay |
 | `GET` | `/report/{run_id}` | Serve Playwright HTML report |
 | `WS` | `/ws/dashboard` | Browser live updates |
 | `WS` | `/ws/tests` | Test output streaming |
@@ -228,17 +252,13 @@ The triage agent uses a **5-criteria confidence rubric** (C1-C5) with anti-infla
 
 ## Agent Evaluation System
 
-4 agents benchmarked against golden datasets with regression detection.
+16 agents benchmarked against 201 golden scenarios with regression detection.
+
+### Pipeline Agent Evals (4 agents, 63 scenarios)
 
 ```bash
-# Run all evals (from CLI)
-qa-agent eval --agent all
-
-# Single agent
-qa-agent eval --agent triage --threshold 0.75
-
-# From the dashboard
-# Click ▶ EVAL ALL or ▶ RUN on individual agent cards
+qa-agent eval --agent all                      # All 4 pipeline agents
+qa-agent eval --agent triage --threshold 0.75  # Single agent
 ```
 
 | Agent | Metrics | Golden Scenarios |
@@ -248,15 +268,51 @@ qa-agent eval --agent triage --threshold 0.75
 | **Generator** | Locator quality, POM validity, test validity | 5+ generation scenarios |
 | **Healer** | Locator fix + timing fix accuracy (60/40 weighted) | 10 locator + 5 timing scenarios |
 
-**Cumulative token/cost tracking** — Dashboard shows total tokens and cost across all eval runs per agent (odometer-style, never decreases).
+### ECC Development Agent Evals (12 agents, 138 scenarios)
 
-**Parallel execution** — EVAL ALL runs all 4 agents as separate subprocesses simultaneously.
+```bash
+qa-agent eval --ecc                            # All 12 ECC agents (parallel)
+qa-agent eval --ecc --agent security-reviewer  # Single agent
+qa-agent eval --ecc --tier detection           # 7 detection agents only
+qa-agent eval --ecc --tier generative          # 5 generative agents only
+qa-agent eval --ecc --dry                      # Validate golden datasets only
+```
 
-**Per-card progress bars** — Each agent card shows live `[X/N]` scenario progress during eval runs.
+**Detection Agents** — scored on recall (did it find planted issues?) with data-driven thresholds from baseline runs:
 
-**Event-driven updates** — Eval completion pushes scores to all connected dashboards instantly via WebSocket.
+| Agent | Recall Threshold | Golden Scenarios | What It Detects |
+|-------|-----------------|-----------------|-----------------|
+| **security-reviewer** | 90% | 20 (15 vulns + 5 clean) | SQL injection, XSS, secrets, path traversal, SSRF |
+| **code-reviewer** | 70% | 15 (10 issues + 5 clean) | Large functions, deep nesting, mutation, dead code |
+| **silent-failure-hunter** | 95% | 15 (12 issues + 3 clean) | Empty catches, lost traces, log-and-forget |
+| **python-reviewer** | 95% | 12 (9 issues + 3 clean) | PEP 8, type hints, eval/pickle, mutable defaults |
+| **typescript-reviewer** | 95% | 12 (9 issues + 3 clean) | any types, missing await, React hooks, eval |
+| **fastapi-reviewer** | 66% | 10 (7 issues + 3 clean) | Sync-in-async, Pydantic misuse, missing middleware |
+| **performance-optimizer** | 81% | 10 (7 issues + 3 clean) | O(n²) loops, memory leaks, N+1 queries |
 
-Reports auto-commit to `qa_agent/eval/reports/{agent}/` with PASS/FAIL/BASELINE status.
+**Generative Agents** — scored by LLM judge (Claude Haiku) on 5 quality dimensions:
+
+| Agent | Quality Threshold | Golden Scenarios | What It Produces |
+|-------|------------------|-----------------|-----------------|
+| **planner-ecc** | 70% | 8 scenarios | Implementation plans with phases, risks, file paths |
+| **tdd-guide** | 70% | 8 scenarios | TDD workflow: test-first, AAA pattern, edge cases |
+| **build-error-resolver** | 70% | 10 (8 errors + 2 clean) | Minimal-diff fixes for type/import/config errors |
+| **e2e-runner** | 70% | 8 (6 tasks + 2 clean) | Playwright tests, flaky fixes, locator updates |
+| **refactor-cleaner** | 70% | 10 (7 dead code + 3 live) | Dead code detection, duplicate consolidation |
+
+Quality dimensions: Completeness, Actionability, Correctness, Risk Awareness, Convention Adherence.
+
+### Eval Infrastructure
+
+- **Parallel execution** — All agents run concurrently via `asyncio.gather`
+- **Per-card progress bars** — Live `[X/N]` scenario progress during eval runs
+- **CLI-to-dashboard sync** — CLI evals broadcast progress to dashboard via `/api/eval/ecc/broadcast`
+- **Persistent running state** — Dashboard shows eval progress even after page refresh
+- **Cumulative token/cost tracking** — Odometer-style per-agent totals
+- **Anti-overfitting safeguards** — File backfill tracked separately from extractor recall
+- **Data-driven thresholds** — Set from 3-run baselines using worst - 5% formula
+
+Reports: `qa_agent/eval/reports/{agent}/` (pipeline) and `qa_agent/eval/ecc/reports/{agent}/` (ECC).
 
 ---
 
@@ -306,7 +362,7 @@ Storage: `memory/AUDIT_TRAIL.md` (human-readable) + `memory/audit_runs/*.json` (
 | **Containerization** | Docker + docker-compose |
 | **Generated Tests** | TypeScript `@playwright/test` with POM |
 | **Memory** | Git-tracked markdown (14 files, zero databases) |
-| **Eval** | Custom harness with golden datasets + parallel execution |
+| **Eval** | Custom harness: 16 agents, 201 golden scenarios, LLM judge, parallel execution |
 | **Audit** | Dual-format (Markdown + JSON) with token tracking |
 
 ---
@@ -398,7 +454,9 @@ qa-agent run --source figma:FILE/NODE          # From Figma design
 # Testing
 qa-agent health                                # Show latest health score
 qa-agent triage --results results.json         # Self-heal failures
-qa-agent eval --agent all                      # Benchmark all agents
+qa-agent eval --agent all                      # Benchmark 4 pipeline agents
+qa-agent eval --ecc                            # Benchmark 12 ECC dev agents
+qa-agent eval --ecc --agent security-reviewer  # Single ECC agent
 
 # Dashboard
 qa-agent dashboard                             # Launch web UI
@@ -423,13 +481,16 @@ Build specs for planned features are in `features/`:
 | Healer Flaky Test Fix | **COMPLETE** | [HEALER_FLAKY_TEST_FIX.md](features/HEALER_FLAKY_TEST_FIX.md) |
 | Dashboard Test Runner | **COMPLETE** | [DASHBOARD_TEST_RUNNER.md](features/DASHBOARD_TEST_RUNNER.md) |
 | Dashboard Eval Runner | **COMPLETE** | [DASHBOARD_EVAL_RUNNER.md](features/DASHBOARD_EVAL_RUNNER.md) |
+| Agent Audit Trail | **COMPLETE** | [AGENT_AUDIT_TRAIL.md](features/AGENT_AUDIT_TRAIL.md) |
+| Pipeline Eval Agent | **COMPLETE** | [BUILD_SPEC_EVAL_AGENT.md](features/BUILD_SPEC_EVAL_AGENT.md) |
+| QA Command Center | **COMPLETE** | [QA_COMMAND_CENTER_DASHBOARD.md](features/QA_COMMAND_CENTER_DASHBOARD.md) |
+| ECC Agent Evals (Phase 1-4) | **COMPLETE** | [ECC_AGENT_EVALS.md](features/ECC_AGENT_EVALS.md) |
+| ECC Anti-Overfitting | PLANNED | [ECC_EVAL_ANTI_OVERFITTING.md](features/ECC_EVAL_ANTI_OVERFITTING.md) |
+| Dashboard Security Hardening | **COMPLETE** | 9 vulnerabilities patched (path traversal, code injection, auth, XSS, WebSocket) |
 | Guild.AI Dashboard Alignment | PLANNED | [GUILD_AI_DASHBOARD_ALIGNMENT.md](features/GUILD_AI_DASHBOARD_ALIGNMENT.md) |
 | Human Review Notifications | PLANNED | [HUMAN_REVIEW_NOTIFICATIONS.md](features/HUMAN_REVIEW_NOTIFICATIONS.md) |
 | Retrospective Agent | PLANNED | [RETROSPECTIVE_AGENT.md](features/RETROSPECTIVE_AGENT.md) |
 | ngrok Public Sharing | PLANNED | [NGROK_PUBLIC_SHARING.md](features/NGROK_PUBLIC_SHARING.md) |
-| Agent Audit Trail | **COMPLETE** | [AGENT_AUDIT_TRAIL.md](features/AGENT_AUDIT_TRAIL.md) |
-| Eval Agent | **COMPLETE** | [BUILD_SPEC_EVAL_AGENT.md](features/BUILD_SPEC_EVAL_AGENT.md) |
-| QA Command Center | **COMPLETE** | [QA_COMMAND_CENTER_DASHBOARD.md](features/QA_COMMAND_CENTER_DASHBOARD.md) |
 
 ---
 
@@ -444,9 +505,17 @@ qa-automation-agent/
 │   │   ├── docker-compose.yml      # Docker orchestration
 │   │   └── static/                 # Cyberpunk UI (HTML/JS/CSS)
 │   ├── eval/                       # Agent evaluation system
-│   │   ├── eval_runner.py          # Parallel eval execution
-│   │   ├── golden/                 # Golden datasets (4 agents, 63 scenarios)
-│   │   └── reports/                # Eval results (auto-committed)
+│   │   ├── eval_runner.py          # Pipeline eval execution (4 agents)
+│   │   ├── golden/                 # Pipeline golden datasets (63 scenarios)
+│   │   ├── reports/                # Pipeline eval results
+│   │   └── ecc/                    # ECC development agent evals
+│   │       ├── ecc_eval_runner.py  # Parallel ECC eval orchestrator
+│   │       ├── agent_invoker.py    # Anthropic API agent invocation
+│   │       ├── finding_extractor.py # Agent output → structured findings
+│   │       ├── finding_matcher.py  # Findings → planted issue matching
+│   │       ├── llm_judge.py        # LLM-as-judge for generative agents
+│   │       ├── golden/             # 12 agent golden datasets (138 scenarios)
+│   │       └── reports/            # ECC eval results per agent
 │   ├── nodes/                      # LangGraph agent nodes
 │   │   ├── triage.py               # Failure classification (drift/flake/defect)
 │   │   ├── healer.py               # Locator repair + timing fix
