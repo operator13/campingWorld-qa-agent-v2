@@ -398,9 +398,88 @@ FILE_LINE_PATTERNS = [
 
 ## Dashboard Integration
 
-### New Section: "DEVELOPMENT AGENT EVALS"
+### Full Dashboard Layout
 
-Separate from the existing "AGENT EVALUATION" pipeline section. Two rows of 6 cards each, matching cyberpunk styling.
+The complete dashboard with both pipeline and ECC agent sections:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    QA COMMAND CENTER                                         │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                              │
+│  ┌─────────────────────┐                                                                     │
+│  │    HEALTH GAUGE      │    [14 DOMAIN CARDS - existing]                                    │
+│  │      100.0%          │    Cart | Checkout | Sign-In | Search | Product | Homepage | ...   │
+│  │     HEALTHY          │                                                                    │
+│  └─────────────────────┘                                                                     │
+│                                                                                              │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                              │
+│  PIPELINE AGENT EVALS (existing)                                        [▶ EVAL ALL]         │
+│                                                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                     │
+│  │   TRIAGE      │  │   PLANNER    │  │  GENERATOR   │  │   HEALER     │                     │
+│  │   85.7%       │  │   99.4%      │  │   97.5%      │  │   98.0%      │                     │
+│  │   [PASS]      │  │   [PASS]     │  │   [PASS]     │  │   [PASS]     │                     │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘                     │
+│                                                                                              │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                              │
+│  DEVELOPMENT AGENT EVALS (new)                                     [▶ EVAL ECC AGENTS]       │
+│                                                                                              │
+│  Tier 1: Detection Agents                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                     │
+│  │  SECURITY-    │  │  CODE-       │  │  SILENT-     │  │  PYTHON-     │                     │
+│  │  REVIEWER     │  │  REVIEWER    │  │  FAILURE-    │  │  REVIEWER    │                     │
+│  │  85.0%        │  │  78.0%       │  │  HUNTER      │  │  80.0%       │                     │
+│  │  Recall ██▓   │  │  Recall ███  │  │  82.0%       │  │  Recall ███  │                     │
+│  │  Prec   ████  │  │  Prec   ███  │  │  Recall ███▓ │  │  Prec   ████ │                     │
+│  │  FP     ████  │  │  FP     ████ │  │  Prec   ████ │  │  FP     ███  │                     │
+│  │  [PASS]       │  │  [PASS]      │  │  FP     ████ │  │  [PASS]      │                     │
+│  │  $0.48  20sc  │  │  $0.36  15sc │  │  [PASS]      │  │  $0.29  12sc │                     │
+│  └──────────────┘  └──────────────┘  │  $0.27  15sc │  └──────────────┘                     │
+│                                       └──────────────┘                                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                                       │
+│  │  TYPESCRIPT-  │  │  FASTAPI-    │  │  PERFORMANCE-│                                       │
+│  │  REVIEWER     │  │  REVIEWER    │  │  OPTIMIZER   │                                       │
+│  │  76.0%        │  │  82.0%       │  │  72.0%       │                                       │
+│  │  Recall ███   │  │  Recall ███▓ │  │  Recall ██▓  │                                       │
+│  │  Prec   ████  │  │  Prec   ████ │  │  Prec   ███  │                                       │
+│  │  FP     ████  │  │  FP     ████ │  │  FP     ████ │                                       │
+│  │  [PASS]       │  │  [PASS]      │  │  [PASS]      │                                       │
+│  │  $0.29  12sc  │  │  $0.24  10sc │  │  $0.18  10sc │                                       │
+│  └──────────────┘  └──────────────┘  └──────────────┘                                       │
+│                                                                                              │
+│  Tier 2: Generative Agents                                                                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │  PLANNER      │  │  TDD-        │  │  BUILD-ERROR-│  │  E2E-        │  │  REFACTOR-   │   │
+│  │  (ECC)        │  │  GUIDE       │  │  RESOLVER    │  │  RUNNER      │  │  CLEANER     │   │
+│  │  78.0%        │  │  82.0%       │  │  90.0%       │  │  85.0%       │  │  88.0%       │   │
+│  │  Quality ███▓ │  │  Quality ███▓│  │  Quality ████│  │  Quality ████│  │  Quality ████│   │
+│  │  Compl   ████ │  │  Compl   ████│  │  Compl   ████│  │  Compl   ████│  │  Compl   ████│   │
+│  │  Action  ███  │  │  Action  ███ │  │  Action  ████│  │  Action  ████│  │  Action  ████│   │
+│  │  [PASS]       │  │  [PASS]      │  │  [PASS]      │  │  [PASS]      │  │  [PASS]      │   │
+│  │  $1.80   8sc  │  │  $0.24   8sc │  │  $0.18  10sc │  │  $0.24   8sc │  │  $0.18  10sc │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                                                              │
+│  ┌────────────────────────────────────────────────────────────────┐                          │
+│  │  COST ODOMETER          Total: $4.77  |  Runs: 12  |  ▲ $0.32 │                          │
+│  └────────────────────────────────────────────────────────────────┘                          │
+│                                                                                              │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                              │
+│  TEST RUNNER (existing)                                                                      │
+│  [Domain checkboxes] [Workers] [Retries] [Self-heal] [▶ RUN TESTS]                          │
+│                                                                                              │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                              │
+│  RUN HISTORY (existing)                                                                      │
+│  Timestamp | Total | Passed | Failed | Health | Status                                       │
+│                                                                                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Card Designs
 
 **Detection Agent Card:**
 
