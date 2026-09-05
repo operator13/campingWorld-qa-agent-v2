@@ -1,0 +1,215 @@
+[
+  {
+    "scenario_id": "ts_001_any_type_usage",
+    "agent": "typescript-reviewer",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Functions with any parameters and return types lose type safety",
+    "code_files": {"src/utils.ts": "samples/ts_001.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-001",
+        "category": "type_safety",
+        "severity": "HIGH",
+        "file": "src/utils.ts",
+        "line_range": [3, 27],
+        "description": "Pervasive use of 'any' type defeats TypeScript's type system"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_002_missing_null_checks",
+    "agent": "typescript-reviewer",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Accessing nullable properties without optional chaining",
+    "code_files": {"src/orders.ts": "samples/ts_002.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-002",
+        "category": "null_safety",
+        "severity": "HIGH",
+        "file": "src/orders.ts",
+        "line_range": [10, 25],
+        "description": "Accessing .property on nullable types without ?. causes runtime TypeError"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_003_type_assertions",
+    "agent": "typescript-reviewer",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Unsafe type assertions with 'as any' and double casting",
+    "code_files": {"src/transform.ts": "samples/ts_003.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-003",
+        "category": "type_safety",
+        "severity": "HIGH",
+        "file": "src/transform.ts",
+        "line_range": [9, 29],
+        "description": "Unsafe 'as any' and double-cast assertions bypass type checking"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_004_missing_await",
+    "agent": "typescript-reviewer",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Calling async functions without await",
+    "code_files": {"src/data-service.ts": "samples/ts_004.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-004",
+        "category": "async_correctness",
+        "severity": "HIGH",
+        "file": "src/data-service.ts",
+        "line_range": [20, 35],
+        "description": "Async functions called without await produce Promise objects instead of resolved values"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_005_unhandled_promise",
+    "agent": "typescript-reviewer",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Promise chains without .catch() leave rejections unhandled",
+    "code_files": {"src/notifications.ts": "samples/ts_005.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-005",
+        "category": "error_handling",
+        "severity": "HIGH",
+        "file": "src/notifications.ts",
+        "line_range": [19, 40],
+        "description": ".then() chains without .catch() cause unhandled promise rejections"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_006_missing_deps_array",
+    "agent": "typescript-reviewer",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "useEffect without dependency array causes infinite re-renders",
+    "code_files": {"src/ProductList.tsx": "samples/ts_006.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-006",
+        "category": "react_hooks",
+        "severity": "CRITICAL",
+        "file": "src/ProductList.tsx",
+        "line_range": [16, 24],
+        "description": "useEffect without dependency array runs on every render, causing infinite fetch loops"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_007_stale_closure",
+    "agent": "typescript-reviewer",
+    "difficulty": "hard",
+    "language": "typescript",
+    "description": "useState value captured in stale closure via empty deps",
+    "code_files": {"src/Counter.tsx": "samples/ts_007.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-007",
+        "category": "react_hooks",
+        "severity": "HIGH",
+        "file": "src/Counter.tsx",
+        "line_range": [9, 29],
+        "description": "count captured in closures with empty deps array will always read initial value (stale closure)"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_008_eval_usage",
+    "agent": "typescript-reviewer",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "eval() on user input in Express handlers enables RCE",
+    "code_files": {"src/server.ts": "samples/ts_008.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-008",
+        "category": "security",
+        "severity": "CRITICAL",
+        "file": "src/server.ts",
+        "line_range": [8, 28],
+        "description": "eval() on user-supplied strings allows arbitrary code execution (RCE)"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_009_unvalidated_body",
+    "agent": "typescript-reviewer",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Express handlers use req.body without schema validation",
+    "code_files": {"src/routes.ts": "samples/ts_009.ts"},
+    "planted_issues": [
+      {
+        "issue_id": "TS-009",
+        "category": "security",
+        "severity": "HIGH",
+        "file": "src/routes.ts",
+        "line_range": [7, 34],
+        "description": "Request body destructured without validation allows malformed or malicious data"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_010_clean_generics",
+    "agent": "typescript-reviewer",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Well-typed with generics and proper null handling",
+    "code_files": {"src/collections.ts": "samples/ts_010.ts"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_011_clean_async",
+    "agent": "typescript-reviewer",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Proper async/await with Result type and error handling",
+    "code_files": {"src/api-client.ts": "samples/ts_011.ts"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ts_012_clean_react_hooks",
+    "agent": "typescript-reviewer",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "React component with correct useEffect deps, useMemo, and useCallback",
+    "code_files": {"src/TodoList.tsx": "samples/ts_012.ts"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]

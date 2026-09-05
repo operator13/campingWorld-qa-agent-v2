@@ -6,7 +6,7 @@ The 12 ECC (Everything Claude Code) development agents are used daily for planni
 
 This build spec defines an eval framework for all 12 ECC agents. Unlike the existing 4 pipeline agent evals (triage, planner, generator, healer) which operate on QA pipeline state (`QAState`), ECC agent evals operate on **planted code samples** -- code snippets with known issues where we measure detection rate, false positive rate, and recommendation quality.
 
-**Status:** PLANNED
+**Status:** IN PROGRESS (Phase 1-2 complete, Phase 3 next)
 **Priority:** High
 **Depends on:** Agent Evaluation System (existing), QA Command Center Dashboard
 
@@ -591,33 +591,33 @@ qa-agent eval --ecc --cost-report
 
 ## Implementation Phases
 
-### Phase 1: Foundation + 3 Detection Agents (Week 1-2)
+### Phase 1: Foundation + 3 Detection Agents (Week 1-2) — COMPLETE
 
-| # | Task | File |
-|---|------|------|
-| 1 | Create `qa_agent/eval/ecc/` package structure | `__init__.py` |
-| 2 | Build `agent_invoker.py` -- wraps Claude Code CLI | `agent_invoker.py` |
-| 3 | Build `finding_extractor.py` -- parses agent output | `finding_extractor.py` |
-| 4 | Build `finding_matcher.py` -- matches findings vs manifest | `finding_matcher.py` |
-| 5 | Build `config.py` -- thresholds, budget caps | `config.py` |
-| 6 | Create security-reviewer golden dataset (20 scenarios) | `golden/security-reviewer/` |
-| 7 | Create code-reviewer golden dataset (15 scenarios) | `golden/code-reviewer/` |
-| 8 | Create silent-failure-hunter golden dataset (15 scenarios) | `golden/silent-failure-hunter/` |
-| 9 | Build `ecc_eval_runner.py` -- orchestrator | `ecc_eval_runner.py` |
-| 10 | Add `--ecc` flag to CLI | `qa_agent/cli.py` |
-| 11 | Run baselines for 3 agents | Manual |
-| 12 | Write tests | `tests/test_ecc_eval.py` |
+| # | Task | File | Status |
+|---|------|------|--------|
+| 1 | Create `qa_agent/eval/ecc/` package structure | `__init__.py` | Done |
+| 2 | Build `agent_invoker.py` -- wraps Claude Code CLI | `agent_invoker.py` | Done |
+| 3 | Build `finding_extractor.py` -- parses agent output | `finding_extractor.py` | Done |
+| 4 | Build `finding_matcher.py` -- matches findings vs manifest | `finding_matcher.py` | Done |
+| 5 | Build `config.py` -- thresholds, budget caps | `config.py` | Done |
+| 6 | Create security-reviewer golden dataset (20 scenarios) | `golden/security-reviewer/` | Done |
+| 7 | Create code-reviewer golden dataset (15 scenarios) | `golden/code-reviewer/` | Done |
+| 8 | Create silent-failure-hunter golden dataset (15 scenarios) | `golden/silent-failure-hunter/` | Done |
+| 9 | Build `ecc_eval_runner.py` -- orchestrator | `ecc_eval_runner.py` | Done |
+| 10 | Add `--ecc` flag to CLI | `qa_agent/cli.py` | Done |
+| 11 | Run baselines for 3 agents | Manual | Pending |
+| 12 | Write tests (31 tests, 744 total passing) | `tests/test_ecc_eval.py` | Done |
 
-### Phase 2: Remaining Detection Agents (Week 3)
+### Phase 2: Remaining Detection Agents (Week 3) — COMPLETE
 
-| # | Task |
-|---|------|
-| 1 | Create python-reviewer golden dataset (12 scenarios) |
-| 2 | Create typescript-reviewer golden dataset (12 scenarios) |
-| 3 | Create fastapi-reviewer golden dataset (10 scenarios) |
-| 4 | Create performance-optimizer golden dataset (10 scenarios) |
-| 5 | Run baselines for all 4 new agents |
-| 6 | Tune finding_extractor patterns for agent-specific output formats |
+| # | Task | Status |
+|---|------|--------|
+| 1 | Create python-reviewer golden dataset (12 scenarios) | Done |
+| 2 | Create typescript-reviewer golden dataset (12 scenarios) | Done |
+| 3 | Create fastapi-reviewer golden dataset (10 scenarios) | Done |
+| 4 | Create performance-optimizer golden dataset (10 scenarios) | Done |
+| 5 | Run baselines for all 4 new agents | Pending |
+| 6 | Tune finding_extractor patterns for agent-specific output formats | Pending |
 
 ### Phase 3: Generative Agents + LLM Judge (Week 4)
 

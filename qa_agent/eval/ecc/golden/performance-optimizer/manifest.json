@@ -1,0 +1,175 @@
+[
+  {
+    "scenario_id": "po_001_quadratic_duplicate_check",
+    "agent": "performance-optimizer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "O(n^2) nested loop for finding duplicate SKUs instead of using a set",
+    "code_files": {"utils/catalog.py": "samples/po_001.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PO-001",
+        "category": "algorithmic_complexity",
+        "severity": "HIGH",
+        "file": "utils/catalog.py",
+        "line_range": [6, 11],
+        "description": "O(n^2) nested loop for duplicate detection; should use a set for O(n)"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_002_redundant_sort",
+    "agent": "performance-optimizer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Sorting a list then performing a redundant linear scan or double-sorting",
+    "code_files": {"utils/products.py": "samples/po_002.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PO-002",
+        "category": "redundant_computation",
+        "severity": "MEDIUM",
+        "file": "utils/products.py",
+        "line_range": [7, 27],
+        "description": "get_cheapest_product sorts then linearly searches (use min()); get_top_rated sorts the same key twice"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_003_unnecessary_copies",
+    "agent": "performance-optimizer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Full list copies created inside a loop with no purpose",
+    "code_files": {"utils/discounts.py": "samples/po_003.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PO-003",
+        "category": "unnecessary_allocation",
+        "severity": "MEDIUM",
+        "file": "utils/discounts.py",
+        "line_range": [7, 24],
+        "description": "Full list copies (list(products) and products[:]) created inside loops but never used"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_004_unbounded_list_growth",
+    "agent": "performance-optimizer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Module-level singleton accumulates data without bound, causing memory leak",
+    "code_files": {"services/price_tracker.py": "samples/po_004.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PO-004",
+        "category": "memory_leak",
+        "severity": "HIGH",
+        "file": "services/price_tracker.py",
+        "line_range": [9, 16],
+        "description": "self._history grows without bound in a module-level singleton; no eviction or size cap"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_005_unclosed_file_handles",
+    "agent": "performance-optimizer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "File handles opened with open() but never closed or wrapped in context manager",
+    "code_files": {"utils/io.py": "samples/po_005.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PO-005",
+        "category": "resource_leak",
+        "severity": "HIGH",
+        "file": "utils/io.py",
+        "line_range": [6, 28],
+        "description": "Three functions open files without with-statement or close(), leaking file descriptors"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_006_n_plus_1_sql",
+    "agent": "performance-optimizer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "N+1 query pattern: one SQL query per order to fetch line items",
+    "code_files": {"db/queries.py": "samples/po_006.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PO-006",
+        "category": "n_plus_1_query",
+        "severity": "HIGH",
+        "file": "db/queries.py",
+        "line_range": [14, 22],
+        "description": "Executes one SELECT per order to fetch items; should batch with IN clause or JOIN"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_007_orm_lazy_load_n_plus_1",
+    "agent": "performance-optimizer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Subtle N+1 via ORM lazy-loading: get_category called per product in a loop",
+    "code_files": {"services/reports.py": "samples/po_007.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PO-007",
+        "category": "n_plus_1_query",
+        "severity": "HIGH",
+        "file": "services/reports.py",
+        "line_range": [30, 37],
+        "description": "Lazy-loaded get_category triggers a separate DB round-trip per product; should eager-load or batch"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_008_clean_set_dedup",
+    "agent": "performance-optimizer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Efficient O(n) duplicate detection using sets",
+    "code_files": {"utils/catalog.py": "samples/po_008.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_009_clean_context_managers",
+    "agent": "performance-optimizer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Proper use of context managers for all file operations",
+    "code_files": {"utils/io.py": "samples/po_009.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "po_010_clean_batch_query",
+    "agent": "performance-optimizer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Batch DB query using IN clause instead of N+1 loop",
+    "code_files": {"db/queries.py": "samples/po_010.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]

@@ -1,0 +1,223 @@
+[
+  {
+    "scenario_id": "pr_001_mixed_naming",
+    "agent": "python-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Mixed camelCase and snake_case naming conventions",
+    "code_files": {"app/utils.py": "samples/pr_001.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-001",
+        "category": "naming_convention",
+        "severity": "MEDIUM",
+        "file": "app/utils.py",
+        "line_range": [4, 30],
+        "description": "Mixed camelCase and snake_case naming violates PEP 8"
+      },
+      {
+        "issue_id": "PR-001b",
+        "category": "type_hints",
+        "severity": "MEDIUM",
+        "file": "app/utils.py",
+        "line_range": [11, 27],
+        "description": "Public functions missing type annotations on parameters and return types"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_002_pep8_violations",
+    "agent": "python-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "PEP 8 formatting violations throughout",
+    "code_files": {"app/user_service.py": "samples/pr_002.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-002",
+        "category": "formatting",
+        "severity": "MEDIUM",
+        "file": "app/user_service.py",
+        "line_range": [1, 28],
+        "description": "Missing spaces around operators, no blank lines between methods, missing blank lines after imports"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_003_mutable_default",
+    "agent": "python-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Mutable default arguments in function signatures",
+    "code_files": {"app/cart.py": "samples/pr_003.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-003",
+        "category": "mutable_default",
+        "severity": "HIGH",
+        "file": "app/cart.py",
+        "line_range": [4, 30],
+        "description": "Mutable default arguments (list, dict) shared across calls cause silent state bugs"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_004_bare_except",
+    "agent": "python-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Bare except clauses swallow all exceptions",
+    "code_files": {"app/file_processor.py": "samples/pr_004.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-004",
+        "category": "exception_handling",
+        "severity": "HIGH",
+        "file": "app/file_processor.py",
+        "line_range": [8, 37],
+        "description": "Bare except clauses catch SystemExit, KeyboardInterrupt and hide real errors"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_005_missing_return_hints",
+    "agent": "python-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Public functions missing return type annotations",
+    "code_files": {"app/orders.py": "samples/pr_005.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-005",
+        "category": "type_hints",
+        "severity": "MEDIUM",
+        "file": "app/orders.py",
+        "line_range": [14, 40],
+        "description": "Public functions lack -> return type annotations, reducing IDE support and static analysis"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_006_wrong_generic_types",
+    "agent": "python-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Unparameterized generic types lose type safety",
+    "code_files": {"app/inventory.py": "samples/pr_006.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-006",
+        "category": "type_hints",
+        "severity": "MEDIUM",
+        "file": "app/inventory.py",
+        "line_range": [7, 33],
+        "description": "Using bare list, dict, tuple instead of parameterized generics like list[str], dict[str, int]"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_007_eval_user_input",
+    "agent": "python-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "eval() called on user-supplied input enables arbitrary code execution",
+    "code_files": {"app/calculator.py": "samples/pr_007.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-007",
+        "category": "security",
+        "severity": "CRITICAL",
+        "file": "app/calculator.py",
+        "line_range": [4, 33],
+        "description": "eval() on user input allows arbitrary code execution (RCE vulnerability)"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_008_pickle_untrusted",
+    "agent": "python-reviewer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Pickle deserialization of untrusted data enables arbitrary code execution",
+    "code_files": {"app/cache_service.py": "samples/pr_008.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-008",
+        "category": "security",
+        "severity": "CRITICAL",
+        "file": "app/cache_service.py",
+        "line_range": [10, 35],
+        "description": "pickle.loads/load on untrusted data (cookies, request bodies, uploaded files) enables RCE"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_009_string_concat_loop",
+    "agent": "python-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "String concatenation in loops instead of join",
+    "code_files": {"app/reports.py": "samples/pr_009.py"},
+    "planted_issues": [
+      {
+        "issue_id": "PR-009",
+        "category": "performance",
+        "severity": "MEDIUM",
+        "file": "app/reports.py",
+        "line_range": [4, 32],
+        "description": "Repeated string concatenation with += in loops creates O(n^2) behavior; use str.join()"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_010_clean_dataclasses",
+    "agent": "python-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Well-typed Pythonic code with frozen dataclasses",
+    "code_files": {"app/catalog.py": "samples/pr_010.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_011_clean_exception_handling",
+    "agent": "python-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Proper exception handling with specific types and chaining",
+    "code_files": {"app/config_loader.py": "samples/pr_011.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "pr_012_clean_string_building",
+    "agent": "python-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Efficient string building with join patterns",
+    "code_files": {"app/formatters.py": "samples/pr_012.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]

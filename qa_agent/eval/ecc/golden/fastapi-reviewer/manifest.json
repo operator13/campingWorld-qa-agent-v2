@@ -1,0 +1,175 @@
+[
+  {
+    "scenario_id": "fa_001_sync_db_in_async",
+    "agent": "fastapi-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Synchronous database call inside async FastAPI handler",
+    "code_files": {"api/endpoints.py": "samples/fa_001.py"},
+    "planted_issues": [
+      {
+        "issue_id": "FA-001",
+        "category": "sync_in_async",
+        "severity": "HIGH",
+        "file": "api/endpoints.py",
+        "line_range": [11, 16],
+        "description": "Synchronous sqlite3 call blocks the async event loop"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_002_missing_await",
+    "agent": "fastapi-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Async functions called without await in FastAPI endpoint",
+    "code_files": {"api/orders.py": "samples/fa_002.py"},
+    "planted_issues": [
+      {
+        "issue_id": "FA-002",
+        "category": "missing_await",
+        "severity": "CRITICAL",
+        "file": "api/orders.py",
+        "line_range": [21, 26],
+        "description": "validate_inventory and send_confirmation_email called without await, returning coroutine objects instead of results"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_003_no_response_model",
+    "agent": "fastapi-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Endpoints returning raw dicts without response_model, leaking internal fields",
+    "code_files": {"api/products.py": "samples/fa_003.py"},
+    "planted_issues": [
+      {
+        "issue_id": "FA-003",
+        "category": "no_response_model",
+        "severity": "MEDIUM",
+        "file": "api/products.py",
+        "line_range": [14, 23],
+        "description": "Endpoints return raw dicts without response_model, exposing internal_cost field to clients"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_004_mutable_default_pydantic",
+    "agent": "fastapi-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Pydantic model uses mutable default values instead of Field(default_factory=...)",
+    "code_files": {"schemas/campaign.py": "samples/fa_004.py"},
+    "planted_issues": [
+      {
+        "issue_id": "FA-004",
+        "category": "mutable_default",
+        "severity": "MEDIUM",
+        "file": "schemas/campaign.py",
+        "line_range": [10, 13],
+        "description": "Mutable defaults (list, dict) in Pydantic schema should use Field(default_factory=...)"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_005_no_rate_limiting",
+    "agent": "fastapi-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Login endpoint without rate limiting enables brute-force attacks",
+    "code_files": {"api/auth.py": "samples/fa_005.py"},
+    "planted_issues": [
+      {
+        "issue_id": "FA-005",
+        "category": "no_rate_limiting",
+        "severity": "HIGH",
+        "file": "api/auth.py",
+        "line_range": [22, 31],
+        "description": "Login endpoint has no rate limiting, allowing unlimited brute-force attempts"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_006_no_cors",
+    "agent": "fastapi-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Public-facing FastAPI app has no CORS middleware configured",
+    "code_files": {"main.py": "samples/fa_006.py"},
+    "planted_issues": [
+      {
+        "issue_id": "FA-006",
+        "category": "no_cors",
+        "severity": "MEDIUM",
+        "file": "main.py",
+        "line_range": [5, 5],
+        "description": "FastAPI app serves a public API without CORSMiddleware, blocking browser-based clients"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_007_manual_instantiation",
+    "agent": "fastapi-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Database manually instantiated in handler instead of using Depends()",
+    "code_files": {"api/reviews.py": "samples/fa_007.py"},
+    "planted_issues": [
+      {
+        "issue_id": "FA-007",
+        "category": "no_dependency_injection",
+        "severity": "MEDIUM",
+        "file": "api/reviews.py",
+        "line_range": [24, 26],
+        "description": "Database() manually instantiated in handler bypasses FastAPI DI, making testing and lifecycle management difficult"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_008_clean_async_httpx",
+    "agent": "fastapi-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Properly structured async endpoint with httpx client and response model",
+    "code_files": {"api/weather.py": "samples/fa_008.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_009_clean_pydantic_v2",
+    "agent": "fastapi-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Correct Pydantic v2 schema using Field with default_factory",
+    "code_files": {"schemas/user.py": "samples/fa_009.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "fa_010_clean_full_app",
+    "agent": "fastapi-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Well-structured FastAPI app with CORS, rate limiting, and dependency injection",
+    "code_files": {"main.py": "samples/fa_010.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]
