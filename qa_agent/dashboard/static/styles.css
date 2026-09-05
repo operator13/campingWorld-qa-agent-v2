@@ -1792,23 +1792,6 @@ body::before {
   overflow: visible;
 }
 
-@media (max-width: 1024px) {
-  .ecc-eval-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-  }
-  .ecc-eval-card { padding: 10px 8px !important; }
-  .ecc-eval-card .eval-agent-name { font-size: 0.4rem !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%; }
-  .ecc-eval-card .eval-run-btn { font-size: 0.35rem !important; padding: 2px 6px !important; white-space: nowrap; flex-shrink: 0; }
-  .ecc-eval-card .eval-card-header { flex-wrap: nowrap; gap: 4px; }
-  .ecc-eval-card .eval-score { font-size: 1.4rem !important; margin-bottom: 6px !important; }
-  .ecc-eval-card .eval-badge { font-size: 0.4rem !important; padding: 2px 8px !important; }
-  .ecc-eval-card .ecc-detail-row { font-size: 0.5rem !important; padding: 2px 4px !important; }
-  .ecc-eval-card .ecc-detail-label { font-size: 0.45rem !important; }
-  .ecc-eval-card .eval-cost-label { font-size: 0.4rem !important; }
-  .ecc-eval-card .eval-cost-value { font-size: 0.6rem !important; }
-}
-
 /* ECC cards reuse .eval-card, .eval-score, .eval-badge styles */
 .ecc-eval-card {
   border-top: 2px solid var(--neon-purple);
@@ -1843,4 +1826,78 @@ body::before {
   text-shadow: 0 0 6px rgba(0, 255, 200, 0.2);
 }
 
-/* ECC breakpoints removed — handled in main responsive section above */
+@media (max-width: 1200px) {
+  .ecc-eval-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .ecc-eval-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .ecc-eval-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .section-ecc-eval {
+    padding: 12px 10px;
+  }
+
+  .ecc-tier-title {
+    font-size: 0.55rem;
+    margin: 10px 0 6px 0;
+  }
+
+  .ecc-eval-card {
+    padding: 10px 8px;
+  }
+
+  .ecc-eval-card .eval-agent-name {
+    font-size: 0.4rem;
+  }
+
+  .ecc-eval-card .eval-run-btn {
+    font-size: 0.35rem;
+    padding: 2px 6px;
+  }
+
+  .ecc-eval-card .eval-score {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+  }
+
+  .ecc-eval-card .eval-badge {
+    font-size: 0.4rem;
+    padding: 2px 8px;
+    letter-spacing: 1px;
+  }
+
+  .ecc-eval-card .ecc-detail-metrics {
+    margin: 6px 0 2px;
+    padding-top: 6px;
+  }
+
+  .ecc-eval-card .ecc-detail-row {
+    padding: 2px 4px;
+    font-size: 0.5rem;
+  }
+
+  .ecc-eval-card .ecc-detail-label {
+    font-size: 0.45rem;
+  }
+
+  .ecc-eval-card .eval-cost-row {
+    margin-top: 6px;
+    padding-top: 6px;
+    gap: 10px;
+  }
+
+  .ecc-eval-card .eval-cost-label {
+    font-size: 0.4rem;
+  }
+
+  .ecc-eval-card .eval-cost-value {
+    font-size: 0.6rem;
+  }
+}
