@@ -1158,6 +1158,7 @@
       const badgeClass = passed === true ? 'badge-pass' : passed === false ? 'badge-fail' : '';
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
+      const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
       const name = escapeHtml(agent.toUpperCase());
       const recall = fmtPct(s.recall);
       const precision = fmtPct(s.precision);
@@ -1179,6 +1180,7 @@
           </div>
           <div class="eval-cost-row">
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
+            <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
         </div>
       `;
@@ -1197,6 +1199,7 @@
       const badgeClass = passed === true ? 'badge-pass' : passed === false ? 'badge-fail' : '';
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
+      const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
       const name = escapeHtml(agent.toUpperCase());
       const quality = fmtPct(s.quality);
 
@@ -1212,6 +1215,7 @@
           </div>
           <div class="eval-cost-row">
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
+            <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
         </div>
       `;

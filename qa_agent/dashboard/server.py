@@ -619,12 +619,26 @@ async def ecc_eval_scores() -> JSONResponse:
             if report and isinstance(report, dict):
                 total_tokens += report.get("token_estimate", 0) or 0
 
+        # Estimate cost: Sonnet ~$3/M input + $15/M output, Opus ~$15/M input + $75/M output
+        # Rough estimate using ~30% output ratio
+        is_opus = agent in ("planner-ecc",)
+        if total_tokens > 0:
+            input_tokens = int(total_tokens * 0.7)
+            output_tokens = int(total_tokens * 0.3)
+            if is_opus:
+                cost = (input_tokens * 15 + output_tokens * 75) / 1_000_000
+            else:
+                cost = (input_tokens * 3 + output_tokens * 15) / 1_000_000
+        else:
+            cost = None
+
         summary[agent] = {
             "score": score,
             "passed": data.get("passed"),
             "tier": tier,
             "scores": scores,
             "tokens": total_tokens if total_tokens > 0 else None,
+            "cost": round(cost, 4) if cost else None,
             "timestamp": data.get("timestamp"),
         }
     return JSONResponse(content=summary)
