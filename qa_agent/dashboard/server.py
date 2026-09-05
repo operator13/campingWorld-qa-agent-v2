@@ -741,6 +741,12 @@ async def _execute_ecc_eval_run(agents: list[str]):
     }))
 
 
+@app.get("/api/eval/ecc/status")
+async def ecc_eval_status() -> JSONResponse:
+    """Return current ECC eval running state."""
+    return JSONResponse(content=_ecc_eval_status)
+
+
 @app.post("/api/eval/ecc/stop", dependencies=[Depends(require_auth)])
 async def stop_ecc_eval():
     global _ecc_eval_status

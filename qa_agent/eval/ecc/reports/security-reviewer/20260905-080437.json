@@ -1,0 +1,180 @@
+{
+  "eval_run_id": "ecc-eval-20260905-080437",
+  "agent": "security-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-05T08:04:37.949124+00:00",
+  "scenarios_total": 20,
+  "scores": {
+    "recall": 0.2857,
+    "precision": 0.0291,
+    "false_positive_rate": 1.0,
+    "total_planted": 21,
+    "total_found": 6,
+    "total_false_positives": 200
+  },
+  "thresholds": {
+    "recall": 0.85,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 79978,
+  "scenarios": [
+    {
+      "scenario_id": "sec_001_sql_injection_fstring",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-001"
+      ],
+      "false_positives": 12
+    },
+    {
+      "scenario_id": "sec_002_sql_injection_raw_query",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-002"
+      ],
+      "false_positives": 14
+    },
+    {
+      "scenario_id": "sec_003_sql_injection_dynamic_table",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-003"
+      ],
+      "false_positives": 14
+    },
+    {
+      "scenario_id": "sec_004_xss_innerhtml",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "sec_005_xss_template_safe_filter",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-005"
+      ],
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "sec_006_hardcoded_api_key",
+      "planted": 2,
+      "found": 0,
+      "missed": [
+        "VULN-006a",
+        "VULN-006b"
+      ],
+      "false_positives": 11
+    },
+    {
+      "scenario_id": "sec_007_base64_encoded_secret",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-007"
+      ],
+      "false_positives": 18
+    },
+    {
+      "scenario_id": "sec_008_secret_in_comment",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-008"
+      ],
+      "false_positives": 16
+    },
+    {
+      "scenario_id": "sec_009_path_traversal_open",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-009"
+      ],
+      "false_positives": 15
+    },
+    {
+      "scenario_id": "sec_010_path_traversal_symlink",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "VULN-010"
+      ],
+      "false_positives": 14
+    },
+    {
+      "scenario_id": "sec_011_command_injection_os_system",
+      "planted": 2,
+      "found": 2,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "sec_012_command_injection_subprocess_shell",
+      "planted": 2,
+      "found": 0,
+      "missed": [
+        "VULN-012a",
+        "VULN-012b"
+      ],
+      "false_positives": 16
+    },
+    {
+      "scenario_id": "sec_013_missing_auth_middleware",
+      "planted": 2,
+      "found": 2,
+      "missed": [],
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "sec_014_broken_rbac",
+      "planted": 2,
+      "found": 0,
+      "missed": [
+        "VULN-014a",
+        "VULN-014b"
+      ],
+      "false_positives": 16
+    },
+    {
+      "scenario_id": "sec_015_ssrf",
+      "planted": 2,
+      "found": 1,
+      "missed": [
+        "VULN-015b"
+      ],
+      "false_positives": 17
+    },
+    {
+      "scenario_id": "sec_016_clean_parameterized_sql",
+      "is_clean": true,
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "sec_017_clean_html_escaping",
+      "is_clean": true,
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "sec_018_clean_env_secrets",
+      "is_clean": true,
+      "false_positives": 8
+    },
+    {
+      "scenario_id": "sec_019_clean_safe_file_serving",
+      "is_clean": true,
+      "false_positives": 16
+    },
+    {
+      "scenario_id": "sec_020_clean_auth_middleware",
+      "is_clean": true,
+      "false_positives": 18
+    }
+  ]
+}

@@ -17,11 +17,12 @@
     connectWebSocket();
     initRunnerControls();
     initEvalControls();
-    // ECC Development Agent Evals — render empty cards immediately, then fetch data
+    // ECC Development Agent Evals — render cards, fetch data, sync running state
     renderEccDetectionCards({});
     renderEccGenerativeCards({});
     fetchEccEvalScores();
     initEccEvalControls();
+    syncEccEvalStatus();
     // Replay last test run results for late-joining clients
     _replayLastRun();
   });
@@ -1215,6 +1216,29 @@
         </div>
       `;
     }).join('');
+  }
+
+  async function syncEccEvalStatus() {
+    try {
+      const res = await fetch('/api/eval/ecc/status');
+      if (!res.ok) return;
+      const status = await res.json();
+      if (status.state === 'running') {
+        setEccEvalRunning();
+        const completed = new Set(status.completed || []);
+        const allAgents = ECC_DETECTION_AGENTS.concat(ECC_GENERATIVE_AGENTS);
+        allAgents.forEach(agent => {
+          if (!completed.has(agent)) {
+            setEvalCardRunning(agent);
+          }
+        });
+        // Apply any progress data
+        const progress = status.progress || {};
+        Object.entries(progress).forEach(([agent, p]) => {
+          if (p.current && p.total) updateEvalProgress(agent, p.current, p.total);
+        });
+      }
+    } catch (err) { /* ignore */ }
   }
 
   function initEccEvalControls() {

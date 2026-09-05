@@ -1,0 +1,138 @@
+{
+  "eval_run_id": "ecc-eval-20260905-082541",
+  "agent": "refactor-cleaner",
+  "tier": "generative",
+  "timestamp": "2026-09-05T08:25:41.130742+00:00",
+  "scenarios_total": 10,
+  "scores": {
+    "quality": 0.995,
+    "per_scenario": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.95,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": true,
+  "token_estimate": 25237,
+  "scenarios": [
+    {
+      "scenario_id": "rc_001_unused_export_function",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014correctly identifies formatLegacyDate as unused, recommends removal, confirms formatDate and isToday are safe to keep, and includes verification steps. Actionability: Provides exact file path, complete cleaned code snippet, specific verification commands (grep, tsc, npm test, knip, ts-prune), and a ready-to-use git commit message with rationale. Correctness: The approach is technically sound\u2014uses grep results to verify usage, correctly identifies the unused export, removes only the dead code without affecting dependencies, and includes TypeScript compilation checks to catch missed references. Risk_awareness: Comprehensively addresses edge cases including internal usage check, dynamic import patterns, public API surface considerations, and provides multiple verification layers (grep, tsc, tests, dead code scanners) to ensure safety. Convention_adherence: Follows best practices with clear step-by-step structure, professional commit message format with conventional commit prefix (refactor), detailed explanation in commit body, and includes standard verification workflow (compile, test, lint).",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_002_unused_export_class",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014XmlReportGenerator is correctly identified as dead code, removal is recommended, HtmlReportGenerator is preserved, and verification steps ensure tests pass. Actionability: The output provides exact file paths, complete refactored code, specific bash commands with explanations, and a ready-to-use git commit message. Correctness: The technical approach is sound\u2014grep evidence is properly analyzed, the safety classification is accurate (internal module, no dynamic imports), and the refactored code is syntactically correct. Risk awareness: Comprehensive risk assessment includes dynamic import checks, public API considerations, recovery via git history, and recommendations for automated dead code detection in CI. Convention adherence: The commit message follows conventional commits format (refactor scope), the analysis uses clear structured tables, and the verification workflow aligns with TypeScript/Node.js best practices.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_003_unused_export_type",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014correctly identifies InternalCacheEntry as export-only-for-self, recommends removing export (not the type), correctly preserves CacheConfig, and notes tests will pass. Actionability: Provides exact diff, complete refactored file, specific commit message, and concrete follow-up tooling (knip/ts-prune with configuration). Correctness: The analysis is technically sound\u2014grep verification is thorough, the change is minimal and safe, TypeScript will catch any external imports, and the reasoning about encapsulation and naming conventions is solid. Risk_awareness: Explicitly addresses zero-risk nature of the change, notes self-validating compile errors, acknowledges the Internal prefix convention, and provides preventive measures via linting tools. Convention_adherence: Follows TypeScript best practices (encapsulation, naming conventions), includes professional commit message format, and suggests industry-standard tooling (knip/ts-prune) for preventing recurrence.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_004_duplicate_function",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014duplication identified, shared utility created, both call sites updated, and tests provided. Step-by-step consolidation is thorough. Actionability: Exact file paths, complete code blocks, and bash commands are provided for every step. A developer can follow this verbatim without ambiguity. Correctness: The technical approach is sound\u2014extracting to a shared utility is the standard refactoring pattern. The canonical function name choice (slugify) is reasonable. Import structure and package initialization are correct. Test coverage includes parametrized cases and regression tests. Correctness: The regex logic is preserved exactly, no functional changes introduced. Risk_awareness: Comprehensive safety checklist included (grep verification, API surface analysis, import cleanup confirmation). Edge cases in tests (unicode, empty strings, multiple hyphens/spaces). Potential issue with unicode handling is tested (caf\u00e9 example). Commit message and verification steps reduce deployment risk. Convention_adherence: Follows Python packaging conventions (utils/__init__.py), pytest structure (tests/utils/test_text.py), docstring format (Google-style with Examples section), type hints, and conventional commit message format. Code style is clean and consistent with the original files.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_005_near_duplicate",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are met\u2014duplication identified, consolidation recommended via parameterized function, behavioral differences preserved, and comprehensive tests provided. Migration guide and removal checklist included. Actionability: Extremely specific with exact file paths, code blocks ready to copy-paste, grep commands for finding call-sites, and a three-batch commit plan with checkboxes. Test file includes 20+ test cases covering happy paths, retry/backoff behavior, validation, and deprecated aliases. Correctness: The refactoring is technically sound\u2014uses httpx.request() as single dispatch point, properly handles exponential backoff (2^attempt), validates inputs (method allowlist, max_retries \u2265 1), and maintains backward compatibility via deprecation aliases with proper stacklevel=2 for warning attribution. The unreachable code comment with pragma: no cover is appropriate. Risk_awareness: Comprehensive risk analysis\u2014identifies this as SAFE (internal utility, no public API surface), discusses migration strategy to avoid hard breaks, includes validation for unsupported methods and invalid retry counts, handles edge cases (no payload for GET, case-insensitive methods), and provides detection tools (vulture) for dead code removal. Convention_adherence: Follows Python best practices\u2014type hints throughout (dict[str, Any], frozenset), docstring format with Parameters/Returns/Raises/Examples sections, PEP 257 compliance, uses __future__ annotations, proper use of keyword-only arguments (*), constants in UPPER_CASE, comprehensive module docstring, and respx for HTTP mocking in tests. The deprecation approach follows standard library conventions.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_006_unused_dependency",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014moment is correctly identified as unused, dayjs is correctly kept, playwright is analyzed, and removal steps are provided. Actionability: Exact commands (npm uninstall, npm run build, npm test) and a complete git commit message template are provided with clear step-by-step instructions. Correctness: The technical analysis is sound\u2014grep patterns correctly identify unused dependencies, the distinction between 'playwright' and '@playwright/test' is accurately explained, and the recommendation to move test tools to devDependencies is correct. Risk_awareness: The output identifies multiple risk considerations: bundle size impact (~300 KB), CVE exposure, the distinction between package names, proper placement in devDependencies vs dependencies, and includes a safety checklist with verification steps before and after removal. Convention_adherence: The output follows standard npm/Node.js conventions, uses proper commit message formatting (conventional commits style with 'chore(deps)'), includes verification steps aligned with CI/CD best practices, and provides a professional analysis structure with clear sections and evidence.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_007_unused_dev_dependency",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are met\u2014sinon and @types/sinon are correctly identified as orphaned, the deleted test file is referenced, removal is recommended, and vitest is correctly retained. Actionability: The output provides exact, step-by-step commands (npm uninstall, grep verification, test execution, git commit with message) that can be directly executed. Correctness: The technical analysis is sound\u2014grep results confirm zero imports, git history explains the root cause, the dependency relationship between sinon and @types/sinon is correctly understood, and the remediation approach is optimal. Risk_awareness: The output includes a safety checklist and verification steps, but could have mentioned potential edge cases like indirect dependencies, monorepo scenarios, or conditional imports more explicitly. Convention_adherence: The response follows standard npm/git workflows, uses appropriate commit message conventions, and suggests industry-standard tools (depcheck, knip) for prevention. The formatting with tables, checklists, and code blocks aligns with professional documentation standards.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_008_live_code_decoy",
+      "is_clean": true,
+      "quality_score": 1.0,
+      "note": "Decoy scenario \u2014 scored as pass"
+    },
+    {
+      "scenario_id": "rc_009_public_api_decoy",
+      "is_clean": true,
+      "quality_score": 1.0,
+      "note": "Decoy scenario \u2014 scored as pass"
+    },
+    {
+      "scenario_id": "rc_010_dynamic_import_decoy",
+      "is_clean": true,
+      "quality_score": 1.0,
+      "note": "Decoy scenario \u2014 scored as pass"
+    }
+  ]
+}

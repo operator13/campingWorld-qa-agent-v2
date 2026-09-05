@@ -1,0 +1,131 @@
+{
+  "eval_run_id": "ecc-eval-20260905-083047",
+  "agent": "planner-ecc",
+  "tier": "generative",
+  "timestamp": "2026-09-05T08:30:47.908577+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.325,
+    "per_scenario": [
+      0.95,
+      0.95,
+      0.0,
+      0.0,
+      0.7,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": false,
+  "token_estimate": 51064,
+  "scenarios": [
+    {
+      "scenario_id": "plan_001_simple_feature",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All requirements are addressed\u2014GET/PUT endpoints, all preference fields with defaults, authentication, validation, and persistence. The plan covers data layer, validation, business logic, and API endpoints across 8 implementation steps. Actionability: Extremely specific with exact file paths (app/models/user_preferences.py, app/schemas/user_preferences.py, etc.), complete code examples for each step, and clear phased implementation. Every step has a 'Why' and 'Dependencies' section. Correctness: The technical approach is sound\u2014SQLAlchemy model with proper FK and cascade, Pydantic schemas with validation, service layer for business logic, FastAPI router with JWT dependency reuse, and Alembic migration. The race-condition handling in get_or_create_preferences is well-thought-out. Use of ARRAY(String) for PostgreSQL is appropriate. Defaults are set at both ORM and database levels. Risk_awareness: Identifies several risks (migration head verification, race conditions, concurrent requests) and provides mitigation strategies (UNIQUE constraint, try-except pattern, checkfirst=True). However, could have mentioned: potential N+1 query issues if preferences are loaded frequently (though lazy='selectin' mitigates this), testing strategy for concurrent updates, or rollback implications. Convention_adherence: Perfectly follows the project structure\u2014models in app/models/, schemas in app/schemas/, services in app/services/, routers in app/routers/, migrations in alembic/versions/. Reuses existing get_current_user dependency, follows FastAPI patterns, uses Pydantic BaseModel correctly, and includes proper docstrings and type hints. The output is incomplete at the end (Step 8 router code is cut off mid-docstring), but the JSON response should reflect the quality of what was provided.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_002_email_notification",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All seven requirements are explicitly addressed\u2014email events, Jinja2 templates, SMTP/SES backends, unsubscribe links, logging, async handling, and retry logic. The plan covers all acceptance criteria with specific file paths and phased steps. Actionability: Extremely detailed with exact file paths, SQL schemas, Python code snippets, and step-by-step instructions. Each phase is independently mergeable with clear dependencies. Code examples are production-ready (UUID PKs, proper relationships, Pydantic validation). Correctness: Architecture is sound\u2014separation of concerns (sender/renderer/orchestrator), proper use of SQLAlchemy relationships, Jinja2 template inheritance, async background tasks pattern. The dependency graph correctly shows build order. Retry logic with configurable delays is appropriate. Risk_awareness: Identifies low-risk additive changes and validates email_backend enum. However, could have explicitly mentioned: (1) handling of unsubscribe token signing/verification in detail, (2) database transaction handling for concurrent retry attempts, (3) email provider rate limits, (4) template injection vulnerabilities (though Jinja2 auto-escaping mitigates this), (5) handling of bounced/invalid emails. The output is truncated mid-template but this is a presentation issue, not a completeness gap. Convention_adherence: Perfectly aligned with the codebase\u2014uses existing patterns (pydantic-settings, SQLAlchemy ORM, Alembic migrations, UUID PKs, lazy loading strategies, relationship back_populates). Follows FastAPI conventions for schemas and routers. Naming is consistent (snake_case, descriptive). The only minor gap is that the output cuts off before showing the complete implementation of Phase 2-4, but the structure and approach for those phases are clearly established.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_003_sqlite_to_postgres",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_004_extract_shared_utils",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_005_webhook_delivery",
+      "quality_score": 0.7,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 4,
+        "correctness": 4,
+        "risk_awareness": 3,
+        "convention_adherence": 4
+      },
+      "reasoning": "Completeness: The plan addresses all 8 requirements and acceptance criteria. It covers queue infrastructure (Redis), retry strategy with exponential backoff, idempotency considerations, dead letter queue, monitoring/dashboard, HMAC signatures, and phased implementation. However, the output appears truncated at step 7 (missing steps 8-10 for admin endpoints, worker startup, and tests), which slightly reduces completeness. Actionability: Excellent specificity on file paths, function signatures, database schemas, and implementation details. Each step includes concrete actions, dependencies, and risk levels. The truncation at step 7 means some admin endpoints and test files are mentioned but not fully detailed. Correctness: The architecture is sound\u2014async worker with semaphore concurrency, BLPOP for efficient queue polling, separate retry loop, HMAC-SHA256 signing, exponential backoff (10s, 60s, 300s), and fire-and-forget event dispatcher. The 500/min throughput target is achievable with 10 concurrent workers. One minor concern: the plan doesn't explicitly address idempotency on the partner side (duplicate delivery handling if a webhook succeeds but the response is lost), though the delivery_id header enables this. Risk Awareness: Identifies several risks (Medium for enqueue performance, High for worker robustness) but could be more comprehensive. Missing: handling of Redis connection failures, DB connection pool exhaustion recovery, graceful degradation if webhook system is overloaded, partner URL DoS scenarios (slow loris attacks), and webhook payload size limits. The plan mentions handling exceptions but doesn't detail circuit breakers or backpressure mechanisms. Convention Adherence: Follows the existing codebase structure well\u2014uses FastAPI routers, SQLAlchemy models, Pydantic schemas, pytest conventions, and integrates with existing event bus. The authentication reuse and rate limiting mention align with project patterns. The truncation prevents full assessment of test file structure adherence.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_006_sso_microservices",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_007_pagination",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_008_rate_limiting",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    }
+  ]
+}

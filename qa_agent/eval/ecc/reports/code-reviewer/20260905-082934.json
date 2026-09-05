@@ -1,0 +1,130 @@
+{
+  "eval_run_id": "ecc-eval-20260905-082934",
+  "agent": "code-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-05T08:29:34.481012+00:00",
+  "scenarios_total": 15,
+  "scores": {
+    "recall": 0.5,
+    "precision": 0.1714,
+    "false_positive_rate": 1.0,
+    "total_planted": 12,
+    "total_found": 6,
+    "total_false_positives": 29
+  },
+  "thresholds": {
+    "recall": 0.75,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 76226,
+  "scenarios": [
+    {
+      "scenario_id": "cr_001_large_function",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "CR-001"
+      ],
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "cr_002_very_large_function",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "CR-002"
+      ],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "cr_003_deep_nesting",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 1
+    },
+    {
+      "scenario_id": "cr_004_deep_nesting_business_logic",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "CR-004"
+      ],
+      "false_positives": 3
+    },
+    {
+      "scenario_id": "cr_005_list_mutation",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 1
+    },
+    {
+      "scenario_id": "cr_006_shared_mutable_state",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "CR-006"
+      ],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "cr_007_missing_error_handling",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "CR-007"
+      ],
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "cr_008_empty_catch_blocks",
+      "planted": 2,
+      "found": 1,
+      "missed": [
+        "CR-008b"
+      ],
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "cr_009_dead_code",
+      "planted": 2,
+      "found": 2,
+      "missed": [],
+      "false_positives": 0
+    },
+    {
+      "scenario_id": "cr_010_print_statements",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 2
+    },
+    {
+      "scenario_id": "cr_011_clean_small_functions",
+      "is_clean": true,
+      "false_positives": 2
+    },
+    {
+      "scenario_id": "cr_012_clean_error_handling",
+      "is_clean": true,
+      "false_positives": 1
+    },
+    {
+      "scenario_id": "cr_013_clean_immutable",
+      "is_clean": true,
+      "false_positives": 2
+    },
+    {
+      "scenario_id": "cr_014_clean_early_returns",
+      "is_clean": true,
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "cr_015_clean_logging",
+      "is_clean": true,
+      "false_positives": 3
+    }
+  ]
+}

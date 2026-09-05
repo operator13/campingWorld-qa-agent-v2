@@ -1,0 +1,87 @@
+{
+  "eval_run_id": "ecc-eval-20260905-082616",
+  "agent": "fastapi-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-05T08:26:16.105213+00:00",
+  "scenarios_total": 10,
+  "scores": {
+    "recall": 1.0,
+    "precision": 0.1429,
+    "false_positive_rate": 1.0,
+    "total_planted": 7,
+    "total_found": 7,
+    "total_false_positives": 42
+  },
+  "thresholds": {
+    "recall": 0.8,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 25374,
+  "scenarios": [
+    {
+      "scenario_id": "fa_001_sync_db_in_async",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 8
+    },
+    {
+      "scenario_id": "fa_002_missing_await",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "fa_003_no_response_model",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "fa_004_mutable_default_pydantic",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "fa_005_no_rate_limiting",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "fa_006_no_cors",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "fa_007_manual_instantiation",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "fa_008_clean_async_httpx",
+      "is_clean": true,
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "fa_009_clean_pydantic_v2",
+      "is_clean": true,
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "fa_010_clean_full_app",
+      "is_clean": true,
+      "false_positives": 6
+    }
+  ]
+}
