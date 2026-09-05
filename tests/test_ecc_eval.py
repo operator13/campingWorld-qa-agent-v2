@@ -314,7 +314,7 @@ class TestConfig:
     def test_get_agent_config_detection(self):
         config = get_agent_config("security-reviewer")
         assert config.tier == "detection"
-        assert config.recall_threshold == 0.70
+        assert config.recall_threshold == 0.90
 
     def test_get_agent_config_generative(self):
         config = get_agent_config("planner-ecc")

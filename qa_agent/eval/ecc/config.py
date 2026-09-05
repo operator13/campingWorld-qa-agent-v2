@@ -59,7 +59,7 @@ AGENT_FILE_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 RECALL_THRESHOLDS: dict[str, float] = {
-    "security-reviewer": 0.70,  # Temporary — will adjust after 5 baseline runs
+    "security-reviewer": 0.90,  # Based on 95.2% recall_without_backfill minus 5% buffer
     "code-reviewer": 0.75,
     "silent-failure-hunter": 0.80,
     "python-reviewer": 0.75,
