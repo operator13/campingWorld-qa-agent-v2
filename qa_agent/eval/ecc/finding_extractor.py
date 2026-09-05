@@ -34,6 +34,8 @@ _SEVERITY_BLOCK = re.compile(
 _FILE_LINE = re.compile(
     r"(?:"
     r"([^\s\"'`]+\.(?:py|ts|tsx|js|jsx)):(\d+)"
+    r"|`([^`]+\.(?:py|ts|tsx|js|jsx))`(?:,\s*|\s+)(?:line\s+|:)(\d+)"
+    r"|`([^`]+\.(?:py|ts|tsx|js|jsx))`:(\d+)"
     r"|(?:line|Line)\s+(\d+)\s+(?:of|in)\s+[`\"']?([^\s`\"']+)"
     r"|(?:File|file):\s*[`\"']?([^\s`\"':]+)[`\"']?(?::(\d+))?"
     r")",
@@ -61,13 +63,22 @@ def _extract_file_line(text: str) -> tuple[str | None, int | None]:
         return None, None
 
     groups = m.groups()
+    # Pattern 1: file.py:123
     if groups[0] and groups[1]:
         return groups[0], int(groups[1])
+    # Pattern 2: `file.py`, line 15 or `file.py`:15
     if groups[2] and groups[3]:
-        return groups[3], int(groups[2])
-    if groups[4]:
-        line = int(groups[5]) if groups[5] else None
-        return groups[4], line
+        return groups[2], int(groups[3])
+    # Pattern 3: `file.py`:15
+    if groups[4] and groups[5]:
+        return groups[4], int(groups[5])
+    # Pattern 4: line 12 of file.py
+    if groups[6] and groups[7]:
+        return groups[7], int(groups[6])
+    # Pattern 5: File: path/to/file.py:12
+    if groups[8]:
+        line = int(groups[9]) if groups[9] else None
+        return groups[8], line
 
     return None, None
 
