@@ -20,8 +20,13 @@
     // ECC Development Agent Evals — fetch scores first, then apply running state on top
     initEccEvalControls();
     fetchEccEvalScores().then(() => syncEccEvalStatus());
-    // Poll status every 15s to catch missed WebSocket events (mobile reconnect)
-    setInterval(syncEccEvalStatus, 15000);
+
+    // Re-sync when user returns to tab (phone unlock, app switch)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        fetchEccEvalScores().then(() => syncEccEvalStatus());
+      }
+    });
     // Replay last test run results for late-joining clients
     _replayLastRun();
   });
@@ -818,7 +823,11 @@
     };
     ws.onclose = () => {
       wsConnected = false;
-      setTimeout(() => { connectWebSocket(); refreshAllData(); }, 3000);
+      setTimeout(() => {
+        connectWebSocket();
+        refreshAllData();
+        fetchEccEvalScores().then(() => syncEccEvalStatus());
+      }, 3000);
     };
   }
 
