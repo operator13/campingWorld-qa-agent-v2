@@ -586,7 +586,7 @@
 
       const clickable = run.has_report && run.run_id;
       const rowClass = clickable ? 'clickable-row' : '';
-      const rowClick = clickable ? `onclick="window.open('/report/${run.run_id}', '_blank')"` : '';
+      const rowClick = clickable ? `onclick="window.open('/report/${escapeHtml(run.run_id)}', '_blank')"` : '';
       const cursor = clickable ? 'style="cursor:pointer;"' : '';
 
       return `

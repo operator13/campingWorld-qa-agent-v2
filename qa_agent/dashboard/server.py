@@ -300,6 +300,8 @@ async def eval_notify(body: dict = {}) -> JSONResponse:
     """Called by the eval runner after an eval completes. Broadcasts to all dashboards."""
     global _eval_status
     agent = body.get("agent", "unknown")
+    if agent not in ALLOWED_EVAL_AGENTS:
+        agent = "unknown"
     await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
     await broadcast_to_dashboard(json.dumps({"event": "eval:updated", "agent": agent}))
     # Track completion and reset state when all running agents complete
@@ -326,6 +328,8 @@ async def eval_start_external(body: dict = {}) -> JSONResponse:
 async def eval_progress_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner to report scenario progress."""
     agent = body.get("agent", "unknown")
+    if agent not in ALLOWED_EVAL_AGENTS:
+        agent = "unknown"
     current = body.get("current", 0)
     total = body.get("total", 0)
     _eval_status["progress"][agent] = {"current": current, "total": total}
@@ -339,6 +343,8 @@ async def eval_agent_complete_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner when an agent eval finishes. Resets state when all done."""
     global _eval_status
     agent = body.get("agent", "unknown")
+    if agent not in ALLOWED_EVAL_AGENTS:
+        agent = "unknown"
     if _eval_status["state"] == "running":
         if agent not in _eval_status["completed"]:
             _eval_status["completed"].append(agent)
@@ -361,6 +367,8 @@ async def eval_agent_start_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner when a specific agent eval begins."""
     global _eval_status
     agent = body.get("agent", "unknown")
+    if agent not in ALLOWED_EVAL_AGENTS:
+        agent = "unknown"
     if _eval_status["state"] != "running":
         _eval_status = {"state": "running", "current_agent": agent, "completed": [], "queued": [], "progress": {}, "last_activity": time.time()}
     _eval_status["current_agent"] = agent
