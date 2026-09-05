@@ -797,6 +797,15 @@
             fetchHealth();
             fetchRunHistory();
             break;
+          // ECC Development Agent Eval events
+          case 'ecc_eval:start':
+          case 'ecc_eval:agent:start':
+          case 'ecc_eval:agent:complete':
+          case 'ecc_eval:complete':
+          case 'ecc_eval:agent:error':
+          case 'ecc_eval:log':
+            handleEccEvalEvent(data);
+            break;
           default:
             break;
         }
@@ -1097,4 +1106,140 @@
     if (bar) bar.style.width = pct + '%';
     if (progressText) progressText.textContent = `${runnerPassCount} passed, ${runnerFailCount} failed`;
   }
+
+  // ============================================
+  // ECC Development Agent Evals
+  // ============================================
+
+  const ECC_DETECTION_AGENTS = [
+    'security-reviewer', 'code-reviewer', 'silent-failure-hunter',
+    'python-reviewer', 'typescript-reviewer', 'fastapi-reviewer',
+    'performance-optimizer',
+  ];
+  const ECC_GENERATIVE_AGENTS = [
+    'planner-ecc', 'tdd-guide', 'build-error-resolver',
+    'e2e-runner', 'refactor-cleaner',
+  ];
+
+  async function fetchEccEvalScores() {
+    try {
+      const res = await fetch('/api/eval/ecc/scores');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderEccDetectionCards(data);
+      renderEccGenerativeCards(data);
+    } catch (err) {
+      // silently ignore
+    }
+  }
+
+  function renderEccDetectionCards(scores) {
+    const grid = document.getElementById('ecc-detection-grid');
+    if (!grid) return;
+    grid.innerHTML = ECC_DETECTION_AGENTS.map(agent => {
+      const d = scores[agent] || {};
+      const s = d.scores || {};
+      const score = d.score != null ? (d.score * 100).toFixed(1) : '--';
+      const passed = d.passed;
+      const badgeClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
+      const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
+      const scoreClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
+      const recall = s.recall != null ? (s.recall * 100).toFixed(1) + '%' : '--';
+      const precision = s.precision != null ? (s.precision * 100).toFixed(1) + '%' : '--';
+      const fpRate = s.false_positive_rate != null ? (s.false_positive_rate * 100).toFixed(1) + '%' : '--';
+      const tokens = d.tokens ? formatNumber(d.tokens) : '--';
+      const name = escapeHtml(agent.toUpperCase());
+
+      return `
+        <div class="ecc-eval-card ${badgeClass === 'pass' ? 'passed' : badgeClass === 'fail' ? 'failed' : ''}">
+          <div class="ecc-card-header">
+            <span class="ecc-card-name">${name}</span>
+            <span class="ecc-card-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="ecc-card-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
+          <div class="ecc-card-metrics">
+            <div class="ecc-metric-row"><span class="ecc-metric-label">Recall</span><span class="ecc-metric-value">${recall}</span></div>
+            <div class="ecc-metric-row"><span class="ecc-metric-label">Precision</span><span class="ecc-metric-value">${precision}</span></div>
+            <div class="ecc-metric-row"><span class="ecc-metric-label">FP Rate</span><span class="ecc-metric-value">${fpRate}</span></div>
+          </div>
+          <div class="ecc-card-footer">
+            <span>Tokens: ${tokens}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderEccGenerativeCards(scores) {
+    const grid = document.getElementById('ecc-generative-grid');
+    if (!grid) return;
+    grid.innerHTML = ECC_GENERATIVE_AGENTS.map(agent => {
+      const d = scores[agent] || {};
+      const s = d.scores || {};
+      const score = d.score != null ? (d.score * 100).toFixed(1) : '--';
+      const passed = d.passed;
+      const badgeClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
+      const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
+      const scoreClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
+      const quality = s.quality != null ? (s.quality * 100).toFixed(1) + '%' : '--';
+      const tokens = d.tokens ? formatNumber(d.tokens) : '--';
+      const name = escapeHtml(agent.toUpperCase());
+
+      return `
+        <div class="ecc-eval-card ${badgeClass === 'pass' ? 'passed' : badgeClass === 'fail' ? 'failed' : ''}">
+          <div class="ecc-card-header">
+            <span class="ecc-card-name">${name}</span>
+            <span class="ecc-card-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="ecc-card-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
+          <div class="ecc-card-metrics">
+            <div class="ecc-metric-row"><span class="ecc-metric-label">Quality</span><span class="ecc-metric-value">${quality}</span></div>
+          </div>
+          <div class="ecc-card-footer">
+            <span>Tokens: ${tokens}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function initEccEvalControls() {
+    const btn = document.getElementById('btn-ecc-eval-all');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        fetch('/api/eval/ecc/run', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({all: true}),
+        }).catch(err => console.warn('ECC eval run failed:', err));
+      });
+    }
+  }
+
+  // Add ECC eval WebSocket event handlers
+  function handleEccEvalEvent(data) {
+    const dot = document.getElementById('ecc-eval-dot');
+    const statusText = document.getElementById('ecc-eval-status');
+
+    if (data.event === 'ecc_eval:start') {
+      if (dot) dot.className = 'eval-status-dot running';
+      if (statusText) statusText.textContent = 'RUNNING';
+    } else if (data.event === 'ecc_eval:agent:start') {
+      if (statusText) statusText.textContent = 'RUNNING: ' + (data.agent || '').toUpperCase();
+    } else if (data.event === 'ecc_eval:agent:complete') {
+      // Refresh scores when an agent completes
+      fetchEccEvalScores();
+    } else if (data.event === 'ecc_eval:complete') {
+      if (dot) dot.className = 'eval-status-dot';
+      if (statusText) statusText.textContent = data.completed + '/' + data.total + ' COMPLETE';
+      fetchEccEvalScores();
+    } else if (data.event === 'ecc_eval:agent:error') {
+      if (statusText) statusText.textContent = 'ERROR: ' + (data.agent || '').toUpperCase();
+    }
+  }
+
+  // Initialize ECC evals on page load
+  fetchEccEvalScores();
+  initEccEvalControls();
+
 })();

@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 DATA_DIR = os.getenv("DATA_DIR", str(Path(__file__).resolve().parent.parent.parent))
 HEALTH_DIR = Path(DATA_DIR) / "health-reports"
 EVAL_DIR = Path(DATA_DIR) / "qa_agent" / "eval" / "reports"
+ECC_EVAL_DIR = Path(DATA_DIR) / "qa_agent" / "eval" / "ecc" / "reports"
 AUDIT_DIR = Path(DATA_DIR) / "memory" / "audit_runs"
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -64,6 +65,8 @@ ALLOWED_WS_EVENTS = {
     "runner:healing", "runner:healed",
     "eval:start", "eval:complete", "eval:log",
     "eval:agent:start", "eval:agent:complete", "eval:agent:error",
+    "ecc_eval:start", "ecc_eval:complete", "ecc_eval:log",
+    "ecc_eval:agent:start", "ecc_eval:agent:complete", "ecc_eval:agent:error",
     "health:updated",
 }
 MAX_WORKERS = 10
@@ -568,6 +571,170 @@ async def eval_summary() -> JSONResponse:
         }
 
     return JSONResponse(content=summary)
+
+
+# ---------------------------------------------------------------------------
+# ECC Agent Eval endpoints
+# ---------------------------------------------------------------------------
+
+ECC_DETECTION_AGENTS = [
+    "security-reviewer", "code-reviewer", "silent-failure-hunter",
+    "python-reviewer", "typescript-reviewer", "fastapi-reviewer",
+    "performance-optimizer",
+]
+ECC_GENERATIVE_AGENTS = [
+    "planner-ecc", "tdd-guide", "build-error-resolver",
+    "e2e-runner", "refactor-cleaner",
+]
+ECC_ALL_AGENTS = ECC_DETECTION_AGENTS + ECC_GENERATIVE_AGENTS
+
+_ecc_eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "progress": {}, "last_activity": 0}
+
+
+@app.get("/api/eval/ecc/scores")
+async def ecc_eval_scores() -> JSONResponse:
+    """Return latest scorecard for all 12 ECC agents."""
+    summary: dict[str, Any] = {}
+    for agent in ECC_ALL_AGENTS:
+        agent_dir = ECC_EVAL_DIR / agent
+        files = _sorted_json_files(agent_dir)
+        if not files:
+            summary[agent] = {"score": None, "passed": None, "tier": "detection" if agent in ECC_DETECTION_AGENTS else "generative"}
+            continue
+        data = _read_json(files[-1])
+        if not data or not isinstance(data, dict):
+            summary[agent] = {"score": None, "passed": None, "tier": "detection" if agent in ECC_DETECTION_AGENTS else "generative"}
+            continue
+
+        tier = data.get("tier", "detection")
+        scores = data.get("scores", {})
+        if tier == "detection":
+            score = scores.get("recall")
+        else:
+            score = scores.get("quality")
+
+        total_tokens = 0
+        for f in files:
+            report = _read_json(f)
+            if report and isinstance(report, dict):
+                total_tokens += report.get("token_estimate", 0) or 0
+
+        summary[agent] = {
+            "score": score,
+            "passed": data.get("passed"),
+            "tier": tier,
+            "scores": scores,
+            "tokens": total_tokens if total_tokens > 0 else None,
+            "timestamp": data.get("timestamp"),
+        }
+    return JSONResponse(content=summary)
+
+
+@app.get("/api/eval/ecc/scores/{agent}")
+async def ecc_eval_agent_scores(agent: str) -> JSONResponse:
+    """Return latest scorecard for a specific ECC agent."""
+    if agent not in ECC_ALL_AGENTS:
+        return JSONResponse({"error": "Unknown agent"}, status_code=400)
+    agent_dir = ECC_EVAL_DIR / agent
+    files = _sorted_json_files(agent_dir)
+    if not files:
+        return JSONResponse(content={})
+    data = _read_json(files[-1])
+    return JSONResponse(content=data or {})
+
+
+@app.get("/api/eval/ecc/history/{agent}")
+async def ecc_eval_agent_history(agent: str) -> JSONResponse:
+    """Return historical scorecards for trend display."""
+    if agent not in ECC_ALL_AGENTS:
+        return JSONResponse({"error": "Unknown agent"}, status_code=400)
+    agent_dir = ECC_EVAL_DIR / agent
+    files = _sorted_json_files(agent_dir)
+    history = []
+    for f in files[-10:]:  # Last 10 runs
+        data = _read_json(f)
+        if data and isinstance(data, dict):
+            history.append({
+                "eval_run_id": data.get("eval_run_id"),
+                "timestamp": data.get("timestamp"),
+                "passed": data.get("passed"),
+                "scores": data.get("scores"),
+            })
+    return JSONResponse(content=history)
+
+
+@app.post("/api/eval/ecc/run", dependencies=[Depends(require_auth)])
+async def run_ecc_eval_endpoint(body: dict = {}):
+    """Trigger ECC agent eval run from dashboard."""
+    global _ecc_eval_status
+    if _ecc_eval_status["state"] == "running":
+        return JSONResponse({"error": "ECC eval already running"}, status_code=409)
+
+    agents = [a for a in body.get("agents", []) if a in ECC_ALL_AGENTS]
+    run_all = body.get("all", False)
+    tier = body.get("tier")
+    if run_all:
+        agents = list(ECC_ALL_AGENTS)
+    elif tier == "detection":
+        agents = list(ECC_DETECTION_AGENTS)
+    elif tier == "generative":
+        agents = list(ECC_GENERATIVE_AGENTS)
+
+    if not agents:
+        return JSONResponse({"error": "No valid agents specified"}, status_code=400)
+
+    _ecc_eval_status = {"state": "running", "current_agent": None, "completed": [], "progress": {}, "last_activity": time.time()}
+    asyncio.create_task(_execute_ecc_eval_run(agents))
+    return JSONResponse({"status": "started", "agents": agents})
+
+
+async def _execute_ecc_eval_run(agents: list[str]):
+    """Run ECC evals sequentially (each agent is expensive)."""
+    global _ecc_eval_status
+    await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:start", "agents": agents}))
+
+    for agent in agents:
+        _ecc_eval_status["current_agent"] = agent
+        _ecc_eval_status["last_activity"] = time.time()
+        await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:start", "agent": agent}))
+
+        try:
+            cmd = [
+                sys.executable, "-u", "-c",
+                f"from dotenv import load_dotenv; load_dotenv('.env'); "
+                f"import asyncio; from qa_agent.eval.ecc.ecc_eval_runner import run_ecc_eval; "
+                f"result = asyncio.run(run_ecc_eval(agents=['{agent}'])); "
+                f"import json; print(json.dumps(result.get('results', {{}}).get('{agent}', {{}})))"
+            ]
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                cwd=str(PROJECT_ROOT),
+            )
+
+            while True:
+                line = await proc.stdout.readline()
+                if not line:
+                    break
+                decoded = line.decode("utf-8", errors="replace").rstrip()
+                if decoded:
+                    await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:log", "agent": agent, "line": decoded}))
+
+            await proc.wait()
+            _ecc_eval_status["completed"].append(agent)
+            await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:complete", "agent": agent}))
+
+        except Exception as e:
+            await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:error", "agent": agent, "error": str(e)}))
+
+    _ecc_eval_status["state"] = "idle"
+    _ecc_eval_status["current_agent"] = None
+    await broadcast_to_dashboard(json.dumps({
+        "event": "ecc_eval:complete",
+        "completed": len(_ecc_eval_status["completed"]),
+        "total": len(agents),
+    }))
 
 
 # ---------------------------------------------------------------------------

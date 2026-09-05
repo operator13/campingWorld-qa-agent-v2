@@ -6,7 +6,7 @@ The 12 ECC (Everything Claude Code) development agents are used daily for planni
 
 This build spec defines an eval framework for all 12 ECC agents. Unlike the existing 4 pipeline agent evals (triage, planner, generator, healer) which operate on QA pipeline state (`QAState`), ECC agent evals operate on **planted code samples** -- code snippets with known issues where we measure detection rate, false positive rate, and recommendation quality.
 
-**Status:** IN PROGRESS (Phase 1-3 complete, Phase 4 next)
+**Status:** IN PROGRESS (Phase 1-4 complete, Phase 5 next)
 **Priority:** High
 **Depends on:** Agent Evaluation System (existing), QA Command Center Dashboard
 
@@ -634,18 +634,18 @@ qa-agent eval --ecc --cost-report
 | 9 | Run baselines for all 5 generative agents | Pending |
 | 10 | Write tests for `llm_judge.py` (11 tests) | Done |
 
-### Phase 4: Dashboard Integration (Week 5)
+### Phase 4: Dashboard Integration (Week 5) — COMPLETE
 
-| # | Task | File |
-|---|------|------|
-| 1 | Add `/api/eval/ecc/scores` endpoints | `server.py` |
-| 2 | Add `/api/eval/ecc/run` endpoint | `server.py` |
-| 3 | Add `/api/eval/ecc/history/{agent}` endpoint | `server.py` |
-| 4 | Add "DEVELOPMENT AGENT EVALS" section to HTML | `index.html` |
-| 5 | Add ECC eval card rendering | `app.js` |
-| 6 | Add cyberpunk styling for ECC cards | `styles.css` |
-| 7 | Add "EVAL ECC AGENTS" button with WebSocket progress | `app.js` |
-| 8 | Add cost odometer card | `app.js` |
+| # | Task | File | Status |
+|---|------|------|--------|
+| 1 | Add `/api/eval/ecc/scores` endpoints | `server.py` | Done |
+| 2 | Add `/api/eval/ecc/run` endpoint | `server.py` | Done |
+| 3 | Add `/api/eval/ecc/history/{agent}` endpoint | `server.py` | Done |
+| 4 | Add "DEVELOPMENT AGENT EVALS" section to HTML | `index.html` | Done |
+| 5 | Add ECC eval card rendering (detection + generative) | `app.js` | Done |
+| 6 | Add cyberpunk styling for ECC cards | `styles.css` | Done |
+| 7 | Add "EVAL ECC AGENTS" button with WebSocket progress | `app.js` | Done |
+| 8 | Add cost odometer card | `app.js` | Pending |
 
 ### Phase 5: Regression Detection + CI (Week 6)
 
