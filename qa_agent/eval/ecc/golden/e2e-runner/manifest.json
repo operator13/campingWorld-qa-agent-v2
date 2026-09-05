@@ -1,0 +1,132 @@
+[
+  {
+    "scenario_id": "e2e_001_new_user_flow",
+    "agent": "e2e-runner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Generate Playwright test for user registration flow",
+    "scenario_file": "scenarios/e2e_001.md",
+    "acceptance_criteria": [
+      "Uses Page Object Model pattern",
+      "Uses semantic locators (getByRole, getByTestId)",
+      "No hardcoded waits (no waitForTimeout)",
+      "Assertions are in spec file, not page object",
+      "Tests follow AAA pattern"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "e2e_002_product_search_filter",
+    "agent": "e2e-runner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Generate Playwright test for product search and filter flow",
+    "scenario_file": "scenarios/e2e_002.md",
+    "acceptance_criteria": [
+      "Uses Page Object Model pattern",
+      "Uses semantic locators (getByRole, getByTestId)",
+      "No hardcoded waits (no waitForTimeout)",
+      "Assertions are in spec file, not page object",
+      "Tests follow AAA pattern"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "e2e_003_flaky_timing",
+    "agent": "e2e-runner",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Fix flaky test caused by timing issue on dynamic content",
+    "scenario_file": "scenarios/e2e_003.md",
+    "acceptance_criteria": [
+      "Removes or replaces waitForTimeout with auto-wait locator",
+      "Uses toBeVisible or waitFor with a locator instead of sleep",
+      "Test passes reliably on slow CI",
+      "No hardcoded waits remain",
+      "Tests follow AAA pattern"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "e2e_004_flaky_race_condition",
+    "agent": "e2e-runner",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Fix flaky test caused by race condition on API response",
+    "scenario_file": "scenarios/e2e_004.md",
+    "acceptance_criteria": [
+      "Uses page.waitForResponse or route interception to synchronize",
+      "Removes arbitrary waitForTimeout",
+      "Test is deterministic regardless of network speed",
+      "No hardcoded waits remain",
+      "Tests follow AAA pattern"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "e2e_005_broken_locator_text",
+    "agent": "e2e-runner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Update broken locator after button text changed",
+    "scenario_file": "scenarios/e2e_005.md",
+    "acceptance_criteria": [
+      "Updates stale text selector to match new button text",
+      "Uses semantic locator (getByRole with name)",
+      "Page object is updated, not the spec file",
+      "No other locators are changed unnecessarily"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "e2e_006_broken_locator_restructured",
+    "agent": "e2e-runner",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Update broken locator after element DOM restructure",
+    "scenario_file": "scenarios/e2e_006.md",
+    "acceptance_criteria": [
+      "Replaces brittle CSS selector with semantic locator",
+      "Uses data-testid or getByRole instead of positional CSS",
+      "Page object is updated, not the spec file",
+      "Locator is resilient to future DOM changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "e2e_007_passing_test_decoy",
+    "agent": "e2e-runner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Test already passing - no changes needed (decoy)",
+    "scenario_file": "scenarios/e2e_007.md",
+    "acceptance_criteria": [
+      "Agent recognizes the test is already correct",
+      "No code modifications are made",
+      "Agent reports the test passes as-is"
+    ],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "e2e_008_stable_pom_decoy",
+    "agent": "e2e-runner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Stable POM and spec - no changes needed (decoy)",
+    "scenario_file": "scenarios/e2e_008.md",
+    "acceptance_criteria": [
+      "Agent recognizes both POM and spec are correct",
+      "No code modifications are made",
+      "Agent reports everything passes as-is"
+    ],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]

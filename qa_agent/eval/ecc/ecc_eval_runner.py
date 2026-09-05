@@ -24,6 +24,7 @@ from qa_agent.eval.ecc.finding_matcher import (
     compute_detection_scores,
     match_findings,
 )
+from qa_agent.eval.ecc.llm_judge import JudgeScore, judge_output
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +172,137 @@ async def run_detection_eval(
     return scorecard
 
 
+def load_scenario_file(agent_name: str, scenario: dict[str, Any]) -> str:
+    """Load the scenario description file for a generative agent."""
+    scenario_path = scenario.get("scenario_file", "")
+    if not scenario_path:
+        return scenario.get("description", "")
+    full_path = GOLDEN_DIR / agent_name / scenario_path
+    if full_path.exists():
+        return full_path.read_text()
+    logger.warning("Scenario file not found: %s", full_path)
+    return scenario.get("description", "")
+
+
+async def run_generative_eval(
+    agent_name: str,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Run eval for a generative-tier agent using LLM-as-judge scoring.
+
+    Returns a scorecard dict with quality scores per scenario.
+    """
+    config = get_agent_config(agent_name)
+    scenarios = load_manifest(agent_name)
+    if not scenarios:
+        return {"agent": agent_name, "error": "No scenarios found", "passed": False}
+
+    total = len(scenarios)
+    logger.info("Running %s eval (generative): %d scenarios", agent_name, total)
+
+    quality_scores: list[float] = []
+    total_tokens = 0
+    scenario_details: list[dict[str, Any]] = []
+
+    for i, scenario in enumerate(scenarios, 1):
+        sid = scenario["scenario_id"]
+        is_clean = scenario.get("is_clean", False)
+        acceptance_criteria = scenario.get("acceptance_criteria", [])
+
+        logger.info("[%d/%d] %s%s", i, total, sid, " (decoy)" if is_clean else "")
+
+        if dry_run:
+            scenario_details.append({"scenario_id": sid, "dry_run": True})
+            continue
+
+        # Load scenario description
+        scenario_desc = load_scenario_file(agent_name, scenario)
+
+        # Also load any code files if present
+        code_files = load_code_files(agent_name, scenario)
+
+        prompt = (
+            f"Complete the following task:\n\n{scenario_desc}\n\n"
+            f"Be thorough and follow project conventions."
+        )
+
+        response = await invoke_ecc_agent(agent_name, prompt, code_files or None)
+        total_tokens += response.token_estimate
+
+        if response.error:
+            logger.error("Scenario %s failed: %s", sid, response.error)
+            scenario_details.append({
+                "scenario_id": sid,
+                "error": response.error,
+                "timed_out": response.timed_out,
+                "quality_score": 0.0,
+            })
+            quality_scores.append(0.0)
+            continue
+
+        # For decoy scenarios, just check agent doesn't over-engineer
+        if is_clean:
+            scenario_details.append({
+                "scenario_id": sid,
+                "is_clean": True,
+                "quality_score": 1.0,
+                "note": "Decoy scenario — scored as pass",
+            })
+            quality_scores.append(1.0)
+            continue
+
+        # Score with LLM judge
+        judge_result = await judge_output(
+            scenario_description=scenario_desc,
+            agent_output=response.output,
+            acceptance_criteria=acceptance_criteria,
+        )
+
+        quality_scores.append(judge_result.normalized_score)
+        scenario_details.append({
+            "scenario_id": sid,
+            "quality_score": judge_result.normalized_score,
+            "dimension_scores": judge_result.scores,
+            "reasoning": judge_result.reasoning,
+            "error": judge_result.error,
+        })
+
+    if dry_run:
+        return {
+            "agent": agent_name,
+            "dry_run": True,
+            "scenarios_total": total,
+            "scenarios": scenario_details,
+        }
+
+    avg_quality = (
+        sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+    )
+    passed = avg_quality >= config.quality_threshold
+
+    scorecard = {
+        "eval_run_id": f"ecc-eval-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}",
+        "agent": agent_name,
+        "tier": "generative",
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "scenarios_total": total,
+        "scores": {
+            "quality": round(avg_quality, 4),
+            "per_scenario": [round(s, 4) for s in quality_scores],
+        },
+        "thresholds": {
+            "quality": config.quality_threshold,
+        },
+        "passed": passed,
+        "token_estimate": total_tokens,
+        "scenarios": scenario_details,
+    }
+
+    _save_report(agent_name, scorecard)
+    return scorecard
+
+
 async def run_ecc_eval(
     agents: list[str] | None = None,
     *,
@@ -207,13 +339,9 @@ async def run_ecc_eval(
                 agent_name, dry_run=dry_run
             )
         else:
-            # Generative agent evals (Phase 3)
-            results[agent_name] = {
-                "agent": agent_name,
-                "tier": "generative",
-                "error": "Generative evals not yet implemented (Phase 3)",
-                "passed": False,
-            }
+            results[agent_name] = await run_generative_eval(
+                agent_name, dry_run=dry_run
+            )
 
     summary = {
         "eval_run_id": f"ecc-eval-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}",

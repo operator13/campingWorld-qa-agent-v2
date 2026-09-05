@@ -6,7 +6,7 @@ The 12 ECC (Everything Claude Code) development agents are used daily for planni
 
 This build spec defines an eval framework for all 12 ECC agents. Unlike the existing 4 pipeline agent evals (triage, planner, generator, healer) which operate on QA pipeline state (`QAState`), ECC agent evals operate on **planted code samples** -- code snippets with known issues where we measure detection rate, false positive rate, and recommendation quality.
 
-**Status:** IN PROGRESS (Phase 1-2 complete, Phase 3 next)
+**Status:** IN PROGRESS (Phase 1-3 complete, Phase 4 next)
 **Priority:** High
 **Depends on:** Agent Evaluation System (existing), QA Command Center Dashboard
 
@@ -619,20 +619,20 @@ qa-agent eval --ecc --cost-report
 | 5 | Run baselines for all 4 new agents | Pending |
 | 6 | Tune finding_extractor patterns for agent-specific output formats | Pending |
 
-### Phase 3: Generative Agents + LLM Judge (Week 4)
+### Phase 3: Generative Agents + LLM Judge (Week 4) — COMPLETE
 
-| # | Task |
-|---|------|
-| 1 | Build `llm_judge.py` -- LLM-as-judge with Haiku |
-| 2 | Create planner (ECC) golden scenarios (8) |
-| 3 | Create tdd-guide golden scenarios (8) |
-| 4 | Create build-error-resolver golden scenarios (10) |
-| 5 | Create e2e-runner golden scenarios (8) |
-| 6 | Create refactor-cleaner golden scenarios (10) |
-| 7 | Add generative scoring path to `ecc_eval_runner.py` |
-| 8 | Reuse existing `score_locator_quality`, `score_test_validity` for e2e-runner |
-| 9 | Run baselines for all 5 generative agents |
-| 10 | Write tests for `llm_judge.py` |
+| # | Task | Status |
+|---|------|--------|
+| 1 | Build `llm_judge.py` -- LLM-as-judge with Haiku | Done |
+| 2 | Create planner (ECC) golden scenarios (8) | Done |
+| 3 | Create tdd-guide golden scenarios (8) | Done |
+| 4 | Create build-error-resolver golden scenarios (10) | Done |
+| 5 | Create e2e-runner golden scenarios (8) | Done |
+| 6 | Create refactor-cleaner golden scenarios (10) | Done |
+| 7 | Add generative scoring path to `ecc_eval_runner.py` | Done |
+| 8 | Reuse existing `score_locator_quality`, `score_test_validity` for e2e-runner | Pending |
+| 9 | Run baselines for all 5 generative agents | Pending |
+| 10 | Write tests for `llm_judge.py` (11 tests) | Done |
 
 ### Phase 4: Dashboard Integration (Week 5)
 

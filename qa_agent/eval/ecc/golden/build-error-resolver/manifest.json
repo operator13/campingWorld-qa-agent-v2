@@ -1,0 +1,162 @@
+[
+  {
+    "scenario_id": "ber_001_missing_property",
+    "agent": "build-error-resolver",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "TypeScript type error: missing required property in object literal",
+    "scenario_file": "scenarios/ber_001.md",
+    "acceptance_criteria": [
+      "Fix adds the missing property with a correct type-compatible value",
+      "Diff is less than 5% of the file",
+      "No other properties or logic are changed",
+      "Fixed code compiles without errors"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_002_incompatible_types",
+    "agent": "build-error-resolver",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "TypeScript type error: incompatible types in function return",
+    "scenario_file": "scenarios/ber_002.md",
+    "acceptance_criteria": [
+      "Fix corrects the return type or return value to match",
+      "Diff is less than 5% of the file",
+      "No behavioral changes beyond the type fix",
+      "Fixed code compiles without errors"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_003_generic_constraint",
+    "agent": "build-error-resolver",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "TypeScript type error: generic type does not satisfy constraint",
+    "scenario_file": "scenarios/ber_003.md",
+    "acceptance_criteria": [
+      "Fix adjusts the generic constraint or the type argument to be compatible",
+      "Diff is less than 5% of the file",
+      "Generic utility remains reusable for its intended purpose",
+      "Fixed code compiles without errors"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_004_wrong_import_path",
+    "agent": "build-error-resolver",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Import resolution error: wrong relative path",
+    "scenario_file": "scenarios/ber_004.md",
+    "acceptance_criteria": [
+      "Fix corrects the import path to the actual file location",
+      "Diff is exactly 1 line changed",
+      "No new files are created",
+      "Fixed code compiles without errors"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_005_circular_dependency",
+    "agent": "build-error-resolver",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Import resolution error: circular dependency between two modules",
+    "scenario_file": "scenarios/ber_005.md",
+    "acceptance_criteria": [
+      "Fix breaks the circular dependency",
+      "Shared types are extracted to a separate file or the dependency direction is corrected",
+      "Both modules retain their original public API",
+      "Fixed code compiles without errors"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_006_missing_package",
+    "agent": "build-error-resolver",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Missing dependency: package not installed",
+    "scenario_file": "scenarios/ber_006.md",
+    "acceptance_criteria": [
+      "Fix identifies the missing package by name",
+      "Fix recommends the correct install command (npm install or npm install -D)",
+      "Fix distinguishes between runtime and dev dependency",
+      "No source code changes are needed"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_007_wrong_version",
+    "agent": "build-error-resolver",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Missing dependency: API changed in newer version",
+    "scenario_file": "scenarios/ber_007.md",
+    "acceptance_criteria": [
+      "Fix identifies the version mismatch as the root cause",
+      "Fix either pins to the compatible version or updates the code to the new API",
+      "Diff is less than 5% of the file if code is changed",
+      "Fix does not introduce additional breaking changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_008_tsconfig_error",
+    "agent": "build-error-resolver",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Config error: tsconfig.json misconfiguration",
+    "scenario_file": "scenarios/ber_008.md",
+    "acceptance_criteria": [
+      "Fix corrects the tsconfig.json setting",
+      "Fix explains why the setting was wrong",
+      "Diff is exactly 1-2 lines in tsconfig.json",
+      "Fixed configuration allows the project to compile"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_009_clean_compiles",
+    "agent": "build-error-resolver",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Clean build: code already compiles correctly (decoy)",
+    "scenario_file": "scenarios/ber_009.md",
+    "acceptance_criteria": [
+      "Agent correctly identifies that the code has no build errors",
+      "Agent does not suggest unnecessary changes",
+      "Agent confirms the code compiles successfully",
+      "No diff is produced"
+    ],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "ber_010_clean_tests_pass",
+    "agent": "build-error-resolver",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Clean build: tests already pass (decoy)",
+    "scenario_file": "scenarios/ber_010.md",
+    "acceptance_criteria": [
+      "Agent correctly identifies that the code compiles and tests pass",
+      "Agent does not suggest unnecessary changes",
+      "Agent does not confuse test output with build errors",
+      "No diff is produced"
+    ],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]

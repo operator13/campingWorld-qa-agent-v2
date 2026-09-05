@@ -1,0 +1,143 @@
+[
+  {
+    "scenario_id": "plan_001_simple_feature",
+    "agent": "planner-ecc",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Plan implementation of a user preferences API endpoint",
+    "scenario_file": "scenarios/plan_001.md",
+    "acceptance_criteria": [
+      "Plan includes specific file paths to create/modify",
+      "Plan has phased implementation steps",
+      "Plan identifies dependencies and risks",
+      "Plan follows project conventions (FastAPI, Pydantic)"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "plan_002_email_notification",
+    "agent": "planner-ecc",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Plan implementation of an email notification system",
+    "scenario_file": "scenarios/plan_002.md",
+    "acceptance_criteria": [
+      "Plan includes specific file paths to create/modify",
+      "Plan has phased implementation steps",
+      "Plan identifies third-party service integration (SMTP or SES)",
+      "Plan includes template system for email content",
+      "Plan addresses retry and failure handling"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "plan_003_sqlite_to_postgres",
+    "agent": "planner-ecc",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Plan migration from SQLite to PostgreSQL",
+    "scenario_file": "scenarios/plan_003.md",
+    "acceptance_criteria": [
+      "Plan includes data migration strategy with rollback steps",
+      "Plan identifies all files using SQLite-specific syntax",
+      "Plan has phased rollout (dual-write, shadow read, cutover)",
+      "Plan addresses schema differences between SQLite and PostgreSQL",
+      "Plan includes testing strategy for migration correctness",
+      "Plan identifies downtime risk and mitigation"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "plan_004_extract_shared_utils",
+    "agent": "planner-ecc",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Plan extracting shared utilities into a reusable package",
+    "scenario_file": "scenarios/plan_004.md",
+    "acceptance_criteria": [
+      "Plan identifies duplicated utility code across modules",
+      "Plan defines package structure with clear public API",
+      "Plan includes versioning and publishing strategy",
+      "Plan addresses backward compatibility for existing imports",
+      "Plan has phased migration from inline to packaged utilities"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "plan_005_webhook_delivery",
+    "agent": "planner-ecc",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Plan webhook delivery system with retry queue",
+    "scenario_file": "scenarios/plan_005.md",
+    "acceptance_criteria": [
+      "Plan includes queue infrastructure (Redis, RabbitMQ, or SQS)",
+      "Plan defines retry strategy with exponential backoff",
+      "Plan addresses idempotency and deduplication",
+      "Plan includes dead letter queue for permanently failed deliveries",
+      "Plan has monitoring and alerting for delivery failures",
+      "Plan addresses webhook signature verification",
+      "Plan includes specific file paths and phased implementation"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "plan_006_sso_microservices",
+    "agent": "planner-ecc",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Plan SSO implementation across 3 microservices",
+    "scenario_file": "scenarios/plan_006.md",
+    "acceptance_criteria": [
+      "Plan identifies all three services and their auth touchpoints",
+      "Plan selects an SSO protocol (OIDC, SAML) with justification",
+      "Plan includes token propagation strategy between services",
+      "Plan addresses session management and token refresh",
+      "Plan includes rollback strategy per service",
+      "Plan has phased rollout with feature flags",
+      "Plan addresses security risks (token leakage, replay attacks)"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "plan_007_pagination",
+    "agent": "planner-ecc",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Plan adding pagination to all list endpoints",
+    "scenario_file": "scenarios/plan_007.md",
+    "acceptance_criteria": [
+      "Plan includes specific endpoint paths to modify",
+      "Plan defines pagination parameters (page, limit, offset or cursor)",
+      "Plan includes response envelope with total count and next/prev links",
+      "Plan addresses backward compatibility for existing clients",
+      "Plan follows project conventions (FastAPI, Pydantic)"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "plan_008_rate_limiting",
+    "agent": "planner-ecc",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Plan adding rate limiting middleware to the API",
+    "scenario_file": "scenarios/plan_008.md",
+    "acceptance_criteria": [
+      "Plan includes middleware integration with FastAPI",
+      "Plan defines rate limit strategy (token bucket, sliding window)",
+      "Plan specifies per-endpoint or per-user limits",
+      "Plan addresses storage backend for rate counters (Redis or in-memory)",
+      "Plan includes proper 429 response with Retry-After header",
+      "Plan follows project conventions (FastAPI middleware pattern)"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  }
+]

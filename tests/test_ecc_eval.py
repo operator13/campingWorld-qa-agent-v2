@@ -1,4 +1,4 @@
-"""Tests for ECC agent eval system — finding extractor, matcher, and runner."""
+"""Tests for ECC agent eval system — finding extractor, matcher, judge, and runner."""
 
 from __future__ import annotations
 
@@ -15,6 +15,12 @@ from qa_agent.eval.ecc.config import (
     DETECTION_AGENTS,
     GENERATIVE_AGENTS,
     get_agent_config,
+)
+from qa_agent.eval.ecc.llm_judge import (
+    JudgeScore,
+    RUBRIC_DIMENSIONS,
+    _build_judge_prompt,
+    _parse_judge_response,
 )
 
 
@@ -306,3 +312,94 @@ class TestConfig:
     def test_no_agents_in_both_tiers(self):
         overlap = set(DETECTION_AGENTS) & set(GENERATIVE_AGENTS)
         assert len(overlap) == 0
+
+
+# -----------------------------------------------------------------------
+# LLM Judge Tests
+# -----------------------------------------------------------------------
+
+
+class TestLLMJudge:
+    def test_rubric_has_5_dimensions(self):
+        assert len(RUBRIC_DIMENSIONS) == 5
+
+    def test_parse_valid_json(self):
+        response = '{"completeness": 4, "actionability": 3, "correctness": 5, "risk_awareness": 2, "convention_adherence": 4, "reasoning": "Good overall"}'
+        scores, reasoning = _parse_judge_response(response)
+        assert len(scores) == 5
+        assert scores["completeness"] == 4
+        assert scores["correctness"] == 5
+        assert scores["risk_awareness"] == 2
+        assert reasoning == "Good overall"
+
+    def test_parse_json_in_code_block(self):
+        response = '```json\n{"completeness": 3, "actionability": 3, "correctness": 3, "risk_awareness": 3, "convention_adherence": 3, "reasoning": "Average"}\n```'
+        scores, reasoning = _parse_judge_response(response)
+        assert all(v == 3 for v in scores.values())
+
+    def test_parse_clamps_scores(self):
+        response = '{"completeness": 10, "actionability": 0, "correctness": 3, "risk_awareness": 3, "convention_adherence": 3}'
+        scores, _ = _parse_judge_response(response)
+        assert scores["completeness"] == 5  # clamped to max
+        assert scores["actionability"] == 1  # clamped to min
+
+    def test_parse_missing_dimensions_default_to_3(self):
+        response = '{"completeness": 5}'
+        scores, _ = _parse_judge_response(response)
+        assert scores["completeness"] == 5
+        assert scores["actionability"] == 3  # default
+
+    def test_parse_invalid_json_raises(self):
+        with pytest.raises(Exception):
+            _parse_judge_response("This is not JSON at all")
+
+    def test_build_prompt_includes_scenario(self):
+        prompt = _build_judge_prompt("Test scenario", "Agent output here")
+        assert "Test scenario" in prompt
+        assert "Agent output here" in prompt
+
+    def test_build_prompt_includes_acceptance_criteria(self):
+        prompt = _build_judge_prompt(
+            "Test scenario",
+            "Agent output",
+            acceptance_criteria=["Must include file paths", "Must identify risks"],
+        )
+        assert "Must include file paths" in prompt
+        assert "Must identify risks" in prompt
+
+    def test_build_prompt_includes_rubric(self):
+        prompt = _build_judge_prompt("Test", "Output")
+        assert "completeness" in prompt
+        assert "actionability" in prompt
+        assert "correctness" in prompt
+
+    def test_judge_score_normalization(self):
+        # All 5s -> 1.0, All 1s -> 0.0, All 3s -> 0.5
+        score_all_5 = JudgeScore(
+            scores={d: 5 for d in RUBRIC_DIMENSIONS},
+            normalized_score=1.0,
+            reasoning="",
+            raw_response="",
+            error=None,
+        )
+        assert score_all_5.normalized_score == 1.0
+
+        score_all_1 = JudgeScore(
+            scores={d: 1 for d in RUBRIC_DIMENSIONS},
+            normalized_score=0.0,
+            reasoning="",
+            raw_response="",
+            error=None,
+        )
+        assert score_all_1.normalized_score == 0.0
+
+    def test_judge_score_with_error(self):
+        score = JudgeScore(
+            scores={d: 1 for d in RUBRIC_DIMENSIONS},
+            normalized_score=0.0,
+            reasoning="",
+            raw_response="",
+            error="API key missing",
+        )
+        assert score.error is not None
+        assert score.normalized_score == 0.0

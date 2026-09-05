@@ -1,0 +1,140 @@
+[
+  {
+    "scenario_id": "tdd_001_string_validation",
+    "agent": "tdd-guide",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "New function: string validation utility for product SKUs",
+    "scenario_file": "scenarios/tdd_001.md",
+    "acceptance_criteria": [
+      "Tests are written before implementation code",
+      "Tests cover valid inputs, invalid inputs, and edge cases (empty string, None)",
+      "Tests follow AAA pattern (Arrange-Act-Assert)",
+      "Implementation is minimal — only enough to pass the tests",
+      "At least 5 distinct test cases exist"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "tdd_002_cart_calculator",
+    "agent": "tdd-guide",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "New function: shopping cart price calculator with discounts",
+    "scenario_file": "scenarios/tdd_002.md",
+    "acceptance_criteria": [
+      "Tests are written before implementation code",
+      "Tests cover: empty cart, single item, multiple items, percentage discount, fixed discount, combined discounts",
+      "Tests follow AAA pattern (Arrange-Act-Assert)",
+      "Edge cases tested: negative prices, zero quantity, discount exceeding total",
+      "Implementation handles all discount types correctly"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "tdd_003_pagination_off_by_one",
+    "agent": "tdd-guide",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Bug fix: off-by-one error in pagination logic",
+    "scenario_file": "scenarios/tdd_003.md",
+    "acceptance_criteria": [
+      "A regression test is written first that reproduces the off-by-one bug",
+      "The regression test fails before the fix is applied",
+      "Fix is minimal and targeted to the pagination logic",
+      "Additional boundary tests added: first page, last page, single-item page, empty result set",
+      "Tests follow AAA pattern"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "tdd_004_cache_race_condition",
+    "agent": "tdd-guide",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Bug fix: race condition in cache invalidation",
+    "scenario_file": "scenarios/tdd_004.md",
+    "acceptance_criteria": [
+      "A regression test is written that demonstrates stale cache reads",
+      "Test uses concurrent execution (threading or asyncio) to trigger the race",
+      "Fix introduces proper locking or atomic operations",
+      "Tests verify cache consistency after concurrent writes",
+      "Tests follow AAA pattern"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "tdd_005_extract_auth_logic",
+    "agent": "tdd-guide",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Refactor: extract authentication logic from request handler",
+    "scenario_file": "scenarios/tdd_005.md",
+    "acceptance_criteria": [
+      "Tests for the extracted auth module are written before extraction",
+      "Tests cover: valid token, expired token, malformed token, missing token, insufficient permissions",
+      "Existing handler tests still pass after refactor",
+      "Extracted module has a clean interface (no HTTP framework dependency)",
+      "Tests follow AAA pattern"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "tdd_006_callback_to_async",
+    "agent": "tdd-guide",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Refactor: replace callback pattern with async/await",
+    "scenario_file": "scenarios/tdd_006.md",
+    "acceptance_criteria": [
+      "Tests for the async version are written before refactoring",
+      "Tests verify identical behavior to the callback version",
+      "Tests cover success path, error propagation, and timeout",
+      "Async tests use pytest-asyncio or equivalent",
+      "Callback-based tests are preserved as regression tests"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "tdd_007_file_upload_validation",
+    "agent": "tdd-guide",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Edge cases: file upload with size and type validation",
+    "scenario_file": "scenarios/tdd_007.md",
+    "acceptance_criteria": [
+      "Tests are written before implementation",
+      "Tests cover: valid file, oversized file, zero-byte file, wrong MIME type, spoofed extension, multiple files",
+      "Tests verify magic byte detection (not just extension)",
+      "Tests cover boundary conditions: exactly at size limit, one byte over",
+      "Error messages are user-friendly and specific",
+      "At least 10 distinct test cases exist"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "tdd_008_currency_conversion",
+    "agent": "tdd-guide",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Edge cases: currency conversion with rounding rules",
+    "scenario_file": "scenarios/tdd_008.md",
+    "acceptance_criteria": [
+      "Tests are written before implementation",
+      "Tests cover: standard conversion, inverse conversion, same-currency no-op, chained conversion",
+      "Tests verify banker's rounding (round half to even)",
+      "Tests cover zero amounts, very small amounts (sub-cent), very large amounts",
+      "Tests verify no floating-point precision loss (Decimal usage)",
+      "At least 10 distinct test cases exist"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  }
+]

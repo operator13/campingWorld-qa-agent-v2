@@ -1,0 +1,159 @@
+[
+  {
+    "scenario_id": "rc_001_unused_export_function",
+    "agent": "refactor-cleaner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Exported function never imported by any other file",
+    "scenario_file": "scenarios/rc_001.md",
+    "acceptance_criteria": [
+      "Correctly identifies formatLegacyDate as unused export",
+      "Recommends removal or unexport",
+      "Does not flag formatDate which is used",
+      "Tests still pass after changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_002_unused_export_class",
+    "agent": "refactor-cleaner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Exported class with no consumers in the codebase",
+    "scenario_file": "scenarios/rc_002.md",
+    "acceptance_criteria": [
+      "Correctly identifies XmlReportGenerator as dead code",
+      "Recommends removal of the entire class",
+      "Does not flag HtmlReportGenerator which is imported elsewhere",
+      "Tests still pass after changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_003_unused_export_type",
+    "agent": "refactor-cleaner",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Exported type/interface only used internally in the same file",
+    "scenario_file": "scenarios/rc_003.md",
+    "acceptance_criteria": [
+      "Correctly identifies InternalCacheEntry as export-only-for-self",
+      "Recommends removing the export keyword, not the type itself",
+      "Does not flag CacheConfig which is imported externally",
+      "Tests still pass after changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_004_duplicate_function",
+    "agent": "refactor-cleaner",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Same logic duplicated in two files",
+    "scenario_file": "scenarios/rc_004.md",
+    "acceptance_criteria": [
+      "Identifies slug generation logic is duplicated",
+      "Recommends extracting to a shared utility",
+      "Both call sites are updated to use the shared function",
+      "Tests still pass after changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_005_near_duplicate",
+    "agent": "refactor-cleaner",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Near-duplicate functions with minor differences",
+    "scenario_file": "scenarios/rc_005.md",
+    "acceptance_criteria": [
+      "Identifies the two retry functions as near-duplicates",
+      "Recommends merging into a single parameterized function",
+      "Preserves the behavioral difference via a parameter",
+      "Tests still pass after changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_006_unused_dependency",
+    "agent": "refactor-cleaner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Package listed in package.json but never imported",
+    "scenario_file": "scenarios/rc_006.md",
+    "acceptance_criteria": [
+      "Identifies moment as unused dependency",
+      "Recommends removing from package.json",
+      "Does not flag dayjs which is actively imported",
+      "Tests still pass after changes"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_007_unused_dev_dependency",
+    "agent": "refactor-cleaner",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Dev dependency used only in a deleted test file",
+    "scenario_file": "scenarios/rc_007.md",
+    "acceptance_criteria": [
+      "Identifies sinon as orphaned dev dependency",
+      "Recognizes the test file that used it was deleted",
+      "Recommends removing from devDependencies",
+      "Does not flag vitest which is still used"
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_008_live_code_decoy",
+    "agent": "refactor-cleaner",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Function that IS used - should not be removed (decoy)",
+    "scenario_file": "scenarios/rc_008.md",
+    "acceptance_criteria": [
+      "Agent recognizes sanitize_html is actively imported",
+      "No removal is recommended",
+      "Agent reports the function is live code"
+    ],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_009_public_api_decoy",
+    "agent": "refactor-cleaner",
+    "difficulty": "easy",
+    "language": "typescript",
+    "description": "Export used by external consumers - part of public API (decoy)",
+    "scenario_file": "scenarios/rc_009.md",
+    "acceptance_criteria": [
+      "Agent recognizes the function is part of the public API",
+      "No removal is recommended",
+      "Agent notes the export is re-exported from index.ts"
+    ],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "rc_010_dynamic_import_decoy",
+    "agent": "refactor-cleaner",
+    "difficulty": "medium",
+    "language": "typescript",
+    "description": "Dependency used via dynamic import() - not in static imports (decoy)",
+    "scenario_file": "scenarios/rc_010.md",
+    "acceptance_criteria": [
+      "Agent recognizes sharp is used via dynamic import()",
+      "No removal is recommended",
+      "Agent identifies the import() call as the usage site"
+    ],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]
