@@ -324,7 +324,7 @@ class TestConfig:
         config = get_agent_config("code-reviewer")
         assert config.name == "code-reviewer"
         assert config.tier == "detection"
-        assert config.recall_threshold == 0.75
+        assert config.recall_threshold == 0.70  # code-reviewer
         assert config.budget_cap > 0
 
     def test_no_agents_in_both_tiers(self):
