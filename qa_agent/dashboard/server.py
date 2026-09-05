@@ -53,6 +53,28 @@ async def require_auth(x_api_token: str | None = Header(None)):
 
 SAFE_RUN_ID = re.compile(r"^[\w\-]+$")
 ALLOWED_EVAL_AGENTS = {"triage", "planner", "generator", "healer"}
+ALLOWED_SPECS = {
+    "cart.spec.ts", "checkout.spec.ts", "footer.spec.ts", "good-sam.spec.ts",
+    "homepage.spec.ts", "nav.spec.ts", "product.spec.ts", "register.spec.ts",
+    "rv-parts.spec.ts", "rvs-for-sale-detail.spec.ts", "rvs-for-sale.spec.ts",
+    "search.spec.ts", "sign-in.spec.ts", "store-locator.spec.ts",
+}
+ALLOWED_WS_EVENTS = {
+    "runner:log", "runner:start", "runner:end", "runner:clear",
+    "runner:healing", "runner:healed",
+    "eval:start", "eval:complete", "eval:log",
+    "eval:agent:start", "eval:agent:complete", "eval:agent:error",
+    "health:updated",
+}
+MAX_WORKERS = 10
+MAX_RETRIES = 3
+
+if not DASHBOARD_API_TOKEN:
+    import logging as _logging
+    _logging.getLogger("qa_dashboard").warning(
+        "DASHBOARD_API_TOKEN is not set — all POST endpoints are unauthenticated. "
+        "Set DASHBOARD_API_TOKEN in .env to enable auth."
+    )
 
 # Mount static files (CSS, JS, etc.)
 if STATIC_DIR.exists():
@@ -597,10 +619,16 @@ async def run_tests(body: dict = {}):
     if _test_process and _test_process.returncode is None:
         return JSONResponse({"error": "Tests already running"}, status_code=409)
 
-    specs = body.get("specs", [])  # list of spec filenames, empty = all
-    workers = body.get("workers", 3)
-    retries = body.get("retries", 0)
-    heal = body.get("heal", False)
+    specs = [s for s in body.get("specs", []) if s in ALLOWED_SPECS]
+    try:
+        workers = max(1, min(int(body.get("workers", 3)), MAX_WORKERS))
+    except (TypeError, ValueError):
+        workers = 3
+    try:
+        retries = max(0, min(int(body.get("retries", 0)), MAX_RETRIES))
+    except (TypeError, ValueError):
+        retries = 0
+    heal = bool(body.get("heal", False))
 
     run_id = datetime.now(tz=timezone.utc).strftime("%m_%d_%Y_%H-%M-%S")
     _test_run_status = {"state": "running", "run_id": run_id, "started_at": datetime.now(tz=timezone.utc).isoformat()}
@@ -760,10 +788,23 @@ async def ws_dashboard(websocket: WebSocket) -> None:
 @app.websocket("/ws/tests")
 async def ws_tests(websocket: WebSocket) -> None:
     """Playwright reporter pushes test events here; we fan-out to dashboards."""
+    # Authenticate via query param if token is set
+    if DASHBOARD_API_TOKEN:
+        token = websocket.query_params.get("token", "")
+        if token != DASHBOARD_API_TOKEN:
+            await websocket.close(code=4001, reason="Unauthorized")
+            return
     await websocket.accept()
     try:
         while True:
             message = await websocket.receive_text()
+            # Validate message is JSON with an allowed event type
+            try:
+                parsed = json.loads(message)
+                if not isinstance(parsed, dict) or parsed.get("event") not in ALLOWED_WS_EVENTS:
+                    continue  # silently drop invalid messages
+            except (json.JSONDecodeError, TypeError):
+                continue
             await broadcast_to_dashboard(message)
     except WebSocketDisconnect:
         pass
