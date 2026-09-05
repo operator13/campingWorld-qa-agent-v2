@@ -46,3 +46,4 @@
 - 2026-09-03: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
 - 2026-09-03: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
 - 2026-09-03: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no
+- 2026-09-05: `page.getByRole('button', { name: 'Submit' })` → `page.getByRole('button', { name: 'Place Order' })` | reason: Button text changed | success: no

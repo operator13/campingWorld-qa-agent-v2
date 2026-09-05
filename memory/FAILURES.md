@@ -5,8 +5,8 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 58
-- **Last seen:** 2026-09-03
+- **Occurrences:** 59
+- **Last seen:** 2026-09-05
 - **Stale after:** 2026-11-15
 
 ## FP-002: Locator not found
@@ -14,8 +14,8 @@
 - **Class:** locator_drift
 - **Resolution:** healed:locator_update
 - **Routes:** /
-- **Occurrences:** 32
-- **Last seen:** 2026-09-03
+- **Occurrences:** 33
+- **Last seen:** 2026-09-05
 - **Stale after:** 2026-11-15
 
 ## FP-003: Login failed
@@ -23,8 +23,8 @@
 - **Class:** app_defect
 - **Resolution:** defect:QA-999
 - **Routes:** /
-- **Occurrences:** 64
-- **Last seen:** 2026-09-03
+- **Occurrences:** 66
+- **Last seen:** 2026-09-05
 - **Stale after:** 2026-11-15
 
 ## FP-004: TimeoutError: locator.click: Timeout Nms exceeded. - waiting for getByRole('butt

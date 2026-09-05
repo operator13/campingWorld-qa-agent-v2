@@ -34,7 +34,7 @@
 
 ## /checkout
 - **First seen:** 2026-08-30
-- **Last seen:** 2026-09-03
+- **Last seen:** 2026-09-05
 - **Changes:** 0
 - **Change frequency:** 0.0/week
 - **Known testids:** none discovered

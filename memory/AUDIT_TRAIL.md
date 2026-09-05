@@ -1943,3 +1943,93 @@
 - **Errors:** 0
 
 ---
+
+### test_llm_node (2026-09-05 00:49:11 — 0ms)
+
+- **Model:** claude-sonnet-4-6
+- **Tokens:** 1500 in / 300 out ($0.0090)
+- **Input:** goal=test goal
+- **Output:** {"result": "ok"}
+- **Errors:** none
+
+### test_no_llm_node (2026-09-05 00:49:11 — 0ms)
+
+- **Input:** goal=test goal
+- **Output:** {"result": "done"}
+- **Errors:** none
+
+### test_error_node (2026-09-05 00:49:11 — 0ms)
+
+- **Model:** claude-sonnet-4-6
+- **Tokens:** 500 in / 100 out ($0.0030)
+- **Input:** goal=test goal
+- **Error:** intentional error
+
+### node_a (2026-09-05 00:49:11 — 0ms)
+
+- **Model:** claude-sonnet-4-6
+- **Tokens:** 1000 in / 500 out ($0.0105)
+- **Input:** goal=test goal
+- **Errors:** none
+
+### node_b (2026-09-05 00:49:11 — 0ms)
+
+- **Model:** claude-sonnet-4-6
+- **Tokens:** 2000 in / 300 out ($0.0105)
+- **Input:** goal=test goal
+- **Errors:** none
+
+## Run test-run-totals — 2026-09-05 00:49
+
+- **Duration:** 0ms
+- **Tokens:** 3000 in / 800 out
+- **Cost:** $0.0210
+- **Nodes:** node_a, node_b
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+### test_node (2026-09-05 00:49:11 — 0ms)
+
+- **Input:** goal=test goal
+- **Output:** {"result": "ok"}
+- **Errors:** none
+
+### test_node (2026-09-05 00:49:11 — 0ms)
+
+- **Input:** goal=test goal
+- **Errors:** none
+
+### test_node (2026-09-05 00:49:11 — 0ms)
+
+- **Input:** goal=test goal
+- **Errors:** none
+
+### test_node (2026-09-05 00:49:11 — 0ms)
+
+- **Input:** goal=test goal
+- **Errors:** none
+
+### executor (2026-09-05 00:49:11 — 0ms)
+
+- **Input:** goal=test goal
+- **Output:** {"passed": true}
+- **Errors:** none
+
+### triage (2026-09-05 00:49:11 — 0ms)
+
+- **Input:** goal=test goal
+- **Output:** {"failure_class": "locator_drift", "confidence": 0.85}
+- **Errors:** none
+
+## Run test-at3-e2e — 2026-09-05 00:49
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** triage
+- **Outcome:** drift
+- **Errors:** 0
+
+---
