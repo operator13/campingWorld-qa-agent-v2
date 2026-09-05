@@ -1,0 +1,31 @@
+{
+  "triaged": 1,
+  "healed": 0,
+  "app_defects": 0,
+  "unknown": 1,
+  "healed_files": [],
+  "healed_specs": [],
+  "details": [
+    {
+      "spec_file": "sign-in.spec.ts",
+      "test_title": "logo is visible",
+      "failure_class": "test_flake",
+      "confidence": 0.2,
+      "healed": false,
+      "error": "Test timeout of 30000ms exceeded while running \"beforeEach\" hook.\n\n   5 |   let signInPage: SignInPage;\n   6 |\n>  7 |   test.beforeEach(async ({ page }) => {\n     |        ^\n   8 |     signInPage = new SignInPage(page);\n   9 |     await signInPage.navigate();\n  10 |   });\n    at /Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/tests_generated/sign-in.spec.ts:7:8",
+      "reasoning": "The failure is a TimeoutError in the beforeEach hook during `signInPage.navigate()`, which is a page navigation call \u2014 not a locator assertion. This pattern is consistent with test_flake: the page/server may not have responded in time (network latency, slow startup, or transient unavailability). C1=0.1 (TimeoutError is ambiguous \u2014 could be flake or app defect). C2=0.0 (no DOM snapshot available, capped accordingly). C3=0.0 (no matching historical pattern for this route). C4=0.0 (no human decisions to reference). C5=0.1 (the recent history shows 9/10 passed \u2014 DEGRADED but not fully broken \u2014 suggesting intermittent/flaky behavior rather than a consistent app defect or locator drift). The pre-computed score is 0.15; I adjust slightly upward to 0.2 given the 9/10 pass rate strongly suggesting intermittent failure rather than a structural defect. No DOM snapshot means confidence is capped at 0.5, and the raw evidence keeps this low.",
+      "confidence_breakdown": {
+        "c1_error_type": 0.1,
+        "c2_dom_evidence": 0.0,
+        "c3_history_match": 0.0,
+        "c4_human_calibration": 0.1,
+        "c5_consistency": 0.05,
+        "raw_score": 0.25,
+        "guards_applied": [],
+        "final_score": 0.25
+      },
+      "not_healed_reason": "Confidence 0.20 is below auto-heal threshold (0.75)"
+    }
+  ],
+  "timestamp": "2026-09-05T19:40:49.708016+00:00"
+}
