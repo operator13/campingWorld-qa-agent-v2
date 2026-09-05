@@ -17,6 +17,11 @@
     connectWebSocket();
     initRunnerControls();
     initEvalControls();
+    // ECC Development Agent Evals — render empty cards immediately, then fetch data
+    renderEccDetectionCards({});
+    renderEccGenerativeCards({});
+    fetchEccEvalScores();
+    initEccEvalControls();
     // Replay last test run results for late-joining clients
     _replayLastRun();
   });
@@ -1124,12 +1129,17 @@
   async function fetchEccEvalScores() {
     try {
       const res = await fetch('/api/eval/ecc/scores');
-      if (!res.ok) return;
+      if (!res.ok) {
+        renderEccDetectionCards({});
+        renderEccGenerativeCards({});
+        return;
+      }
       const data = await res.json();
       renderEccDetectionCards(data);
       renderEccGenerativeCards(data);
     } catch (err) {
-      // silently ignore
+      renderEccDetectionCards({});
+      renderEccGenerativeCards({});
     }
   }
 
@@ -1237,9 +1247,5 @@
       if (statusText) statusText.textContent = 'ERROR: ' + (data.agent || '').toUpperCase();
     }
   }
-
-  // Initialize ECC evals on page load
-  fetchEccEvalScores();
-  initEccEvalControls();
 
 })();

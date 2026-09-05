@@ -1755,7 +1755,8 @@ body::before {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
+  min-height: 50px;
 }
 
 .ecc-eval-card {
@@ -1764,6 +1765,7 @@ body::before {
   border-radius: 8px;
   padding: 14px;
   position: relative;
+  min-height: 160px;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
