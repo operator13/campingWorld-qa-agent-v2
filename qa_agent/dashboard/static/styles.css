@@ -1795,10 +1795,13 @@ body::before {
 /* ECC cards reuse .eval-card, .eval-score, .eval-badge styles */
 .ecc-eval-card {
   border-top: 2px solid var(--neon-purple);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .ecc-detail-metrics {
   margin: 12px 0 4px;
+  overflow: hidden;
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   text-align: left;
