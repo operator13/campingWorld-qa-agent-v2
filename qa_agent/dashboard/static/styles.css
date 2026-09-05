@@ -1109,8 +1109,9 @@ body::before {
   }
 
   .ecc-eval-card { padding: 10px 8px; }
-  .ecc-eval-card .eval-agent-name { font-size: 0.4rem; }
-  .ecc-eval-card .eval-run-btn { font-size: 0.35rem; padding: 2px 6px; display: inline-block !important; }
+  .ecc-eval-card .eval-agent-name { font-size: 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%; }
+  .ecc-eval-card .eval-run-btn { font-size: 0.35rem; padding: 2px 6px; display: inline-block !important; white-space: nowrap; flex-shrink: 0; }
+  .ecc-eval-card .eval-card-header { flex-wrap: nowrap; gap: 4px; }
   .ecc-eval-card .eval-score { font-size: 1.4rem; margin-bottom: 6px; }
   .ecc-eval-card .eval-badge { font-size: 0.4rem; padding: 2px 8px; }
   .ecc-eval-card .ecc-detail-row { font-size: 0.5rem; padding: 2px 4px; }
