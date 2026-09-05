@@ -20,7 +20,7 @@ from qa_agent.eval.ecc.config import (
     AgentEvalConfig,
     get_agent_config,
 )
-from qa_agent.eval.ecc.finding_extractor import extract_findings
+from qa_agent.eval.ecc.finding_extractor import Finding, extract_findings
 from qa_agent.eval.ecc.finding_matcher import (
     MatchResult,
     compute_detection_scores,
@@ -138,6 +138,21 @@ async def run_detection_eval(
             continue
 
         findings = extract_findings(response.output)
+
+        # Backfill missing file paths — if a finding has no file but the
+        # scenario only has one code file, infer the file from the scenario
+        if code_files and len(code_files) == 1:
+            default_file = list(code_files.keys())[0]
+            findings = [
+                Finding(
+                    severity=f.severity,
+                    file=f.file or default_file,
+                    line=f.line,
+                    description=f.description,
+                    raw_text=f.raw_text,
+                ) if f.file is None else f
+                for f in findings
+            ]
 
         if is_clean:
             clean_count += 1

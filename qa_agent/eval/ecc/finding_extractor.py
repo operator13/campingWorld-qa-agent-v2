@@ -120,6 +120,15 @@ def _extract_file_line(text: str) -> tuple[str | None, int | None]:
         line_num = int(any_line.group(1)) if any_line else None
         return any_file.group(1), line_num
 
+    # Strategy 6: No file found, but extract line from "— Line N" pattern
+    dash_line = re.search(r"—\s*Lines?\s+(\d+)", text)
+    if dash_line:
+        return None, int(dash_line.group(1))
+
+    # Strategy 7: Extract line from any "Line N" or "Lines N" reference
+    if any_line:
+        return None, int(any_line.group(1))
+
     return None, None
 
 
