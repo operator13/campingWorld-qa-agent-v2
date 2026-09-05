@@ -1278,13 +1278,10 @@
       if (status.state === 'running') {
         _eccEvalRunning = true;
         setEccEvalRunning();
-        const completed = new Set(status.completed || []);
-        const allAgents = ECC_DETECTION_AGENTS.concat(ECC_GENERATIVE_AGENTS);
-        allAgents.forEach(agent => {
-          if (!completed.has(agent)) {
-            setEvalCardRunning(agent);
-          }
-        });
+        // Only set the currently running agent's card to running state
+        if (status.current_agent) {
+          setEvalCardRunning(status.current_agent);
+        }
         // Apply any progress data
         const progress = status.progress || {};
         Object.entries(progress).forEach(([agent, p]) => {
