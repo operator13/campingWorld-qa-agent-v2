@@ -17,11 +17,9 @@
     connectWebSocket();
     initRunnerControls();
     initEvalControls();
-    // ECC Development Agent Evals — render cards, sync running state, then fetch data
-    renderEccDetectionCards({});
-    renderEccGenerativeCards({});
+    // ECC Development Agent Evals — fetch scores first, then apply running state on top
     initEccEvalControls();
-    syncEccEvalStatus().then(() => fetchEccEvalScores());
+    fetchEccEvalScores().then(() => syncEccEvalStatus());
     // Replay last test run results for late-joining clients
     _replayLastRun();
   });
@@ -1127,24 +1125,27 @@
   ];
 
   let _eccEvalRunning = false;
+  let _eccInitialLoadDone = false;
 
   async function fetchEccEvalScores() {
     try {
       const res = await fetch('/api/eval/ecc/scores');
       if (!res.ok) {
-        if (!_eccEvalRunning) { renderEccDetectionCards({}); renderEccGenerativeCards({}); }
+        renderEccDetectionCards({});
+        renderEccGenerativeCards({});
         return;
       }
       const data = await res.json();
-      if (_eccEvalRunning) {
-        // Update only completed cards — don't touch running ones
+      if (_eccEvalRunning && _eccInitialLoadDone) {
         updateEccCompletedCards(data);
       } else {
         renderEccDetectionCards(data);
         renderEccGenerativeCards(data);
+        _eccInitialLoadDone = true;
       }
     } catch (err) {
-      if (!_eccEvalRunning) { renderEccDetectionCards({}); renderEccGenerativeCards({}); }
+      renderEccDetectionCards({});
+      renderEccGenerativeCards({});
     }
   }
 
