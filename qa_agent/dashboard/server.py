@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -9,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -29,6 +30,29 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="QA Command Center")
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+DASHBOARD_API_TOKEN = os.environ.get("DASHBOARD_API_TOKEN", "")
+
+
+async def require_auth(x_api_token: str | None = Header(None)):
+    """Require a valid API token for mutating endpoints.
+
+    If DASHBOARD_API_TOKEN is not set, auth is disabled (local-only mode).
+    """
+    if DASHBOARD_API_TOKEN and x_api_token != DASHBOARD_API_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+# ---------------------------------------------------------------------------
+# Security constants
+# ---------------------------------------------------------------------------
+
+SAFE_RUN_ID = re.compile(r"^[\w\-]+$")
+ALLOWED_EVAL_AGENTS = {"triage", "planner", "generator", "healer"}
 
 # Mount static files (CSS, JS, etc.)
 if STATIC_DIR.exists():
@@ -234,7 +258,11 @@ async def health_history() -> JSONResponse:
 @app.get("/report/{run_id}")
 async def serve_report(run_id: str) -> FileResponse:
     """Serve the Playwright HTML report for a given run."""
-    report_file = TEST_RESULTS_DIR / run_id / "html-report" / "index.html"
+    if not SAFE_RUN_ID.match(run_id):
+        return JSONResponse({"error": "Invalid run_id"}, status_code=400)
+    report_file = (TEST_RESULTS_DIR / run_id / "html-report" / "index.html").resolve()
+    if not str(report_file).startswith(str(TEST_RESULTS_DIR.resolve())):
+        return JSONResponse({"error": "Access denied"}, status_code=403)
     if not report_file.exists():
         return JSONResponse({"error": "Report not found"}, status_code=404)
     return FileResponse(str(report_file), media_type="text/html")
@@ -245,7 +273,7 @@ async def serve_report(run_id: str) -> FileResponse:
 # ---------------------------------------------------------------------------
 
 
-@app.post("/api/eval/notify")
+@app.post("/api/eval/notify", dependencies=[Depends(require_auth)])
 async def eval_notify(body: dict = {}) -> JSONResponse:
     """Called by the eval runner after an eval completes. Broadcasts to all dashboards."""
     global _eval_status
@@ -261,7 +289,7 @@ async def eval_notify(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "notified"})
 
 
-@app.post("/api/eval/run/start-external")
+@app.post("/api/eval/run/start-external", dependencies=[Depends(require_auth)])
 async def eval_start_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner to show running state on dashboard."""
     global _eval_status
@@ -272,7 +300,7 @@ async def eval_start_external(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "started"})
 
 
-@app.post("/api/eval/run/progress")
+@app.post("/api/eval/run/progress", dependencies=[Depends(require_auth)])
 async def eval_progress_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner to report scenario progress."""
     agent = body.get("agent", "unknown")
@@ -284,7 +312,7 @@ async def eval_progress_external(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
-@app.post("/api/eval/run/agent-complete-external")
+@app.post("/api/eval/run/agent-complete-external", dependencies=[Depends(require_auth)])
 async def eval_agent_complete_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner when an agent eval finishes. Resets state when all done."""
     global _eval_status
@@ -306,7 +334,7 @@ async def eval_agent_complete_external(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "completed"})
 
 
-@app.post("/api/eval/run/agent-start-external")
+@app.post("/api/eval/run/agent-start-external", dependencies=[Depends(require_auth)])
 async def eval_agent_start_external(body: dict = {}) -> JSONResponse:
     """Called by CLI eval runner when a specific agent eval begins."""
     global _eval_status
@@ -319,7 +347,7 @@ async def eval_agent_start_external(body: dict = {}) -> JSONResponse:
     return JSONResponse({"status": "started"})
 
 
-@app.post("/api/health/notify")
+@app.post("/api/health/notify", dependencies=[Depends(require_auth)])
 async def health_notify(body: dict = {}) -> JSONResponse:
     """Called after a health report is computed. Broadcasts to all dashboards."""
     run_id = body.get("run_id", "unknown")
@@ -334,7 +362,7 @@ async def health_notify(body: dict = {}) -> JSONResponse:
 _eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "queued": [], "progress": {}, "last_activity": 0}
 
 
-@app.post("/api/eval/run")
+@app.post("/api/eval/run", dependencies=[Depends(require_auth)])
 async def run_eval(body: dict = {}):
     global _eval_status
     if _eval_status["state"] == "running":
@@ -345,8 +373,10 @@ async def run_eval(body: dict = {}):
     if run_all:
         agents = ["triage", "planner", "generator", "healer"]
 
+    # Validate agent names against allowlist to prevent code injection
+    agents = [a for a in agents if a in ALLOWED_EVAL_AGENTS]
     if not agents:
-        return JSONResponse({"error": "No agents specified"}, status_code=400)
+        return JSONResponse({"error": "No valid agents specified"}, status_code=400)
 
     _eval_status = {"state": "running", "current_agent": None, "completed": [], "queued": list(agents), "progress": {}, "last_activity": time.time()}
     asyncio.create_task(_execute_eval_run(agents))
@@ -364,7 +394,7 @@ async def eval_run_status():
     return JSONResponse(content=_eval_status)
 
 
-@app.post("/api/eval/stop")
+@app.post("/api/eval/stop", dependencies=[Depends(require_auth)])
 async def stop_eval():
     global _eval_status
     if _eval_status["state"] == "running":
@@ -400,6 +430,7 @@ async def _execute_eval_run(agents: list[str]):
             cmd = [
                 sys.executable, "-u", "-c",
                 f"import os; os.environ['EVAL_DASHBOARD_SUBPROCESS']='1'; "
+                f"from dotenv import load_dotenv; load_dotenv(os.path.join(os.getcwd(), '.env')); "
                 f"import logging; logging.basicConfig(level=logging.INFO, format='%(message)s'); "
                 f"import asyncio; from qa_agent.eval.eval_runner import run_{agent}_eval; asyncio.run(run_{agent}_eval())"
             ]
@@ -560,7 +591,7 @@ async def audit_summary() -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 
-@app.post("/api/tests/run")
+@app.post("/api/tests/run", dependencies=[Depends(require_auth)])
 async def run_tests(body: dict = {}):
     global _test_process, _test_run_status
     if _test_process and _test_process.returncode is None:
@@ -589,7 +620,7 @@ async def test_lastrun():
     return JSONResponse(content={"log": _last_run_log})
 
 
-@app.post("/api/tests/clear")
+@app.post("/api/tests/clear", dependencies=[Depends(require_auth)])
 async def clear_tests():
     global _test_run_status
     _test_run_status = {"state": "cleared", "run_id": None, "started_at": None}
@@ -598,7 +629,7 @@ async def clear_tests():
     return JSONResponse({"status": "cleared"})
 
 
-@app.post("/api/tests/stop")
+@app.post("/api/tests/stop", dependencies=[Depends(require_auth)])
 async def stop_tests():
     global _test_process, _test_run_status
     if _test_process and _test_process.returncode is None:

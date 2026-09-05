@@ -182,3 +182,7 @@
 | 2026-09-05 | / |  | unknown | 0.50 | defect |  |
 | 2026-09-05 | / |  | unknown | 0.50 | something_else |  |
 | 2026-09-05 | / |  | unknown | 0.50 | defect |  |
+| 2026-09-05 | / |  | unknown | 0.50 | heal |  |
+| 2026-09-05 | / |  | unknown | 0.50 | defect |  |
+| 2026-09-05 | / |  | unknown | 0.50 | something_else |  |
+| 2026-09-05 | / |  | unknown | 0.50 | defect |  |
