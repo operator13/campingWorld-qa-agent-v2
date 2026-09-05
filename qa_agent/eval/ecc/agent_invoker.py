@@ -1,16 +1,25 @@
-"""Invoke ECC agents via Claude Code CLI and capture output."""
+"""Invoke ECC agents via Anthropic API using agent system prompts."""
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import tempfile
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from qa_agent.eval.ecc.config import AGENT_FILE_MAP, PROJECT_ROOT, SCENARIO_TIMEOUT_SECONDS
 
 logger = logging.getLogger(__name__)
+
+# Agent definition directory
+AGENTS_DIR = PROJECT_ROOT / ".claude" / "agents"
+
+# Model mapping from agent frontmatter shorthand to full model ID
+MODEL_MAP = {
+    "sonnet": "claude-sonnet-4-6",
+    "opus": "claude-opus-4-6",
+    "haiku": "claude-haiku-4-5-20251001",
+}
 
 
 @dataclass(frozen=True)
@@ -25,6 +34,36 @@ class AgentResponse:
     error: str | None
 
 
+def _load_agent_prompt(agent_name: str) -> tuple[str, str]:
+    """Load agent system prompt and model from .claude/agents/{name}.md.
+
+    Returns:
+        Tuple of (system_prompt, model_id).
+    """
+    agent_file = AGENT_FILE_MAP.get(agent_name, agent_name)
+    agent_path = AGENTS_DIR / f"{agent_file}.md"
+
+    if not agent_path.exists():
+        raise FileNotFoundError(f"Agent definition not found: {agent_path}")
+
+    content = agent_path.read_text()
+
+    # Parse YAML frontmatter
+    model = "sonnet"
+    system_prompt = content
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            frontmatter = parts[1]
+            system_prompt = parts[2].strip()
+            for line in frontmatter.strip().split("\n"):
+                if line.startswith("model:"):
+                    model = line.split(":", 1)[1].strip()
+
+    model_id = MODEL_MAP.get(model, model)
+    return system_prompt, model_id
+
+
 async def invoke_ecc_agent(
     agent_name: str,
     prompt: str,
@@ -32,82 +71,94 @@ async def invoke_ecc_agent(
     *,
     timeout_seconds: int = SCENARIO_TIMEOUT_SECONDS,
 ) -> AgentResponse:
-    """Invoke an ECC agent via Claude Code CLI and capture its output."""
-    agent_file = AGENT_FILE_MAP.get(agent_name, agent_name)
+    """Invoke an ECC agent via Anthropic API using the agent's system prompt.
 
-    with tempfile.TemporaryDirectory(prefix=f"ecc_eval_{agent_name}_") as tmpdir:
-        if code_files:
-            for filename, content in code_files.items():
-                filepath = Path(tmpdir) / filename
-                filepath.parent.mkdir(parents=True, exist_ok=True)
-                filepath.write_text(content)
+    Reads the agent definition from .claude/agents/{name}.md, extracts the
+    system prompt and model, then calls the Anthropic API directly.
+    """
+    try:
+        system_prompt, model_id = _load_agent_prompt(agent_name)
+    except FileNotFoundError as e:
+        return AgentResponse(
+            agent_name=agent_name,
+            output="",
+            exit_code=-1,
+            timed_out=False,
+            token_estimate=0,
+            error=str(e),
+        )
 
-        full_prompt = prompt
-        if code_files:
-            full_prompt += "\n\n## Files to review:\n\n"
-            for filename, content in code_files.items():
-                full_prompt += f"### `{filename}`\n```\n{content}\n```\n\n"
+    # Build user message with code files
+    user_message = prompt
+    if code_files:
+        user_message += "\n\n## Files to review:\n\n"
+        for filename, content in code_files.items():
+            user_message += f"### `{filename}`\n```\n{content}\n```\n\n"
 
-        cmd = ["claude", "--agent", agent_file, "--print", "--output-format", "text"]
+    try:
+        from langchain_anthropic import ChatAnthropic
 
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=str(PROJECT_ROOT),
-            )
-
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(input=full_prompt.encode("utf-8")),
-                timeout=timeout_seconds,
-            )
-
-            output = stdout.decode("utf-8", errors="replace")
-            error_output = stderr.decode("utf-8", errors="replace").strip()
-            token_estimate = (len(full_prompt) + len(output)) // 4
-
-            return AgentResponse(
-                agent_name=agent_name,
-                output=output,
-                exit_code=proc.returncode or 0,
-                timed_out=False,
-                token_estimate=token_estimate,
-                error=error_output if error_output and proc.returncode != 0 else None,
-            )
-
-        except asyncio.TimeoutError:
-            logger.warning("Agent %s timed out after %ds", agent_name, timeout_seconds)
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            return AgentResponse(
-                agent_name=agent_name,
-                output="",
-                exit_code=-1,
-                timed_out=True,
-                token_estimate=0,
-                error=f"Timed out after {timeout_seconds}s",
-            )
-        except FileNotFoundError:
-            logger.error("Claude CLI not found")
+        api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        if not api_key:
             return AgentResponse(
                 agent_name=agent_name,
                 output="",
                 exit_code=-1,
                 timed_out=False,
                 token_estimate=0,
-                error="Claude CLI not found",
+                error="ANTHROPIC_API_KEY not set",
             )
-        except Exception as e:
-            logger.error("Agent %s invocation failed: %s", agent_name, e)
-            return AgentResponse(
-                agent_name=agent_name,
-                output="",
-                exit_code=-1,
-                timed_out=False,
-                token_estimate=0,
-                error=str(e),
+
+        llm = ChatAnthropic(
+            model=model_id,
+            anthropic_api_key=api_key,
+            max_tokens=4096,
+            timeout=float(timeout_seconds),
+        )
+
+        response = await llm.ainvoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ])
+
+        output = response.content if hasattr(response, "content") else str(response)
+
+        # Extract token usage if available
+        token_estimate = 0
+        if hasattr(response, "usage_metadata") and response.usage_metadata:
+            token_estimate = (
+                (response.usage_metadata.get("input_tokens", 0) or 0)
+                + (response.usage_metadata.get("output_tokens", 0) or 0)
             )
+        if not token_estimate:
+            token_estimate = (len(user_message) + len(output)) // 4
+
+        return AgentResponse(
+            agent_name=agent_name,
+            output=output,
+            exit_code=0,
+            timed_out=False,
+            token_estimate=token_estimate,
+            error=None,
+        )
+
+    except TimeoutError:
+        logger.warning("Agent %s timed out after %ds", agent_name, timeout_seconds)
+        return AgentResponse(
+            agent_name=agent_name,
+            output="",
+            exit_code=-1,
+            timed_out=True,
+            token_estimate=0,
+            error=f"Timed out after {timeout_seconds}s",
+        )
+    except Exception as e:
+        logger.error("Agent %s invocation failed: %s", agent_name, e)
+        return AgentResponse(
+            agent_name=agent_name,
+            output="",
+            exit_code=-1,
+            timed_out=False,
+            token_estimate=0,
+            error=str(e),
+        )
