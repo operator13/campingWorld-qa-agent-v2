@@ -100,7 +100,7 @@ BUDGET_CAPS: dict[str, float] = {
 # ---------------------------------------------------------------------------
 
 LINE_PROXIMITY_THRESHOLD = 5
-CATEGORY_OVERLAP_THRESHOLD = 0.50
+CATEGORY_OVERLAP_THRESHOLD = 0.30
 
 
 @dataclass(frozen=True)

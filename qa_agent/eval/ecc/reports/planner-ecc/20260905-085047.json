@@ -1,0 +1,131 @@
+{
+  "eval_run_id": "ecc-eval-20260905-085047",
+  "agent": "planner-ecc",
+  "tier": "generative",
+  "timestamp": "2026-09-05T08:50:47.653201+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.3312,
+    "per_scenario": [
+      0.95,
+      0.0,
+      0.0,
+      0.75,
+      0.0,
+      0.0,
+      0.95,
+      0.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": false,
+  "token_estimate": 51064,
+  "scenarios": [
+    {
+      "scenario_id": "plan_001_simple_feature",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All requirements are addressed\u2014GET/PUT endpoints, all preference fields with validation, defaults, authentication, PostgreSQL persistence, and comprehensive file paths. Actionability: Extremely detailed with complete code listings for all new files, specific line-by-line modifications for existing files (main.py, user.py), exact file paths, and clear step-by-step phases. Code is production-ready and directly implementable. Correctness: Architecture is sound\u2014proper separation of concerns (model/schema/service/router), appropriate use of SQLAlchemy relationships, Pydantic v2 patterns (model_dump with exclude_unset), enum handling, and partial update support via Optional fields. The get-or-create pattern is idempotent and sensible. Correctness is optimal. Risk_awareness: Identifies the race condition in get-or-create with mitigation (IntegrityError catch-and-retry), validates items_per_page bounds, rejects empty PUT payloads, and notes the need for Alembic migration. However, it could have mentioned: (1) potential N+1 queries if preferences are accessed frequently without eager loading, (2) cascade delete implications if user deletion is common, (3) testing strategy for concurrent requests. These are minor gaps in an otherwise thorough analysis. Convention_adherence: Perfectly aligned\u2014follows existing FastAPI router patterns (prefix, tags, dependencies), uses existing get_current_user and get_db dependencies, matches Pydantic schema structure from the codebase, uses SQLAlchemy ORM conventions (relationships, cascade), includes docstrings and type hints consistent with the project, and proposes Alembic for migrations (standard FastAPI+SQLAlchemy practice).",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_002_email_notification",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_003_sqlite_to_postgres",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_004_extract_shared_utils",
+      "quality_score": 0.75,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 4,
+        "risk_awareness": 3,
+        "convention_adherence": 4
+      },
+      "reasoning": "Completeness: The output covers most requirements\u2014package structure, audit process, implementation steps for string_utils and partial date_utils, testing strategy, and migration phases. However, it's incomplete: currency_utils, validation_utils, and pagination.py implementations are cut off; publishing/CI-CD workflow details are missing; backward compatibility shim examples aren't shown; and the two-sprint migration timeline lacks concrete task breakdown. Actionability: Excellent\u2014provides exact file paths, complete code samples (string_utils with full implementation and comprehensive tests), pyproject.toml configuration, tox.ini setup, and step-by-step instructions. The audit framework is concrete and actionable. The output is truncated mid-implementation but what's provided is highly specific. Correctness: The technical approach is sound\u2014PEP 621 packaging, hatchling build system, pytest with coverage enforcement, property-based testing with Hypothesis, and a phased migration strategy are all best practices. The string_utils implementation is robust with edge-case handling. However, the audit-first methodology, while good, could emphasize more on handling breaking API changes in pagination.py upfront. Correctness is high but not perfect due to incomplete coverage of divergent implementations. Risk_awareness: Moderate\u2014identifies code drift as the core problem and proposes unification, but lacks explicit discussion of: rollback strategy if migration breaks services, handling of transitive dependencies, version pinning strategy for internal PyPI, testing in staging before production migration, and communication plan for service teams. The backward-compatibility shim approach is mentioned but not detailed with risks. Convention_adherence: Good\u2014follows Python packaging conventions (PEP 621, src-layout, pytest structure, pre-commit hooks mentioned). Uses modern tooling (Hatchling, Ruff, MyPy). However, doesn't explicitly address the organization's existing conventions (e.g., do services use a specific test framework, linting config, or CI/CD platform?) and the internal PyPI registry setup isn't detailed.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_005_webhook_delivery",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_006_sso_microservices",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_007_pagination",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All 6 endpoints are explicitly addressed with specific file paths. All requirements (offset pagination, defaults, response envelope, backward compatibility, Link headers) are covered. Architecture changes are fully specified with 3 new files and 18 modification steps. Actionability: Each step includes exact file paths, code snippets, and clear explanations of what to change. The template patterns are concrete and reusable. Dependency chains between steps are explicit. Correctness: The approach is technically sound\u2014using offset-based pagination with deterministic ordering, generic Pydantic models with computed fields, FastAPI dependencies for validation, and RFC 8288 Link headers. The count query pattern using subqueries correctly handles filters. The decision to return tuples from services keeps layers decoupled. Risk_awareness: Identifies medium risks for orders (filter preservation) and reviews (indexing). Notes Pydantic v1 compatibility concern. Mentions need to verify user filter placement and test Link header URLs. However, could have been more explicit about edge cases like empty result sets, division by zero in pages calculation (though the code handles it), or concurrent data changes affecting pagination consistency. Convention_adherence: Fully aligned with FastAPI patterns (Depends, response_model, Request/Response injection), Pydantic v2 (computed_field, Generic types), SQLAlchemy async patterns, and project structure (routers, services, schemas, dependencies directories). The code style and naming conventions match typical FastAPI projects.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_008_rate_limiting",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    }
+  ]
+}

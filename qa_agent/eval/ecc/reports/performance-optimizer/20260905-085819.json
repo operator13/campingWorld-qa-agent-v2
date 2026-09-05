@@ -1,0 +1,91 @@
+{
+  "eval_run_id": "ecc-eval-20260905-085819",
+  "agent": "performance-optimizer",
+  "tier": "detection",
+  "timestamp": "2026-09-05T08:58:19.640044+00:00",
+  "scenarios_total": 10,
+  "scores": {
+    "recall": 0.7143,
+    "precision": 0.0909,
+    "false_positive_rate": 1.0,
+    "total_planted": 7,
+    "total_found": 5,
+    "total_false_positives": 50
+  },
+  "thresholds": {
+    "recall": 0.7,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 55992,
+  "scenarios": [
+    {
+      "scenario_id": "po_001_quadratic_duplicate_check",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "po_002_redundant_sort",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "po_003_unnecessary_copies",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "PO-003"
+      ],
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "po_004_unbounded_list_growth",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "PO-004"
+      ],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "po_005_unclosed_file_handles",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 9
+    },
+    {
+      "scenario_id": "po_006_n_plus_1_sql",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 11
+    },
+    {
+      "scenario_id": "po_007_orm_lazy_load_n_plus_1",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "po_008_clean_set_dedup",
+      "is_clean": true,
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "po_009_clean_context_managers",
+      "is_clean": true,
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "po_010_clean_batch_query",
+      "is_clean": true,
+      "false_positives": 16
+    }
+  ]
+}

@@ -97,13 +97,28 @@ def _extract_file_line(text: str) -> tuple[str | None, int | None]:
         line_num = int(line_match.group(1)) if line_match else None
         return file_path, line_num
 
-    # Strategy 3: Fallback colon patterns
+    # Strategy 3: Fallback colon patterns (File:, Location:)
     file_match = _FILE_COLON.search(text)
     line_match = _LINE_COLON.search(text)
     if file_match:
         file_path = file_match.group(1)
         line_num = int(line_match.group(1)) if line_match else None
         return file_path, line_num
+
+    # Strategy 4: Location:** `file.py`, line N (common agent format)
+    loc_match = re.search(
+        r"Location:\*\*\s*`([^`]+\.(?:py|ts|tsx|js|jsx))`(?:,\s*|\s+)(?:line\s+|:)(\d+)",
+        text, re.IGNORECASE,
+    )
+    if loc_match:
+        return loc_match.group(1), int(loc_match.group(2))
+
+    # Strategy 5: Any backtick-wrapped filename in the text
+    any_file = re.search(r"`([^`]+\.(?:py|ts|tsx|js|jsx))`", text)
+    any_line = re.search(r"(?:line|Line|lines?)\s+(\d+)", text)
+    if any_file:
+        line_num = int(any_line.group(1)) if any_line else None
+        return any_file.group(1), line_num
 
     return None, None
 

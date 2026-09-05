@@ -1,0 +1,124 @@
+{
+  "eval_run_id": "ecc-eval-20260905-083724",
+  "agent": "silent-failure-hunter",
+  "tier": "detection",
+  "timestamp": "2026-09-05T08:37:24.584798+00:00",
+  "scenarios_total": 15,
+  "scores": {
+    "recall": 0.9167,
+    "precision": 0.0909,
+    "false_positive_rate": 1.0,
+    "total_planted": 12,
+    "total_found": 11,
+    "total_false_positives": 110
+  },
+  "thresholds": {
+    "recall": 0.8,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 38493,
+  "scenarios": [
+    {
+      "scenario_id": "sf_001_empty_except_pass",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "sf_002_except_return_none",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "sf_003_broad_except_critical_path",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 13
+    },
+    {
+      "scenario_id": "sf_004_catch_return_empty",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "sf_005_default_hiding_failure",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "SF-005"
+      ],
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "sf_006_dict_get_masking_keyerror",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "sf_007_lost_stack_trace",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 9
+    },
+    {
+      "scenario_id": "sf_008_reraise_losing_context",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 11
+    },
+    {
+      "scenario_id": "sf_009_log_and_forget",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 11
+    },
+    {
+      "scenario_id": "sf_010_log_return_stale",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 11
+    },
+    {
+      "scenario_id": "sf_011_fire_and_forget_task",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 9
+    },
+    {
+      "scenario_id": "sf_012_unawaited_coroutine",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 9
+    },
+    {
+      "scenario_id": "sf_013_clean_exception_chaining",
+      "is_clean": true,
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "sf_014_clean_async_error_handling",
+      "is_clean": true,
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "sf_015_clean_intentional_fallback",
+      "is_clean": true,
+      "false_positives": 14
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "eval_run_id": "ecc-eval-20260905-090808",
+  "agent": "planner-ecc",
+  "tier": "generative",
+  "timestamp": "2026-09-05T09:08:08.680905+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.1187,
+    "per_scenario": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.95,
+      0.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": false,
+  "token_estimate": 51064,
+  "scenarios": [
+    {
+      "scenario_id": "plan_001_simple_feature",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Expecting ',' delimiter: line 7 column 2055 (char 2171)"
+    },
+    {
+      "scenario_id": "plan_002_email_notification",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_003_sqlite_to_postgres",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_004_extract_shared_utils",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_005_webhook_delivery",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_006_sso_microservices",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    },
+    {
+      "scenario_id": "plan_007_pagination",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All 6 endpoints are explicitly addressed with specific file paths. Response envelope, pagination parameters, Link headers, and backward compatibility are all covered. Requirements are fully satisfied. Actionability: Extremely detailed with exact file paths, code snippets, function signatures, and implementation patterns. Each step is independently executable with clear dependencies marked. Code examples are production-ready and show exact patterns to replicate across 6 files. Correctness: The offset-based pagination approach is sound. The `PaginationParams` dependency pattern is idiomatic FastAPI. The generic `PaginatedResponse[T]` is correct Pydantic usage. The count query using `select(func.count()).select_from(base_query.subquery())` correctly applies filters. Link header RFC 8288 implementation is accurate. Service layer returning `(items, total)` tuple is appropriate. Risk Awareness: Identifies medium-risk areas (count/data filter mismatch, stable ordering for pagination, security-critical user filters). Notes the importance of database indexes for large tables. Mentions backward compatibility concerns with deprecated aliases. However, could have been more explicit about: race conditions between count and data queries (though minor in practice), potential N+1 query issues if not careful, and the need for transaction isolation levels. Convention Adherence: Perfectly follows FastAPI conventions (Depends, Query, response_model). Uses Pydantic generics correctly. Follows the stated project structure (routers/, schemas/, services/, database.py). Async/await patterns match the existing codebase. Naming conventions are consistent. The only minor gap is that Phase 4 (testing) is mentioned but not fully detailed, though this is acknowledged as incomplete in the output itself.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_008_rate_limiting",
+      "quality_score": 0.0,
+      "dimension_scores": {
+        "completeness": 1,
+        "actionability": 1,
+        "correctness": 1,
+        "risk_awareness": 1,
+        "convention_adherence": 1
+      },
+      "reasoning": "",
+      "error": "Invalid JSON from judge: Unterminated string starting at: line 7 column 16 (char 132)"
+    }
+  ]
+}

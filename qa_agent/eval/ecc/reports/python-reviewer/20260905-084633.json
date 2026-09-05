@@ -1,0 +1,107 @@
+{
+  "eval_run_id": "ecc-eval-20260905-084633",
+  "agent": "python-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-05T08:46:33.904243+00:00",
+  "scenarios_total": 12,
+  "scores": {
+    "recall": 0.7,
+    "precision": 0.0886,
+    "false_positive_rate": 1.0,
+    "total_planted": 10,
+    "total_found": 7,
+    "total_false_positives": 72
+  },
+  "thresholds": {
+    "recall": 0.75,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 37261,
+  "scenarios": [
+    {
+      "scenario_id": "pr_001_mixed_naming",
+      "planted": 2,
+      "found": 2,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "pr_002_pep8_violations",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "pr_003_mutable_default",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "PR-003"
+      ],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "pr_004_bare_except",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "pr_005_missing_return_hints",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 9
+    },
+    {
+      "scenario_id": "pr_006_wrong_generic_types",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "pr_007_eval_user_input",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "PR-007"
+      ],
+      "false_positives": 9
+    },
+    {
+      "scenario_id": "pr_008_pickle_untrusted",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "PR-008"
+      ],
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "pr_009_string_concat_loop",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 8
+    },
+    {
+      "scenario_id": "pr_010_clean_dataclasses",
+      "is_clean": true,
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "pr_011_clean_exception_handling",
+      "is_clean": true,
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "pr_012_clean_string_building",
+      "is_clean": true,
+      "false_positives": 6
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "eval_run_id": "ecc-eval-20260905-084635",
+  "agent": "typescript-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-05T08:46:35.400253+00:00",
+  "scenarios_total": 12,
+  "scores": {
+    "recall": 0.3333,
+    "precision": 0.038,
+    "false_positive_rate": 1.0,
+    "total_planted": 9,
+    "total_found": 3,
+    "total_false_positives": 76
+  },
+  "thresholds": {
+    "recall": 0.75,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 46712,
+  "scenarios": [
+    {
+      "scenario_id": "ts_001_any_type_usage",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 8
+    },
+    {
+      "scenario_id": "ts_002_missing_null_checks",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "ts_003_type_assertions",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "TS-003"
+      ],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "ts_004_missing_await",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "TS-004"
+      ],
+      "false_positives": 11
+    },
+    {
+      "scenario_id": "ts_005_unhandled_promise",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "TS-005"
+      ],
+      "false_positives": 17
+    },
+    {
+      "scenario_id": "ts_006_missing_deps_array",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "TS-006"
+      ],
+      "false_positives": 7
+    },
+    {
+      "scenario_id": "ts_007_stale_closure",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "TS-007"
+      ],
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "ts_008_eval_usage",
+      "planted": 1,
+      "found": 0,
+      "missed": [
+        "TS-008"
+      ],
+      "false_positives": 10
+    },
+    {
+      "scenario_id": "ts_009_unvalidated_body",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 8
+    },
+    {
+      "scenario_id": "ts_010_clean_generics",
+      "is_clean": true,
+      "false_positives": 4
+    },
+    {
+      "scenario_id": "ts_011_clean_async",
+      "is_clean": true,
+      "false_positives": 6
+    },
+    {
+      "scenario_id": "ts_012_clean_react_hooks",
+      "is_clean": true,
+      "false_positives": 7
+    }
+  ]
+}
