@@ -62,11 +62,23 @@ class TestFindingExtractor:
 
     def test_parses_multiple_findings(self):
         output = (
-            "**CRITICAL** SQL injection in api/users.py:12\n"
-            "User input in query\n\n"
-            "**HIGH** XSS in templates/page.html:5\n"
-            "Unescaped output\n\n"
-            "**LOW** Missing docstring in utils.py:1\n"
+            "### Finding 1\n"
+            "**Severity:** `[CRITICAL]`\n"
+            "**File:** `api/users.py`\n"
+            "**Line:** 12\n"
+            "SQL injection via f-string\n\n"
+            "---\n\n"
+            "### Finding 2\n"
+            "**Severity:** `[HIGH]`\n"
+            "**File:** `templates/page.html`\n"
+            "**Line:** 5\n"
+            "XSS unescaped output\n\n"
+            "---\n\n"
+            "### Finding 3\n"
+            "**Severity:** `[LOW]`\n"
+            "**File:** `utils.py`\n"
+            "**Line:** 1\n"
+            "Missing docstring\n"
         )
         findings = extract_findings(output)
         assert len(findings) == 3
@@ -93,13 +105,19 @@ class TestFindingExtractor:
         assert len(findings) >= 1
         assert findings[0].severity == "CRITICAL"
 
-    def test_numbered_finding_fallback(self):
+    def test_labeled_file_line_format(self):
         output = (
-            "1. **SQL injection** in api/users.py:12 — f-string query\n"
-            "2. **XSS vulnerability** in templates/page.html:5\n"
+            "### Finding 1\n"
+            "**Severity:** `[CRITICAL]`\n"
+            "**File:** `api/users.py`\n"
+            "**Line:** 12\n"
+            "SQL injection found\n"
         )
         findings = extract_findings(output)
-        assert len(findings) >= 2
+        assert len(findings) >= 1
+        assert findings[0].file == "api/users.py"
+        assert findings[0].line == 12
+        assert findings[0].severity == "CRITICAL"
 
 
 # -----------------------------------------------------------------------

@@ -25,26 +25,40 @@ _SEVERITY_BLOCK = re.compile(
     r"(?:"
     r"\*\*(CRITICAL|HIGH|MEDIUM|LOW)\*\*"
     r"|\[(CRITICAL|HIGH|MEDIUM|LOW)\]"
-    r"|Severity:\s*(CRITICAL|HIGH|MEDIUM|LOW)"
+    r"|`\[(CRITICAL|HIGH|MEDIUM|LOW)\]`"
+    r"|Severity:\s*`?\[?(CRITICAL|HIGH|MEDIUM|LOW)\]?`?"
     r"|(?:^|\n)#+\s*(CRITICAL|HIGH|MEDIUM|LOW)"
     r")",
     re.IGNORECASE,
 )
 
-_FILE_LINE = re.compile(
+# Inline patterns: file.py:12, `file.py`, line 12, etc.
+_FILE_LINE_INLINE = re.compile(
     r"(?:"
-    r"([^\s\"'`]+\.(?:py|ts|tsx|js|jsx)):(\d+)"
+    r"([^\s\"'`*]+\.(?:py|ts|tsx|js|jsx)):(\d+)"
     r"|`([^`]+\.(?:py|ts|tsx|js|jsx))`(?:,\s*|\s+)(?:line\s+|:)(\d+)"
     r"|`([^`]+\.(?:py|ts|tsx|js|jsx))`:(\d+)"
-    r"|(?:line|Line)\s+(\d+)\s+(?:of|in)\s+[`\"']?([^\s`\"']+)"
-    r"|(?:File|file):\s*[`\"']?([^\s`\"':]+)[`\"']?(?::(\d+))?"
     r")",
 )
 
-_NUMBERED_FINDING = re.compile(
-    r"(?:^|\n)\s*(?:\d+\.\s*|\*\s*|-\s*)"
-    r"\*\*(.*?)\*\*",
-    re.MULTILINE,
+# Labeled patterns on separate lines:
+# **File:** `api/users.py`
+# **Line:** 16
+_FILE_LABELED = re.compile(
+    r"\*\*File:?\*\*\s*`?([^\s`\n]+\.(?:py|ts|tsx|js|jsx))`?",
+    re.IGNORECASE,
+)
+_LINE_LABELED = re.compile(
+    r"\*\*Lines?:?\*\*\s*`?(\d+)",
+    re.IGNORECASE,
+)
+
+# Fallback: File: path or file mentioned with line
+_FILE_COLON = re.compile(
+    r"(?:File|file|Location|location):\s*`?([^\s`\"'\n]+\.(?:py|ts|tsx|js|jsx))`?",
+)
+_LINE_COLON = re.compile(
+    r"(?:Line|line|Lines|lines):\s*`?(\d+)",
 )
 
 
@@ -57,46 +71,111 @@ def _extract_severity(text: str) -> str | None:
 
 
 def _extract_file_line(text: str) -> tuple[str | None, int | None]:
-    """Extract file path and line number from a text block."""
-    m = _FILE_LINE.search(text)
-    if not m:
-        return None, None
+    """Extract file path and line number from a text block.
 
-    groups = m.groups()
-    # Pattern 1: file.py:123
-    if groups[0] and groups[1]:
-        return groups[0], int(groups[1])
-    # Pattern 2: `file.py`, line 15 or `file.py`:15
-    if groups[2] and groups[3]:
-        return groups[2], int(groups[3])
-    # Pattern 3: `file.py`:15
-    if groups[4] and groups[5]:
-        return groups[4], int(groups[5])
-    # Pattern 4: line 12 of file.py
-    if groups[6] and groups[7]:
-        return groups[7], int(groups[6])
-    # Pattern 5: File: path/to/file.py:12
-    if groups[8]:
-        line = int(groups[9]) if groups[9] else None
-        return groups[8], line
+    Tries multiple strategies:
+    1. Inline patterns (file.py:12, `file.py`, line 12)
+    2. Labeled patterns (**File:** `file.py` / **Line:** 12)
+    3. Fallback colon patterns (File: file.py, Line: 12)
+    """
+    # Strategy 1: Inline patterns
+    m = _FILE_LINE_INLINE.search(text)
+    if m:
+        groups = m.groups()
+        if groups[0] and groups[1]:
+            return groups[0], int(groups[1])
+        if groups[2] and groups[3]:
+            return groups[2], int(groups[3])
+        if groups[4] and groups[5]:
+            return groups[4], int(groups[5])
+
+    # Strategy 2: Labeled patterns on separate lines
+    file_match = _FILE_LABELED.search(text)
+    line_match = _LINE_LABELED.search(text)
+    if file_match:
+        file_path = file_match.group(1)
+        line_num = int(line_match.group(1)) if line_match else None
+        return file_path, line_num
+
+    # Strategy 3: Fallback colon patterns
+    file_match = _FILE_COLON.search(text)
+    line_match = _LINE_COLON.search(text)
+    if file_match:
+        file_path = file_match.group(1)
+        line_num = int(line_match.group(1)) if line_match else None
+        return file_path, line_num
 
     return None, None
+
+
+def _extract_description(block: str) -> str:
+    """Extract a meaningful description from a finding block."""
+    lines = block.split("\n")
+    desc_lines = []
+    skip_patterns = re.compile(
+        r"^\s*(\*\*File|\*\*Line|\*\*Severity|\*\*Fix|\*\*Example|```|---|\|)",
+        re.IGNORECASE,
+    )
+    for line in lines:
+        stripped = line.strip().strip("*#-").strip()
+        if not stripped:
+            continue
+        if _SEVERITY_BLOCK.match(stripped):
+            continue
+        if skip_patterns.match(line.strip()):
+            continue
+        desc_lines.append(stripped)
+        if len(desc_lines) >= 2:
+            break
+    return " ".join(desc_lines) if desc_lines else block[:200]
 
 
 def extract_findings(agent_output: str) -> list[Finding]:
     """Parse unstructured agent output into a list of structured Findings.
 
-    The extractor looks for severity markers and splits the output into
-    finding blocks. Each block is then parsed for file/line references.
+    Splits output into blocks by severity markers, then extracts file/line
+    from each block using multiple strategies (inline, labeled, fallback).
+    Deduplicates findings by (file, line) to avoid counting the same issue twice.
     """
     if not agent_output or not agent_output.strip():
         return []
 
     findings: list[Finding] = []
+    seen: set[tuple[str | None, int | None]] = set()
 
-    markers = list(_SEVERITY_BLOCK.finditer(agent_output))
+    # Split by section headers (### Finding N, ### N., --- separators)
+    sections = re.split(r"(?:^|\n)(?:###\s+|---\s*$)", agent_output, flags=re.MULTILINE)
 
-    if markers:
+    for section in sections:
+        if not section.strip():
+            continue
+
+        severity = _extract_severity(section)
+        if not severity:
+            continue
+
+        file_path, line_num = _extract_file_line(section)
+
+        # Deduplicate by file+line
+        key = (file_path, line_num)
+        if key in seen and file_path is not None:
+            continue
+        if file_path is not None:
+            seen.add(key)
+
+        description = _extract_description(section)
+
+        findings.append(Finding(
+            severity=severity,
+            file=file_path,
+            line=line_num,
+            description=description,
+            raw_text=section[:500],
+        ))
+
+    # Fallback: if section splitting found nothing, try severity markers
+    if not findings:
+        markers = list(_SEVERITY_BLOCK.finditer(agent_output))
         for i, marker in enumerate(markers):
             severity = next(
                 (g.upper() for g in marker.groups() if g), "MEDIUM"
@@ -106,16 +185,13 @@ def extract_findings(agent_output: str) -> list[Finding]:
             block = agent_output[start:end].strip()
 
             file_path, line_num = _extract_file_line(block)
+            description = _extract_description(block)
 
-            lines = block.split("\n")
-            desc_lines = []
-            for line in lines:
-                stripped = line.strip().strip("*#-").strip()
-                if stripped and not _SEVERITY_BLOCK.match(stripped):
-                    desc_lines.append(stripped)
-                    if len(desc_lines) >= 3:
-                        break
-            description = " ".join(desc_lines) if desc_lines else block[:200]
+            key = (file_path, line_num)
+            if key in seen and file_path is not None:
+                continue
+            if file_path is not None:
+                seen.add(key)
 
             findings.append(Finding(
                 severity=severity,
@@ -123,23 +199,6 @@ def extract_findings(agent_output: str) -> list[Finding]:
                 line=line_num,
                 description=description,
                 raw_text=block[:500],
-            ))
-    else:
-        for m in _NUMBERED_FINDING.finditer(agent_output):
-            title = m.group(1)
-            context_start = m.start()
-            context_end = min(m.end() + 500, len(agent_output))
-            context = agent_output[context_start:context_end]
-
-            severity = _extract_severity(context) or "MEDIUM"
-            file_path, line_num = _extract_file_line(context)
-
-            findings.append(Finding(
-                severity=severity,
-                file=file_path,
-                line=line_num,
-                description=title,
-                raw_text=context[:500],
             ))
 
     return findings

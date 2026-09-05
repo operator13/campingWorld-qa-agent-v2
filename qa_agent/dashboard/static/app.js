@@ -1197,10 +1197,13 @@
       const found = s.total_found != null ? s.total_found : '--';
       const planted = s.total_planted != null ? s.total_planted : '--';
 
+      const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
+
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
           <div class="eval-card-header">
             <div class="eval-agent-name">${name}</div>
+            ${runBtn}
           </div>
           <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
@@ -1234,10 +1237,13 @@
       const name = escapeHtml(agent.toUpperCase());
       const quality = fmtPct(s.quality);
 
+      const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
+
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
           <div class="eval-card-header">
             <div class="eval-agent-name">${name}</div>
+            ${runBtn}
           </div>
           <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
@@ -1276,6 +1282,14 @@
       }
     } catch (err) { /* ignore */ }
   }
+
+  window._runEccEval = function(agent) {
+    fetch('/api/eval/ecc/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({agents: [agent]}),
+    }).catch(err => console.warn('ECC eval run failed:', err));
+  };
 
   function initEccEvalControls() {
     const btnRun = document.getElementById('btn-ecc-eval-all');
