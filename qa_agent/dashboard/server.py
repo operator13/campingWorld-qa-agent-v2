@@ -588,7 +588,30 @@ ECC_GENERATIVE_AGENTS = [
 ]
 ECC_ALL_AGENTS = ECC_DETECTION_AGENTS + ECC_GENERATIVE_AGENTS
 
-_ecc_eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "progress": {}, "last_activity": 0}
+_ECC_STATUS_FILE = PROJECT_ROOT / ".ecc_eval_status.json"
+
+def _load_ecc_status() -> dict:
+    """Load persisted ECC eval status from disk."""
+    try:
+        if _ECC_STATUS_FILE.exists():
+            data = json.loads(_ECC_STATUS_FILE.read_text())
+            # Auto-expire stale running state (no activity for 10 min)
+            if data.get("state") == "running" and data.get("last_activity", 0):
+                if time.time() - data["last_activity"] > 600:
+                    data["state"] = "idle"
+            return data
+    except Exception:
+        pass
+    return {"state": "idle", "current_agent": None, "completed": [], "progress": {}, "last_activity": 0}
+
+def _save_ecc_status() -> None:
+    """Persist ECC eval status to disk."""
+    try:
+        _ECC_STATUS_FILE.write_text(json.dumps(_ecc_eval_status))
+    except Exception:
+        pass
+
+_ecc_eval_status: dict = _load_ecc_status()
 
 
 @app.get("/api/eval/ecc/scores")
@@ -758,6 +781,7 @@ async def _execute_ecc_eval_run(agents: list[str]):
 
     _ecc_eval_status["state"] = "idle"
     _ecc_eval_status["current_agent"] = None
+    _save_ecc_status()
     await broadcast_to_dashboard(json.dumps({
         "event": "ecc_eval:complete",
         "completed": len(_ecc_eval_status["completed"]),
@@ -789,6 +813,7 @@ async def ecc_eval_broadcast(body: dict = {}) -> JSONResponse:
         m = _re.search(r"\[(\d+)/(\d+)\]", body.get("line", ""))
         if m:
             _ecc_eval_status.setdefault("progress", {})[body["agent"]] = {"current": int(m.group(1)), "total": int(m.group(2))}
+    _save_ecc_status()
     await broadcast_to_dashboard(json.dumps(body))
     return JSONResponse({"status": "ok"})
 
