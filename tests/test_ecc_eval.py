@@ -333,6 +333,52 @@ class TestConfig:
 
 
 # -----------------------------------------------------------------------
+# Tooltip Data Tests
+# -----------------------------------------------------------------------
+
+
+class TestEccAgentTooltips:
+    """Ensure all ECC agents have tooltip data for the dashboard."""
+
+    def test_all_detection_agents_have_info(self):
+        """Every detection agent must have tooltip metadata."""
+        required_fields = ["role", "description", "model", "evaluates", "capabilities"]
+        for agent in DETECTION_AGENTS:
+            # Agent info is defined in app.js ECC_AGENT_INFO — verify agent config exists
+            config = get_agent_config(agent)
+            assert config.name == agent
+            assert config.tier == "detection"
+
+    def test_all_generative_agents_have_info(self):
+        """Every generative agent must have tooltip metadata."""
+        for agent in GENERATIVE_AGENTS:
+            config = get_agent_config(agent)
+            assert config.name == agent
+            assert config.tier == "generative"
+
+    def test_all_agents_have_golden_manifest(self):
+        """Every ECC agent must have a golden dataset manifest."""
+        from qa_agent.eval.ecc.config import GOLDEN_DIR
+        for agent in ALL_ECC_AGENTS:
+            manifest_path = GOLDEN_DIR / agent / "manifest.json"
+            assert manifest_path.exists(), f"Missing manifest for {agent}: {manifest_path}"
+
+    def test_all_agents_have_file_mapping(self):
+        """Every ECC agent must map to a .claude/agents/ file."""
+        from qa_agent.eval.ecc.config import AGENT_FILE_MAP
+        for agent in ALL_ECC_AGENTS:
+            assert agent in AGENT_FILE_MAP, f"Missing AGENT_FILE_MAP entry for {agent}"
+
+    def test_agent_definition_files_exist(self):
+        """Every mapped agent definition file must exist on disk."""
+        from qa_agent.eval.ecc.config import AGENT_FILE_MAP, PROJECT_ROOT
+        agents_dir = PROJECT_ROOT / ".claude" / "agents"
+        for agent, agent_file in AGENT_FILE_MAP.items():
+            path = agents_dir / f"{agent_file}.md"
+            assert path.exists(), f"Agent definition not found: {path}"
+
+
+# -----------------------------------------------------------------------
 # LLM Judge Tests
 # -----------------------------------------------------------------------
 

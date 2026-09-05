@@ -22,9 +22,17 @@
     fetchEccEvalScores().then(() => syncEccEvalStatus());
 
     // Re-sync when user returns to tab (phone unlock, app switch)
+    // Debounce to avoid wiping tooltips during normal interaction
+    let _visibilityTimer = null;
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        fetchEccEvalScores().then(() => syncEccEvalStatus());
+        clearTimeout(_visibilityTimer);
+        _visibilityTimer = setTimeout(() => {
+          // Don't re-render if a tooltip is open
+          if (!document.querySelector('.eval-tooltip.tooltip-open')) {
+            fetchEccEvalScores().then(() => syncEccEvalStatus());
+          }
+        }, 2000);
       }
     });
     // Replay last test run results for late-joining clients
@@ -375,10 +383,16 @@
         t.classList.remove('tooltip-open');
       }
     });
-    const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+    // Find card — try both with and without escaping
+    let card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+    if (!card) card = document.querySelector(`.eval-card[data-agent="${CSS.escape(agent)}"]`);
     if (!card) return;
     const tooltip = card.querySelector('.eval-tooltip');
-    if (tooltip) tooltip.classList.toggle('tooltip-open');
+    if (tooltip) {
+      tooltip.classList.toggle('tooltip-open');
+      // Prevent re-render from wiping tooltip
+      card.dataset.tooltipOpen = tooltip.classList.contains('tooltip-open') ? '1' : '';
+    }
   };
 
   // Close tooltip when clicking outside
