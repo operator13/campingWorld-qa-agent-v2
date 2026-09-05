@@ -1151,29 +1151,21 @@
       const s = d.scores || {};
       const score = d.score != null ? (d.score * 100).toFixed(1) : '--';
       const passed = d.passed;
-      const badgeClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
+      const scoreClass = passed === true ? 'score-pass' : passed === false ? 'score-fail' : '';
+      const badgeClass = passed === true ? 'badge-pass' : passed === false ? 'badge-fail' : '';
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
-      const scoreClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
-      const recall = s.recall != null ? (s.recall * 100).toFixed(1) + '%' : '--';
-      const precision = s.precision != null ? (s.precision * 100).toFixed(1) + '%' : '--';
-      const fpRate = s.false_positive_rate != null ? (s.false_positive_rate * 100).toFixed(1) + '%' : '--';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const name = escapeHtml(agent.toUpperCase());
 
       return `
-        <div class="ecc-eval-card ${badgeClass === 'pass' ? 'passed' : badgeClass === 'fail' ? 'failed' : ''}">
-          <div class="ecc-card-header">
-            <span class="ecc-card-name">${name}</span>
-            <span class="ecc-card-badge ${badgeClass}">${badgeText}</span>
+        <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
+          <div class="eval-card-header">
+            <div class="eval-agent-name">${name}</div>
           </div>
-          <div class="ecc-card-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
-          <div class="ecc-card-metrics">
-            <div class="ecc-metric-row"><span class="ecc-metric-label">Recall</span><span class="ecc-metric-value">${recall}</span></div>
-            <div class="ecc-metric-row"><span class="ecc-metric-label">Precision</span><span class="ecc-metric-value">${precision}</span></div>
-            <div class="ecc-metric-row"><span class="ecc-metric-label">FP Rate</span><span class="ecc-metric-value">${fpRate}</span></div>
-          </div>
-          <div class="ecc-card-footer">
-            <span>Tokens: ${tokens}</span>
+          <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
+          <span class="eval-badge ${badgeClass}">${badgeText}</span>
+          <div class="eval-cost-row">
+            <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
           </div>
         </div>
       `;
@@ -1188,25 +1180,21 @@
       const s = d.scores || {};
       const score = d.score != null ? (d.score * 100).toFixed(1) : '--';
       const passed = d.passed;
-      const badgeClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
+      const scoreClass = passed === true ? 'score-pass' : passed === false ? 'score-fail' : '';
+      const badgeClass = passed === true ? 'badge-pass' : passed === false ? 'badge-fail' : '';
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
-      const scoreClass = passed === true ? 'pass' : passed === false ? 'fail' : 'pending';
-      const quality = s.quality != null ? (s.quality * 100).toFixed(1) + '%' : '--';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const name = escapeHtml(agent.toUpperCase());
 
       return `
-        <div class="ecc-eval-card ${badgeClass === 'pass' ? 'passed' : badgeClass === 'fail' ? 'failed' : ''}">
-          <div class="ecc-card-header">
-            <span class="ecc-card-name">${name}</span>
-            <span class="ecc-card-badge ${badgeClass}">${badgeText}</span>
+        <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
+          <div class="eval-card-header">
+            <div class="eval-agent-name">${name}</div>
           </div>
-          <div class="ecc-card-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
-          <div class="ecc-card-metrics">
-            <div class="ecc-metric-row"><span class="ecc-metric-label">Quality</span><span class="ecc-metric-value">${quality}</span></div>
-          </div>
-          <div class="ecc-card-footer">
-            <span>Tokens: ${tokens}</span>
+          <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
+          <span class="eval-badge ${badgeClass}">${badgeText}</span>
+          <div class="eval-cost-row">
+            <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
           </div>
         </div>
       `;
