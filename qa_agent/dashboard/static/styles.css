@@ -1802,5 +1802,69 @@ body::before {
 }
 
 @media (max-width: 600px) {
-  .ecc-eval-grid { grid-template-columns: 1fr; }
+  .ecc-eval-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .section-ecc-eval {
+    padding: 12px 10px;
+  }
+
+  .ecc-tier-title {
+    font-size: 0.55rem;
+    margin: 10px 0 6px 0;
+  }
+
+  .ecc-eval-card {
+    padding: 10px 8px;
+  }
+
+  .ecc-eval-card .eval-agent-name {
+    font-size: 0.4rem;
+  }
+
+  .ecc-eval-card .eval-run-btn {
+    font-size: 0.35rem;
+    padding: 2px 6px;
+  }
+
+  .ecc-eval-card .eval-score {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+  }
+
+  .ecc-eval-card .eval-badge {
+    font-size: 0.4rem;
+    padding: 2px 8px;
+    letter-spacing: 1px;
+  }
+
+  .ecc-eval-card .ecc-detail-metrics {
+    margin: 6px 0 2px;
+    padding-top: 6px;
+  }
+
+  .ecc-eval-card .ecc-detail-row {
+    padding: 2px 4px;
+    font-size: 0.5rem;
+  }
+
+  .ecc-eval-card .ecc-detail-label {
+    font-size: 0.45rem;
+  }
+
+  .ecc-eval-card .eval-cost-row {
+    margin-top: 6px;
+    padding-top: 6px;
+    gap: 10px;
+  }
+
+  .ecc-eval-card .eval-cost-label {
+    font-size: 0.4rem;
+  }
+
+  .ecc-eval-card .eval-cost-value {
+    font-size: 0.6rem;
+  }
 }
