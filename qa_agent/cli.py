@@ -550,6 +550,19 @@ def main() -> None:
         default=None,
         help="Override accuracy threshold for eval",
     )
+    # ECC eval-specific arguments
+    parser.add_argument(
+        "--ecc",
+        action="store_true",
+        help="Run ECC development agent evals instead of pipeline evals",
+    )
+    parser.add_argument(
+        "--tier",
+        type=str,
+        default=None,
+        choices=["detection", "generative"],
+        help="ECC eval tier filter: detection or generative",
+    )
 
     args = parser.parse_args()
 
@@ -586,7 +599,23 @@ def main() -> None:
             overwrite=args.overwrite,
         ))
     elif args.command == "eval":
-        if args.subcommand in ("run", "baseline"):
+        if getattr(args, "ecc", False):
+            from qa_agent.eval.ecc.ecc_eval_runner import run_ecc_eval
+            agents_list = [args.agent] if args.agent and args.agent != "triage" else None
+            result = asyncio.run(run_ecc_eval(
+                agents=agents_list,
+                tier=getattr(args, "tier", None),
+                dry_run=args.dry,
+            ))
+            passed = result.get("agents_passed", 0)
+            total = result.get("agents_evaluated", 0)
+            print(f"\nECC Eval: {passed}/{total} agents passed")
+            for name, r in result.get("results", {}).items():
+                status = "PASS" if r.get("passed") else "FAIL"
+                scores = r.get("scores", {})
+                recall = scores.get("recall", 0)
+                print(f"  {name}: {status} (recall={recall:.1%})")
+        elif args.subcommand in ("run", "baseline"):
             baseline = args.subcommand == "baseline"
             asyncio.run(_eval_run(
                 agent=args.agent,
@@ -595,6 +624,7 @@ def main() -> None:
             ))
         else:
             print("Usage: qa-agent eval run [--agent triage] [--threshold 0.80] | baseline")
+            print("       qa-agent eval --ecc [--agent security-reviewer] [--tier detection] [--dry]")
             sys.exit(1)
     elif args.command == "dashboard":
         import subprocess as _sp

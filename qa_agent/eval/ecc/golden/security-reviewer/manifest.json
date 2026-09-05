@@ -1,0 +1,405 @@
+[
+  {
+    "scenario_id": "sec_001_sql_injection_fstring",
+    "agent": "security-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "FastAPI endpoint with f-string SQL injection",
+    "code_files": {"api/users.py": "samples/sec_001.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-001",
+        "category": "sql_injection",
+        "severity": "CRITICAL",
+        "file": "api/users.py",
+        "line_range": [17, 17],
+        "description": "User ID interpolated directly into SQL query via f-string"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_002_sql_injection_raw_query",
+    "agent": "security-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Django view with SQL injection via ORM raw cursor and string formatting",
+    "code_files": {"views/products.py": "samples/sec_002.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-002",
+        "category": "sql_injection",
+        "severity": "CRITICAL",
+        "file": "views/products.py",
+        "line_range": [11, 13],
+        "description": "Search term interpolated into raw SQL via % string formatting"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_003_sql_injection_dynamic_table",
+    "agent": "security-reviewer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "FastAPI analytics endpoint with SQL injection via dynamic table name from user input",
+    "code_files": {"api/analytics.py": "samples/sec_003.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-003",
+        "category": "sql_injection",
+        "severity": "CRITICAL",
+        "file": "api/analytics.py",
+        "line_range": [22, 22],
+        "description": "User-supplied table name interpolated directly into SQL query via f-string"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_004_xss_innerhtml",
+    "agent": "security-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Flask endpoint returning user input directly in HTML without escaping",
+    "code_files": {"app/search.py": "samples/sec_004.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-004",
+        "category": "xss",
+        "severity": "CRITICAL",
+        "file": "app/search.py",
+        "line_range": [13, 14],
+        "description": "User search query interpolated directly into HTML response via f-string"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_005_xss_template_safe_filter",
+    "agent": "security-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Flask app using Jinja2 safe filter on user-controlled bio field",
+    "code_files": {"app/profile.py": "samples/sec_005.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-005",
+        "category": "xss",
+        "severity": "HIGH",
+        "file": "app/profile.py",
+        "line_range": [12, 12],
+        "description": "User-controlled bio field rendered with | safe filter, bypassing Jinja2 autoescaping"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_006_hardcoded_api_key",
+    "agent": "security-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Service with hardcoded OpenAI and Stripe API keys in source code",
+    "code_files": {"services/ai.py": "samples/sec_006.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-006a",
+        "category": "hardcoded_secret",
+        "severity": "CRITICAL",
+        "file": "services/ai.py",
+        "line_range": [7, 7],
+        "description": "OpenAI API key hardcoded as module-level constant"
+      },
+      {
+        "issue_id": "VULN-006b",
+        "category": "hardcoded_secret",
+        "severity": "CRITICAL",
+        "file": "services/ai.py",
+        "line_range": [8, 8],
+        "description": "Stripe secret key hardcoded as module-level constant"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_007_base64_encoded_secret",
+    "agent": "security-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Payment service with API secret obfuscated via base64 encoding",
+    "code_files": {"services/payments.py": "samples/sec_007.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-007",
+        "category": "hardcoded_secret",
+        "severity": "CRITICAL",
+        "file": "services/payments.py",
+        "line_range": [10, 12],
+        "description": "API secret hidden via base64 encoding but still hardcoded in source"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_008_secret_in_comment",
+    "agent": "security-reviewer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "AWS credentials leaked in a TODO code comment",
+    "code_files": {"services/upload.py": "samples/sec_008.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-008",
+        "category": "hardcoded_secret",
+        "severity": "CRITICAL",
+        "file": "services/upload.py",
+        "line_range": [9, 10],
+        "description": "AWS access key ID and secret access key exposed in a code comment"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_009_path_traversal_open",
+    "agent": "security-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "File download endpoint concatenating user filename without path validation",
+    "code_files": {"api/files.py": "samples/sec_009.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-009",
+        "category": "path_traversal",
+        "severity": "CRITICAL",
+        "file": "api/files.py",
+        "line_range": [14, 16],
+        "description": "User-supplied filename concatenated into file path without traversal validation"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_010_path_traversal_symlink",
+    "agent": "security-reviewer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Static file server that blocks .. but follows symlinks allowing directory escape",
+    "code_files": {"api/static.py": "samples/sec_010.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-010",
+        "category": "path_traversal",
+        "severity": "HIGH",
+        "file": "api/static.py",
+        "line_range": [17, 27],
+        "description": "Symlink following not prevented; attacker can place symlink to escape static directory"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_011_command_injection_os_system",
+    "agent": "security-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Network diagnostic endpoint passing user input to os.system and os.popen",
+    "code_files": {"api/network.py": "samples/sec_011.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-011a",
+        "category": "command_injection",
+        "severity": "CRITICAL",
+        "file": "api/network.py",
+        "line_range": [12, 12],
+        "description": "User-supplied host passed directly to os.system via f-string"
+      },
+      {
+        "issue_id": "VULN-011b",
+        "category": "command_injection",
+        "severity": "CRITICAL",
+        "file": "api/network.py",
+        "line_range": [21, 21],
+        "description": "User-supplied domain passed directly to os.popen via f-string"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_012_command_injection_subprocess_shell",
+    "agent": "security-reviewer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Report generation using subprocess.run with shell=True and user-influenced arguments",
+    "code_files": {"api/reports.py": "samples/sec_012.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-012a",
+        "category": "command_injection",
+        "severity": "CRITICAL",
+        "file": "api/reports.py",
+        "line_range": [21, 22],
+        "description": "subprocess.run with shell=True using string-interpolated command with user input"
+      },
+      {
+        "issue_id": "VULN-012b",
+        "category": "command_injection",
+        "severity": "CRITICAL",
+        "file": "api/reports.py",
+        "line_range": [31, 32],
+        "description": "User-supplied input_path and output_format passed to shell command"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_013_missing_auth_middleware",
+    "agent": "security-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "FastAPI admin endpoints without authentication dependency",
+    "code_files": {"api/admin.py": "samples/sec_013.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-013a",
+        "category": "missing_authentication",
+        "severity": "CRITICAL",
+        "file": "api/admin.py",
+        "line_range": [28, 34],
+        "description": "Admin list-users endpoint missing auth dependency — accessible without authentication"
+      },
+      {
+        "issue_id": "VULN-013b",
+        "category": "missing_authentication",
+        "severity": "CRITICAL",
+        "file": "api/admin.py",
+        "line_range": [37, 39],
+        "description": "Admin delete-user endpoint missing auth dependency — accessible without authentication"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_014_broken_rbac",
+    "agent": "security-reviewer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Document API checks role but not resource ownership, allowing horizontal privilege escalation",
+    "code_files": {"api/documents.py": "samples/sec_014.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-014a",
+        "category": "broken_access_control",
+        "severity": "HIGH",
+        "file": "api/documents.py",
+        "line_range": [22, 30],
+        "description": "GET endpoint checks role but not document ownership — any viewer can read any document"
+      },
+      {
+        "issue_id": "VULN-014b",
+        "category": "broken_access_control",
+        "severity": "HIGH",
+        "file": "api/documents.py",
+        "line_range": [33, 42],
+        "description": "PUT endpoint checks editor role but not ownership — any editor can modify any document"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_015_ssrf",
+    "agent": "security-reviewer",
+    "difficulty": "hard",
+    "language": "python",
+    "description": "Webhook proxy making HTTP requests to user-supplied URLs without allowlist validation",
+    "code_files": {"api/webhooks.py": "samples/sec_015.py"},
+    "planted_issues": [
+      {
+        "issue_id": "VULN-015a",
+        "category": "ssrf",
+        "severity": "CRITICAL",
+        "file": "api/webhooks.py",
+        "line_range": [21, 28],
+        "description": "User-supplied URL passed directly to httpx.request without domain/IP allowlist"
+      },
+      {
+        "issue_id": "VULN-015b",
+        "category": "ssrf",
+        "severity": "CRITICAL",
+        "file": "api/webhooks.py",
+        "line_range": [39, 41],
+        "description": "Metadata fetch endpoint follows redirects to arbitrary URLs without validation"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_016_clean_parameterized_sql",
+    "agent": "security-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "FastAPI endpoint using parameterized SQL queries correctly",
+    "code_files": {"api/users.py": "samples/sec_016.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_017_clean_html_escaping",
+    "agent": "security-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Flask app with proper Jinja2 autoescaping and markupsafe usage",
+    "code_files": {"app/search.py": "samples/sec_017.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_018_clean_env_secrets",
+    "agent": "security-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Service loading secrets from environment variables with startup validation",
+    "code_files": {"services/ai.py": "samples/sec_018.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_019_clean_safe_file_serving",
+    "agent": "security-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "File serving endpoint with resolve-based path validation and symlink rejection",
+    "code_files": {"api/files.py": "samples/sec_019.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sec_020_clean_auth_middleware",
+    "agent": "security-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "FastAPI app with auth and admin-role dependencies on all endpoints",
+    "code_files": {"api/admin.py": "samples/sec_020.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]

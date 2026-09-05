@@ -1,0 +1,275 @@
+[
+  {
+    "scenario_id": "sf_001_empty_except_pass",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Bare except: pass swallowing all errors including SystemExit and KeyboardInterrupt",
+    "code_files": {"app/worker.py": "samples/sf_001.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-001",
+        "category": "swallowed_exception",
+        "severity": "CRITICAL",
+        "file": "app/worker.py",
+        "line_range": [10, 14],
+        "description": "Bare except: pass catches all exceptions including SystemExit, silently continuing"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_002_except_return_none",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Catching any exception and returning None, hiding the failure from callers",
+    "code_files": {"app/fetcher.py": "samples/sf_002.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-002",
+        "category": "swallowed_exception",
+        "severity": "HIGH",
+        "file": "app/fetcher.py",
+        "line_range": [9, 14],
+        "description": "except Exception returns None, caller cannot distinguish 'no data' from 'service down'"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_003_broad_except_critical_path",
+    "agent": "silent-failure-hunter",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Broad except: pass in payment processing critical path",
+    "code_files": {"app/payments.py": "samples/sf_003.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-003",
+        "category": "swallowed_exception",
+        "severity": "CRITICAL",
+        "file": "app/payments.py",
+        "line_range": [14, 20],
+        "description": "except Exception: pass in charge_customer hides payment gateway failures"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_004_catch_return_empty",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Catching exception and returning empty list, hiding data source failure",
+    "code_files": {"app/search.py": "samples/sf_004.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-004",
+        "category": "silent_fallback",
+        "severity": "HIGH",
+        "file": "app/search.py",
+        "line_range": [12, 16],
+        "description": "Returns empty list on exception, user sees 'no results' instead of error"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_005_default_hiding_failure",
+    "agent": "silent-failure-hunter",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Using `or default` pattern to silently mask function failures returning falsy values",
+    "code_files": {"app/config_loader.py": "samples/sf_005.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-005",
+        "category": "silent_fallback",
+        "severity": "HIGH",
+        "file": "app/config_loader.py",
+        "line_range": [10, 18],
+        "description": "The `or` operator masks failures: if load_from_vault() raises or returns None/empty, default is silently used"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_006_dict_get_masking_keyerror",
+    "agent": "silent-failure-hunter",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Using dict.get() with default where a missing key indicates a real bug",
+    "code_files": {"app/router.py": "samples/sf_006.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-006",
+        "category": "silent_fallback",
+        "severity": "MEDIUM",
+        "file": "app/router.py",
+        "line_range": [12, 22],
+        "description": "dict.get() with fallback handler masks misconfigured routes that should fail loudly"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_007_lost_stack_trace",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Raising new exception without chaining, losing the original stack trace",
+    "code_files": {"app/parser.py": "samples/sf_007.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-007",
+        "category": "lost_context",
+        "severity": "MEDIUM",
+        "file": "app/parser.py",
+        "line_range": [10, 15],
+        "description": "raise ValueError('msg') without 'from e' loses the original exception context"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_008_reraise_losing_context",
+    "agent": "silent-failure-hunter",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Catching and raising a new exception type without chaining to original",
+    "code_files": {"app/client.py": "samples/sf_008.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-008",
+        "category": "lost_context",
+        "severity": "MEDIUM",
+        "file": "app/client.py",
+        "line_range": [16, 25],
+        "description": "Catches specific errors and raises custom exception without 'from e', losing root cause"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_009_log_and_forget",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Logging error then continuing execution with corrupted/stale state",
+    "code_files": {"app/pipeline.py": "samples/sf_009.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-009",
+        "category": "log_and_continue",
+        "severity": "HIGH",
+        "file": "app/pipeline.py",
+        "line_range": [14, 22],
+        "description": "Logs error from transform step but continues pipeline with untransformed data"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_010_log_return_stale",
+    "agent": "silent-failure-hunter",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Logging error but returning stale cached data without indicating staleness",
+    "code_files": {"app/cache.py": "samples/sf_010.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-010",
+        "category": "log_and_continue",
+        "severity": "HIGH",
+        "file": "app/cache.py",
+        "line_range": [18, 26],
+        "description": "Returns stale cache on refresh failure without marking data as stale"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_011_fire_and_forget_task",
+    "agent": "silent-failure-hunter",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "asyncio.create_task() without storing reference or adding error callback",
+    "code_files": {"app/dispatcher.py": "samples/sf_011.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-011",
+        "category": "fire_and_forget",
+        "severity": "HIGH",
+        "file": "app/dispatcher.py",
+        "line_range": [14, 20],
+        "description": "asyncio.create_task() called without storing reference; exceptions silently destroyed"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_012_unawaited_coroutine",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Calling async function without await, coroutine is created but never executed",
+    "code_files": {"app/events.py": "samples/sf_012.py"},
+    "planted_issues": [
+      {
+        "issue_id": "SF-012",
+        "category": "unawaited_coroutine",
+        "severity": "CRITICAL",
+        "file": "app/events.py",
+        "line_range": [16, 20],
+        "description": "Async function called without await; notification is silently never sent"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_013_clean_exception_chaining",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Proper exception chaining with 'from e' preserving full context",
+    "code_files": {"app/repository.py": "samples/sf_013.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_014_clean_async_error_handling",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Proper async error handling with task references and error callbacks",
+    "code_files": {"app/async_worker.py": "samples/sf_014.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "sf_015_clean_intentional_fallback",
+    "agent": "silent-failure-hunter",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Intentional fallback with explicit logging and staleness indicator",
+    "code_files": {"app/feature_flags.py": "samples/sf_015.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]

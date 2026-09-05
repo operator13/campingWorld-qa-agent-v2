@@ -1,0 +1,273 @@
+[
+  {
+    "scenario_id": "cr_001_large_function",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Single function with 80+ lines doing data parsing, validation, and formatting",
+    "code_files": {"app/utils.py": "samples/cr_001.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-001",
+        "category": "large_function",
+        "severity": "MEDIUM",
+        "file": "app/utils.py",
+        "line_range": [1, 82],
+        "description": "Function exceeds 50-line limit, doing data parsing, validation, and formatting"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_002_very_large_function",
+    "agent": "code-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Complex 120-line function handling CSV import with inline validation and transformation",
+    "code_files": {"app/importer.py": "samples/cr_002.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-002",
+        "category": "large_function",
+        "severity": "HIGH",
+        "file": "app/importer.py",
+        "line_range": [1, 120],
+        "description": "Function exceeds 50-line limit by 70 lines, mixes CSV parsing, validation, transformation, and database insertion"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_003_deep_nesting",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "5-level deep nesting with if/for/try chains",
+    "code_files": {"app/processor.py": "samples/cr_003.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-003",
+        "category": "deep_nesting",
+        "severity": "MEDIUM",
+        "file": "app/processor.py",
+        "line_range": [5, 40],
+        "description": "5 levels of nesting with if/for/try chains making control flow hard to follow"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_004_deep_nesting_business_logic",
+    "agent": "code-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Deep nesting with complex business logic conditionals",
+    "code_files": {"app/pricing.py": "samples/cr_004.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-004",
+        "category": "deep_nesting",
+        "severity": "HIGH",
+        "file": "app/pricing.py",
+        "line_range": [4, 60],
+        "description": "6 levels of nesting with interleaved business rules for discount calculation"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_005_list_mutation",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "In-place mutation of a list passed as argument",
+    "code_files": {"app/filters.py": "samples/cr_005.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-005",
+        "category": "mutation",
+        "severity": "MEDIUM",
+        "file": "app/filters.py",
+        "line_range": [4, 20],
+        "description": "Function mutates input list in-place instead of returning a new list"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_006_shared_mutable_state",
+    "agent": "code-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Class with mutable class variables modified by instance methods",
+    "code_files": {"app/registry.py": "samples/cr_006.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-006",
+        "category": "mutation",
+        "severity": "HIGH",
+        "file": "app/registry.py",
+        "line_range": [4, 45],
+        "description": "Mutable class-level dict and list shared across all instances, modified by instance methods"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_007_missing_error_handling",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "File and network operations without any error handling",
+    "code_files": {"app/loader.py": "samples/cr_007.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-007",
+        "category": "missing_error_handling",
+        "severity": "HIGH",
+        "file": "app/loader.py",
+        "line_range": [5, 30],
+        "description": "File open, JSON parse, and HTTP request with no try/except or context manager"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_008_empty_catch_blocks",
+    "agent": "code-reviewer",
+    "difficulty": "medium",
+    "language": "python",
+    "description": "Multiple except Exception: pass blocks swallowing errors",
+    "code_files": {"app/sync.py": "samples/cr_008.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-008a",
+        "category": "empty_catch",
+        "severity": "HIGH",
+        "file": "app/sync.py",
+        "line_range": [10, 15],
+        "description": "except Exception: pass silently swallows database sync errors"
+      },
+      {
+        "issue_id": "CR-008b",
+        "category": "empty_catch",
+        "severity": "HIGH",
+        "file": "app/sync.py",
+        "line_range": [22, 27],
+        "description": "except Exception: pass silently swallows cache invalidation errors"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_009_dead_code",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Commented-out code blocks and unreachable returns",
+    "code_files": {"app/transform.py": "samples/cr_009.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-009a",
+        "category": "dead_code",
+        "severity": "LOW",
+        "file": "app/transform.py",
+        "line_range": [15, 22],
+        "description": "Large commented-out code block left in production"
+      },
+      {
+        "issue_id": "CR-009b",
+        "category": "dead_code",
+        "severity": "MEDIUM",
+        "file": "app/transform.py",
+        "line_range": [30, 35],
+        "description": "Code after unconditional return is unreachable"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_010_print_statements",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "print() statements used instead of logging module",
+    "code_files": {"app/service.py": "samples/cr_010.py"},
+    "planted_issues": [
+      {
+        "issue_id": "CR-010",
+        "category": "print_in_production",
+        "severity": "MEDIUM",
+        "file": "app/service.py",
+        "line_range": [1, 35],
+        "description": "Multiple print() calls used for debugging/status instead of logging module"
+      }
+    ],
+    "is_clean": false,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_011_clean_small_functions",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Well-structured module with small focused functions",
+    "code_files": {"app/validators.py": "samples/cr_011.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_012_clean_error_handling",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Proper error handling with context managers and specific exceptions",
+    "code_files": {"app/file_handler.py": "samples/cr_012.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_013_clean_immutable",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Immutable patterns using frozen dataclasses and tuple returns",
+    "code_files": {"app/models.py": "samples/cr_013.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_014_clean_early_returns",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Clean guard-clause pattern with early returns avoiding deep nesting",
+    "code_files": {"app/auth.py": "samples/cr_014.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  },
+  {
+    "scenario_id": "cr_015_clean_logging",
+    "agent": "code-reviewer",
+    "difficulty": "easy",
+    "language": "python",
+    "description": "Proper logging module usage with structured context",
+    "code_files": {"app/notifier.py": "samples/cr_015.py"},
+    "planted_issues": [],
+    "is_clean": true,
+    "valid_until": "2027-06-01"
+  }
+]
