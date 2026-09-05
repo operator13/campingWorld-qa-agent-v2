@@ -1786,10 +1786,17 @@ body::before {
 
 .ecc-eval-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 16px;
   overflow: visible;
+}
+
+@media (max-width: 480px) {
+  .ecc-eval-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
 }
 
 /* ECC cards reuse .eval-card, .eval-score, .eval-badge styles */
