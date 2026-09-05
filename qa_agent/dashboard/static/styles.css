@@ -1796,7 +1796,7 @@ body::before {
 .ecc-eval-card {
   border-top: 2px solid var(--neon-purple);
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ecc-detail-metrics {
