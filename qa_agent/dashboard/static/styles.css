@@ -1096,15 +1096,29 @@ body::before {
 
 /* iPad mini / large phones landscape */
 @media (max-width: 768px) {
-  /* Hide eval runner buttons and tooltip on mobile */
-  .eval-run-btn,
-  .eval-all-btn,
-  .eval-stop-btn,
-  .eval-header-right,
-  .eval-info-icon,
-  .eval-tooltip {
+  /* Hide pipeline eval runner buttons and tooltip on mobile */
+  .section-eval .eval-run-btn,
+  .section-eval .eval-info-icon,
+  .section-eval .eval-tooltip {
     display: none !important;
   }
+
+  .ecc-eval-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .ecc-eval-card { padding: 10px 8px; }
+  .ecc-eval-card .eval-agent-name { font-size: 0.4rem; }
+  .ecc-eval-card .eval-run-btn { font-size: 0.35rem; padding: 2px 6px; display: inline-block !important; }
+  .ecc-eval-card .eval-score { font-size: 1.4rem; margin-bottom: 6px; }
+  .ecc-eval-card .eval-badge { font-size: 0.4rem; padding: 2px 8px; }
+  .ecc-eval-card .ecc-detail-row { font-size: 0.5rem; padding: 2px 4px; }
+  .ecc-eval-card .ecc-detail-label { font-size: 0.45rem; }
+  .ecc-eval-card .eval-cost-label { font-size: 0.4rem; }
+  .ecc-eval-card .eval-cost-value { font-size: 0.6rem; }
+  .section-ecc-eval .eval-header-right { display: flex !important; }
+  .section-ecc-eval .eval-all-btn { display: inline-block !important; font-size: 0.45rem; }
 
   .header {
     flex-direction: column;
@@ -1135,9 +1149,27 @@ body::before {
     gap: 12px;
   }
 
+  .ecc-eval-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
   .eval-card {
     padding: 16px;
   }
+
+  .ecc-eval-card {
+    padding: 10px 8px;
+  }
+
+  .ecc-eval-card .eval-agent-name { font-size: 0.4rem; }
+  .ecc-eval-card .eval-run-btn { font-size: 0.35rem; padding: 2px 6px; }
+  .ecc-eval-card .eval-score { font-size: 1.4rem; margin-bottom: 6px; }
+  .ecc-eval-card .eval-badge { font-size: 0.4rem; padding: 2px 8px; }
+  .ecc-eval-card .ecc-detail-row { font-size: 0.5rem; padding: 2px 4px; }
+  .ecc-eval-card .ecc-detail-label { font-size: 0.45rem; }
+  .ecc-eval-card .eval-cost-label { font-size: 0.4rem; }
+  .ecc-eval-card .eval-cost-value { font-size: 0.6rem; }
 
   .eval-score {
     font-size: 1.8rem;
