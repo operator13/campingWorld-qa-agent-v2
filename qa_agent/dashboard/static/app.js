@@ -1114,6 +1114,93 @@
   // ECC Development Agent Evals
   // ============================================
 
+  const ECC_AGENT_INFO = {
+    'security-reviewer': {
+      role: 'Vulnerability Scanner',
+      description: 'Identifies OWASP Top 10 vulnerabilities, hardcoded secrets, injection flaws, auth bypasses, and SSRF in Python and TypeScript code.',
+      model: 'Claude Sonnet',
+      evaluates: '20 scenarios: SQL injection, XSS, secrets, path traversal, command injection, auth bypass, SSRF + 5 clean decoys',
+      capabilities: ['SQL injection detection', 'XSS/template injection', 'Hardcoded secret scanning', 'Path traversal/SSRF', 'Auth bypass identification'],
+    },
+    'code-reviewer': {
+      role: 'Quality Analyst',
+      description: 'Reviews code for large functions, deep nesting, mutation patterns, missing error handling, dead code, and debug statements.',
+      model: 'Claude Sonnet',
+      evaluates: '15 scenarios: function size, nesting depth, mutation, error handling, dead code + 5 clean decoys',
+      capabilities: ['Function size analysis', 'Nesting depth detection', 'Mutation pattern flagging', 'Error handling audit', 'Dead code identification'],
+    },
+    'silent-failure-hunter': {
+      role: 'Error Propagation Auditor',
+      description: 'Finds swallowed errors, empty catch blocks, lost stack traces, log-and-forget patterns, and fire-and-forget async calls.',
+      model: 'Claude Sonnet',
+      evaluates: '15 scenarios: empty catches, dangerous fallbacks, lost traces, unawaited coroutines + 3 clean decoys',
+      capabilities: ['Empty catch detection', 'Stack trace loss tracking', 'Log-and-forget flagging', 'Async error propagation', 'Dangerous fallback identification'],
+    },
+    'python-reviewer': {
+      role: 'Python Specialist',
+      description: 'Enforces PEP 8, type hints, Pythonic idioms, and Python-specific security (eval, pickle) across the codebase.',
+      model: 'Claude Sonnet',
+      evaluates: '12 scenarios: naming, type hints, mutable defaults, bare except, eval/pickle + 3 clean decoys',
+      capabilities: ['PEP 8 enforcement', 'Type hint validation', 'Anti-pattern detection', 'Python security (eval/pickle)', 'Idiom enforcement'],
+    },
+    'typescript-reviewer': {
+      role: 'TypeScript Specialist',
+      description: 'Checks type safety, async correctness, React patterns, and Node.js security in TypeScript and JavaScript code.',
+      model: 'Claude Sonnet',
+      evaluates: '12 scenarios: any types, null checks, missing await, React hooks, eval + 3 clean decoys',
+      capabilities: ['Type safety analysis', 'Async/await correctness', 'React hook validation', 'Node.js security', 'Promise handling'],
+    },
+    'fastapi-reviewer': {
+      role: 'FastAPI Specialist',
+      description: 'Reviews async correctness, Pydantic schemas, dependency injection, middleware, and FastAPI-specific security patterns.',
+      model: 'Claude Sonnet',
+      evaluates: '10 scenarios: sync-in-async, Pydantic misuse, missing middleware, DI issues + 3 clean decoys',
+      capabilities: ['Async handler audit', 'Pydantic schema validation', 'Dependency injection review', 'CORS/rate limiting check', 'Response model enforcement'],
+    },
+    'performance-optimizer': {
+      role: 'Performance Analyst',
+      description: 'Identifies algorithmic inefficiencies (O(n²)), memory leaks, N+1 queries, unclosed resources, and unnecessary copies.',
+      model: 'Claude Sonnet',
+      evaluates: '10 scenarios: quadratic loops, memory leaks, N+1 queries, unclosed files + 3 clean decoys',
+      capabilities: ['Algorithmic complexity analysis', 'Memory leak detection', 'N+1 query identification', 'Resource management audit', 'Copy elimination'],
+    },
+    'planner-ecc': {
+      role: 'Implementation Planner',
+      description: 'Creates phased implementation plans with file paths, dependencies, risks, and project convention adherence.',
+      model: 'Claude Opus',
+      evaluates: '8 scenarios scored by LLM judge on 5 quality dimensions',
+      capabilities: ['Phased planning', 'File path identification', 'Risk assessment', 'Dependency mapping', 'Convention adherence'],
+    },
+    'tdd-guide': {
+      role: 'TDD Enforcer',
+      description: 'Enforces test-driven development: write tests first (RED), implement (GREEN), refactor (IMPROVE) with 80%+ coverage.',
+      model: 'Claude Sonnet',
+      evaluates: '8 scenarios scored on TDD adherence, test coverage, edge cases',
+      capabilities: ['Test-first enforcement', 'AAA pattern guidance', 'Edge case coverage', 'Regression test design', 'Coverage targeting'],
+    },
+    'build-error-resolver': {
+      role: 'Build Fixer',
+      description: 'Resolves TypeScript type errors, import resolution failures, and config issues with minimal-diff fixes.',
+      model: 'Claude Sonnet',
+      evaluates: '10 scenarios: type errors, imports, missing deps, config + 2 clean decoys',
+      capabilities: ['Type error resolution', 'Import path fixing', 'Dependency installation', 'Config correction', 'Minimal diff enforcement'],
+    },
+    'e2e-runner': {
+      role: 'E2E Test Specialist',
+      description: 'Generates Playwright tests with POM pattern, fixes flaky tests, and updates broken locators.',
+      model: 'Claude Sonnet',
+      evaluates: '8 scenarios: new flows, flaky fixes, locator updates + 2 clean decoys',
+      capabilities: ['POM generation', 'Semantic locator selection', 'Flaky test remediation', 'Locator update', 'Wait strategy optimization'],
+    },
+    'refactor-cleaner': {
+      role: 'Dead Code Eliminator',
+      description: 'Identifies unused exports, duplicate functions, and orphaned dependencies for safe removal.',
+      model: 'Claude Sonnet',
+      evaluates: '10 scenarios: unused exports, duplicates, dead deps + 3 live code decoys',
+      capabilities: ['Unused export detection', 'Duplicate consolidation', 'Dependency pruning', 'Live code protection', 'Safe removal verification'],
+    },
+  };
+
   const ECC_DETECTION_AGENTS = [
     'security-reviewer', 'code-reviewer', 'silent-failure-hunter',
     'python-reviewer', 'typescript-reviewer', 'fastapi-reviewer',
@@ -1176,6 +1263,23 @@
 
   function fmtPct(v) { return v != null ? (v * 100).toFixed(1) + '%' : '--'; }
 
+  function eccTooltipHtml(agent) {
+    const info = ECC_AGENT_INFO[agent];
+    if (!info) return '';
+    const capsHtml = info.capabilities.map(c => `<li>${escapeHtml(c)}</li>`).join('');
+    return `
+      <div class="eval-tooltip">
+        <div class="eval-tooltip-header">${escapeHtml(agent.toUpperCase())} <span class="eval-tooltip-role">${escapeHtml(info.role)}</span></div>
+        <p class="eval-tooltip-desc">${escapeHtml(info.description)}</p>
+        <div class="eval-tooltip-meta">
+          <span>Model: ${escapeHtml(info.model)}</span>
+          <span>Eval: ${escapeHtml(info.evaluates)}</span>
+        </div>
+        <ul class="eval-tooltip-caps">${capsHtml}</ul>
+      </div>
+    `;
+  }
+
   function renderEccDetectionCards(scores) {
     const grid = document.getElementById('ecc-detection-grid');
     if (!grid) return;
@@ -1197,11 +1301,13 @@
       const planted = s.total_planted != null ? s.total_planted : '--';
 
       const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
+      const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${escapeHtml(agent)}')">&#9432;</span>`;
+      const tooltip = eccTooltipHtml(agent);
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
           <div class="eval-card-header">
-            <div class="eval-agent-name">${name}</div>
+            <div class="eval-agent-name">${name} ${infoIcon}</div>
             ${runBtn}
           </div>
           <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
@@ -1215,6 +1321,7 @@
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
             <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
+          ${tooltip}
         </div>
       `;
     }).join('');
@@ -1243,11 +1350,13 @@
       const convention = fmtPct(dims.convention_adherence);
 
       const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
+      const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${escapeHtml(agent)}')">&#9432;</span>`;
+      const tooltip = eccTooltipHtml(agent);
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
           <div class="eval-card-header">
-            <div class="eval-agent-name">${name}</div>
+            <div class="eval-agent-name">${name} ${infoIcon}</div>
             ${runBtn}
           </div>
           <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
@@ -1264,6 +1373,7 @@
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
             <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
+          ${tooltip}
         </div>
       `;
     }).join('');
