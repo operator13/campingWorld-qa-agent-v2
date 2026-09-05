@@ -331,17 +331,18 @@ async def run_ecc_eval(
     if not agent_list:
         return {"error": "No valid agents specified"}
 
-    results: dict[str, Any] = {}
-    for agent_name in agent_list:
+    # Run all agents in parallel
+    import asyncio
+
+    async def _run_one(agent_name: str) -> tuple[str, dict[str, Any]]:
         config = get_agent_config(agent_name)
         if config.tier == "detection":
-            results[agent_name] = await run_detection_eval(
-                agent_name, dry_run=dry_run
-            )
+            return agent_name, await run_detection_eval(agent_name, dry_run=dry_run)
         else:
-            results[agent_name] = await run_generative_eval(
-                agent_name, dry_run=dry_run
-            )
+            return agent_name, await run_generative_eval(agent_name, dry_run=dry_run)
+
+    agent_results = await asyncio.gather(*[_run_one(a) for a in agent_list])
+    results: dict[str, Any] = dict(agent_results)
 
     summary = {
         "eval_run_id": f"ecc-eval-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}",

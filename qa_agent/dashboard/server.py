@@ -693,11 +693,11 @@ async def _execute_ecc_eval_run(agents: list[str]):
     global _ecc_eval_status
     await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:start", "agents": agents}))
 
+    # Broadcast start for all agents and run in parallel
     for agent in agents:
-        _ecc_eval_status["current_agent"] = agent
-        _ecc_eval_status["last_activity"] = time.time()
         await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:start", "agent": agent}))
 
+    async def _run_one(agent: str):
         try:
             cmd = [
                 sys.executable, "-u", "-c",
@@ -724,10 +724,13 @@ async def _execute_ecc_eval_run(agents: list[str]):
 
             await proc.wait()
             _ecc_eval_status["completed"].append(agent)
+            _ecc_eval_status["last_activity"] = time.time()
             await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:complete", "agent": agent}))
 
         except Exception as e:
             await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:error", "agent": agent, "error": str(e)}))
+
+    await asyncio.gather(*[_run_one(agent) for agent in agents])
 
     _ecc_eval_status["state"] = "idle"
     _ecc_eval_status["current_agent"] = None
