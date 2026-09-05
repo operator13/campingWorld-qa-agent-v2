@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from qa_agent.eval.ecc.agent_invoker import AgentResponse, invoke_ecc_agent
 from qa_agent.eval.ecc.config import (
     ALL_ECC_AGENTS,
@@ -27,6 +29,24 @@ from qa_agent.eval.ecc.finding_matcher import (
 from qa_agent.eval.ecc.llm_judge import JudgeScore, judge_output
 
 logger = logging.getLogger(__name__)
+
+DASHBOARD_URL = "http://localhost:8000"
+
+
+def _notify_dashboard(event: str, **kwargs: Any) -> None:
+    """Broadcast an ECC eval event to the dashboard (best-effort).
+
+    Posts to /api/eval/ecc/broadcast which fans out to all WebSocket clients.
+    Silently ignores errors if the dashboard isn't running.
+    """
+    try:
+        httpx.post(
+            f"{DASHBOARD_URL}/api/eval/ecc/broadcast",
+            json={"event": event, **kwargs},
+            timeout=2,
+        )
+    except Exception:
+        pass
 
 
 def load_manifest(agent_name: str) -> list[dict[str, Any]]:
@@ -78,6 +98,7 @@ async def run_detection_eval(
 
     total = len(scenarios)
     logger.info("Running %s eval: %d scenarios", agent_name, total)
+    _notify_dashboard("ecc_eval:agent:start", agent=agent_name)
 
     issue_results: list[MatchResult] = []
     clean_fp_count = 0
@@ -92,6 +113,7 @@ async def run_detection_eval(
         code_files = load_code_files(agent_name, scenario)
 
         logger.info("[%d/%d] %s%s", i, total, sid, " (clean)" if is_clean else "")
+        _notify_dashboard("ecc_eval:log", agent=agent_name, line=f"[{i}/{total}] {sid}")
 
         if dry_run:
             scenario_details.append({"scenario_id": sid, "dry_run": True})
@@ -169,6 +191,7 @@ async def run_detection_eval(
     }
 
     _save_report(agent_name, scorecard)
+    _notify_dashboard("ecc_eval:agent:complete", agent=agent_name)
     return scorecard
 
 
@@ -200,6 +223,7 @@ async def run_generative_eval(
 
     total = len(scenarios)
     logger.info("Running %s eval (generative): %d scenarios", agent_name, total)
+    _notify_dashboard("ecc_eval:agent:start", agent=agent_name)
 
     quality_scores: list[float] = []
     total_tokens = 0
@@ -211,6 +235,7 @@ async def run_generative_eval(
         acceptance_criteria = scenario.get("acceptance_criteria", [])
 
         logger.info("[%d/%d] %s%s", i, total, sid, " (decoy)" if is_clean else "")
+        _notify_dashboard("ecc_eval:log", agent=agent_name, line=f"[{i}/{total}] {sid}")
 
         if dry_run:
             scenario_details.append({"scenario_id": sid, "dry_run": True})
@@ -300,6 +325,7 @@ async def run_generative_eval(
     }
 
     _save_report(agent_name, scorecard)
+    _notify_dashboard("ecc_eval:agent:complete", agent=agent_name)
     return scorecard
 
 
@@ -331,6 +357,8 @@ async def run_ecc_eval(
     if not agent_list:
         return {"error": "No valid agents specified"}
 
+    _notify_dashboard("ecc_eval:start", agents=agent_list)
+
     # Run all agents in parallel
     import asyncio
 
@@ -353,6 +381,7 @@ async def run_ecc_eval(
         "results": results,
     }
 
+    _notify_dashboard("ecc_eval:complete", completed=len(results), total=len(agent_list))
     return summary
 
 

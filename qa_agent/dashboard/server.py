@@ -755,6 +755,34 @@ async def _execute_ecc_eval_run(agents: list[str]):
     }))
 
 
+@app.post("/api/eval/ecc/broadcast")
+async def ecc_eval_broadcast(body: dict = {}) -> JSONResponse:
+    """Receive eval events from CLI and broadcast to dashboard WebSocket clients."""
+    global _ecc_eval_status
+    event = body.get("event", "")
+    if event == "ecc_eval:start":
+        _ecc_eval_status = {"state": "running", "current_agent": None, "completed": [], "progress": {}, "last_activity": time.time()}
+    elif event == "ecc_eval:agent:start":
+        _ecc_eval_status["state"] = "running"
+        _ecc_eval_status["current_agent"] = body.get("agent")
+        _ecc_eval_status["last_activity"] = time.time()
+    elif event == "ecc_eval:agent:complete":
+        agent = body.get("agent")
+        if agent and agent not in _ecc_eval_status.get("completed", []):
+            _ecc_eval_status.setdefault("completed", []).append(agent)
+        _ecc_eval_status["last_activity"] = time.time()
+    elif event == "ecc_eval:complete":
+        _ecc_eval_status["state"] = "idle"
+        _ecc_eval_status["current_agent"] = None
+    elif event == "ecc_eval:log" and body.get("agent"):
+        import re as _re
+        m = _re.search(r"\[(\d+)/(\d+)\]", body.get("line", ""))
+        if m:
+            _ecc_eval_status.setdefault("progress", {})[body["agent"]] = {"current": int(m.group(1)), "total": int(m.group(2))}
+    await broadcast_to_dashboard(json.dumps(body))
+    return JSONResponse({"status": "ok"})
+
+
 @app.get("/api/eval/ecc/status")
 async def ecc_eval_status() -> JSONResponse:
     """Return current ECC eval running state."""
