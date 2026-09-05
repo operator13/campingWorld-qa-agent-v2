@@ -1143,6 +1143,8 @@
     }
   }
 
+  function fmtPct(v) { return v != null ? (v * 100).toFixed(1) + '%' : '--'; }
+
   function renderEccDetectionCards(scores) {
     const grid = document.getElementById('ecc-detection-grid');
     if (!grid) return;
@@ -1156,6 +1158,11 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const name = escapeHtml(agent.toUpperCase());
+      const recall = fmtPct(s.recall);
+      const precision = fmtPct(s.precision);
+      const fpRate = fmtPct(s.false_positive_rate);
+      const found = s.total_found != null ? s.total_found : '--';
+      const planted = s.total_planted != null ? s.total_planted : '--';
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
@@ -1164,6 +1171,11 @@
           </div>
           <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
+          <div class="ecc-detail-metrics">
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Recall</span><span class="ecc-detail-val">${recall}${found !== '--' ? ' (' + found + '/' + planted + ')' : ''}</span></div>
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Precision</span><span class="ecc-detail-val">${precision}</span></div>
+            <div class="ecc-detail-row"><span class="ecc-detail-label">FP Rate</span><span class="ecc-detail-val">${fpRate}</span></div>
+          </div>
           <div class="eval-cost-row">
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
           </div>
@@ -1185,6 +1197,7 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const name = escapeHtml(agent.toUpperCase());
+      const quality = fmtPct(s.quality);
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
@@ -1193,6 +1206,9 @@
           </div>
           <div class="eval-score ${scoreClass}">${score === '--' ? '--' : score + '%'}</div>
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
+          <div class="ecc-detail-metrics">
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Quality</span><span class="ecc-detail-val">${quality}</span></div>
+          </div>
           <div class="eval-cost-row">
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
           </div>
@@ -1248,14 +1264,26 @@
       setEccEvalRunning();
     } else if (data.event === 'ecc_eval:agent:start') {
       setEccEvalRunning();
-      const statusText = document.getElementById('ecc-eval-status');
-      if (statusText) statusText.textContent = 'RUNNING';
+      if (data.agent) setEvalCardRunning(data.agent);
+    } else if (data.event === 'ecc_eval:log') {
+      // Parse [X/N] progress from log lines
+      if (data.line && data.agent) {
+        const m = data.line.match(/\[(\d+)\/(\d+)\]/);
+        if (m) updateEvalProgress(data.agent, parseInt(m[1]), parseInt(m[2]));
+      }
     } else if (data.event === 'ecc_eval:agent:complete') {
+      if (data.agent) setEvalCardComplete(data.agent);
       fetchEccEvalScores();
     } else if (data.event === 'ecc_eval:complete') {
       setEccEvalIdle(data.completed + '/' + data.total + ' COMPLETE');
-      setTimeout(() => fetchEccEvalScores(), 1000);
+      // Restore any cards still stuck in running state
+      document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
+        const agent = card.dataset.agent;
+        if (agent) setEvalCardComplete(agent);
+      });
+      setTimeout(() => fetchEccEvalScores(), 1500);
     } else if (data.event === 'ecc_eval:agent:error') {
+      if (data.agent) setEvalCardError(data.agent);
       const statusText = document.getElementById('ecc-eval-status');
       if (statusText) statusText.textContent = 'ERROR: ' + (data.agent || '').toUpperCase();
     }

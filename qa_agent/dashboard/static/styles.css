@@ -1764,6 +1764,35 @@ body::before {
   border-top: 2px solid var(--neon-purple);
 }
 
+.ecc-detail-metrics {
+  margin: 12px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.ecc-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+}
+
+.ecc-detail-label {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ecc-detail-val {
+  color: var(--neon-cyan);
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(0, 255, 200, 0.2);
+}
+
 @media (max-width: 1200px) {
   .ecc-eval-grid { grid-template-columns: repeat(3, 1fr); }
 }

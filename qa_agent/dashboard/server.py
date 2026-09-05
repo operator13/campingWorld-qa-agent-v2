@@ -702,6 +702,7 @@ async def _execute_ecc_eval_run(agents: list[str]):
             cmd = [
                 sys.executable, "-u", "-c",
                 f"from dotenv import load_dotenv; load_dotenv('.env'); "
+                f"import logging; logging.basicConfig(level=logging.INFO, format='%(message)s', stream=__import__('sys').stdout); "
                 f"import asyncio; from qa_agent.eval.ecc.ecc_eval_runner import run_ecc_eval; "
                 f"result = asyncio.run(run_ecc_eval(agents=['{agent}'])); "
                 f"import json; print(json.dumps(result.get('results', {{}}).get('{agent}', {{}})))"
