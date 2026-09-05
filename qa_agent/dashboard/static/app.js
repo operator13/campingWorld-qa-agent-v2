@@ -20,6 +20,8 @@
     // ECC Development Agent Evals — fetch scores first, then apply running state on top
     initEccEvalControls();
     fetchEccEvalScores().then(() => syncEccEvalStatus());
+    // Poll status every 15s to catch missed WebSocket events (mobile reconnect)
+    setInterval(syncEccEvalStatus, 15000);
     // Replay last test run results for late-joining clients
     _replayLastRun();
   });
@@ -1402,6 +1404,14 @@
         Object.entries(progress).forEach(([agent, p]) => {
           if (p.current && p.total) updateEvalProgress(agent, p.current, p.total);
         });
+      } else if (_eccEvalRunning && status.state !== 'running') {
+        // Server says idle but we thought it was running — clear running state
+        _eccEvalRunning = false;
+        setEccEvalIdle('');
+        document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
+          if (card.dataset.agent) setEvalCardComplete(card.dataset.agent);
+        });
+        fetchEccEvalScores();
       }
     } catch (err) { /* ignore */ }
   }
