@@ -737,6 +737,15 @@ async def _execute_ecc_eval_run(agents: list[str]):
     }))
 
 
+@app.post("/api/eval/ecc/stop", dependencies=[Depends(require_auth)])
+async def stop_ecc_eval():
+    global _ecc_eval_status
+    _ecc_eval_status["state"] = "idle"
+    _ecc_eval_status["current_agent"] = None
+    await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:complete", "completed": len(_ecc_eval_status.get("completed", [])), "total": 0}))
+    return JSONResponse({"status": "stopped"})
+
+
 # ---------------------------------------------------------------------------
 # Audit endpoint
 # ---------------------------------------------------------------------------

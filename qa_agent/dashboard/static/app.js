@@ -1202,9 +1202,10 @@
   }
 
   function initEccEvalControls() {
-    const btn = document.getElementById('btn-ecc-eval-all');
-    if (btn) {
-      btn.addEventListener('click', () => {
+    const btnRun = document.getElementById('btn-ecc-eval-all');
+    const btnStop = document.getElementById('btn-ecc-eval-stop');
+    if (btnRun) {
+      btnRun.addEventListener('click', () => {
         fetch('/api/eval/ecc/run', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -1212,26 +1213,50 @@
         }).catch(err => console.warn('ECC eval run failed:', err));
       });
     }
+    if (btnStop) {
+      btnStop.addEventListener('click', () => {
+        fetch('/api/eval/ecc/stop', {method: 'POST'}).catch(err => console.warn('ECC eval stop failed:', err));
+      });
+    }
+  }
+
+  function setEccEvalRunning() {
+    const btnRun = document.getElementById('btn-ecc-eval-all');
+    const btnStop = document.getElementById('btn-ecc-eval-stop');
+    const dot = document.getElementById('ecc-eval-dot');
+    const statusText = document.getElementById('ecc-eval-status');
+    if (btnRun) btnRun.style.display = 'none';
+    if (btnStop) btnStop.style.display = 'inline-block';
+    if (dot) dot.className = 'eval-status-dot eval-dot-running';
+    if (statusText) statusText.textContent = 'RUNNING';
+  }
+
+  function setEccEvalIdle(message) {
+    const btnRun = document.getElementById('btn-ecc-eval-all');
+    const btnStop = document.getElementById('btn-ecc-eval-stop');
+    const dot = document.getElementById('ecc-eval-dot');
+    const statusText = document.getElementById('ecc-eval-status');
+    if (btnRun) btnRun.style.display = 'inline-block';
+    if (btnStop) btnStop.style.display = 'none';
+    if (dot) dot.className = 'eval-status-dot';
+    if (statusText) statusText.textContent = message || '';
   }
 
   // Add ECC eval WebSocket event handlers
   function handleEccEvalEvent(data) {
-    const dot = document.getElementById('ecc-eval-dot');
-    const statusText = document.getElementById('ecc-eval-status');
-
     if (data.event === 'ecc_eval:start') {
-      if (dot) dot.className = 'eval-status-dot running';
-      if (statusText) statusText.textContent = 'RUNNING';
+      setEccEvalRunning();
     } else if (data.event === 'ecc_eval:agent:start') {
-      if (statusText) statusText.textContent = 'RUNNING: ' + (data.agent || '').toUpperCase();
+      setEccEvalRunning();
+      const statusText = document.getElementById('ecc-eval-status');
+      if (statusText) statusText.textContent = 'RUNNING';
     } else if (data.event === 'ecc_eval:agent:complete') {
-      // Refresh scores when an agent completes
       fetchEccEvalScores();
     } else if (data.event === 'ecc_eval:complete') {
-      if (dot) dot.className = 'eval-status-dot';
-      if (statusText) statusText.textContent = data.completed + '/' + data.total + ' COMPLETE';
-      fetchEccEvalScores();
+      setEccEvalIdle(data.completed + '/' + data.total + ' COMPLETE');
+      setTimeout(() => fetchEccEvalScores(), 1000);
     } else if (data.event === 'ecc_eval:agent:error') {
+      const statusText = document.getElementById('ecc-eval-status');
       if (statusText) statusText.textContent = 'ERROR: ' + (data.agent || '').toUpperCase();
     }
   }
