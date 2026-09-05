@@ -59,13 +59,13 @@ AGENT_FILE_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 RECALL_THRESHOLDS: dict[str, float] = {
-    "security-reviewer": 0.90,  # Based on 95.2% recall_without_backfill minus 5% buffer
-    "code-reviewer": 0.75,
-    "silent-failure-hunter": 0.80,
-    "python-reviewer": 0.75,
-    "typescript-reviewer": 0.75,
-    "fastapi-reviewer": 0.80,
-    "performance-optimizer": 0.70,
+    "security-reviewer": 0.90,  # Baseline: 100% x3, spread 0pt
+    "code-reviewer": 0.70,  # Baseline: 75-100%, spread 25pt (extraction variance)
+    "silent-failure-hunter": 0.95,  # Baseline: 100% x3, spread 0pt
+    "python-reviewer": 0.95,  # Baseline: 100% x3, spread 0pt
+    "typescript-reviewer": 0.95,  # Baseline: 100% x3, spread 0pt
+    "fastapi-reviewer": 0.66,  # Baseline: 71-86%, spread 14pt (extraction variance)
+    "performance-optimizer": 0.81,  # Baseline: 86-100%, spread 14pt
 }
 
 PRECISION_THRESHOLD = 0.80
