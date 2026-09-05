@@ -809,6 +809,9 @@ async def ecc_eval_broadcast(body: dict = {}) -> JSONResponse:
         _ecc_eval_status["state"] = "idle"
         _ecc_eval_status["current_agent"] = None
     elif event == "ecc_eval:log" and body.get("agent"):
+        _ecc_eval_status["state"] = "running"
+        _ecc_eval_status["current_agent"] = body.get("agent")
+        _ecc_eval_status["last_activity"] = time.time()
         import re as _re
         m = _re.search(r"\[(\d+)/(\d+)\]", body.get("line", ""))
         if m:
