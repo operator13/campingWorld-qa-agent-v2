@@ -1096,10 +1096,10 @@ body::before {
 
 /* iPad mini / large phones landscape */
 @media (max-width: 768px) {
-  /* Hide pipeline eval runner buttons and tooltip on mobile */
+  /* Hide eval tooltips and info icons on mobile */
   .section-eval .eval-run-btn,
-  .section-eval .eval-info-icon,
-  .section-eval .eval-tooltip {
+  .eval-info-icon,
+  .eval-tooltip {
     display: none !important;
   }
 

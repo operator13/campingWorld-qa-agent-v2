@@ -383,15 +383,12 @@
         t.classList.remove('tooltip-open');
       }
     });
-    // Find card — try both with and without escaping
-    let card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
-    if (!card) card = document.querySelector(`.eval-card[data-agent="${CSS.escape(agent)}"]`);
+    // Find card
+    const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
     if (!card) return;
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) {
       tooltip.classList.toggle('tooltip-open');
-      // Prevent re-render from wiping tooltip
-      card.dataset.tooltipOpen = tooltip.classList.contains('tooltip-open') ? '1' : '';
     }
   };
 
@@ -1291,14 +1288,14 @@
   function eccTooltipHtml(agent) {
     const info = ECC_AGENT_INFO[agent];
     if (!info) return '';
-    const capsHtml = info.capabilities.map(c => `<li>${escapeHtml(c)}</li>`).join('');
+    const capsHtml = info.capabilities.map(c => `<li>${c}</li>`).join('');
     return `
       <div class="eval-tooltip">
-        <div class="eval-tooltip-header">${escapeHtml(agent.toUpperCase())} <span class="eval-tooltip-role">${escapeHtml(info.role)}</span></div>
-        <p class="eval-tooltip-desc">${escapeHtml(info.description)}</p>
+        <div class="eval-tooltip-header">${agent.toUpperCase()} <span class="eval-tooltip-role">${info.role}</span></div>
+        <p class="eval-tooltip-desc">${info.description}</p>
         <div class="eval-tooltip-meta">
-          <span>Model: ${escapeHtml(info.model)}</span>
-          <span>Eval: ${escapeHtml(info.evaluates)}</span>
+          <span>Model: ${info.model}</span>
+          <span>Eval: ${info.evaluates}</span>
         </div>
         <ul class="eval-tooltip-caps">${capsHtml}</ul>
       </div>
