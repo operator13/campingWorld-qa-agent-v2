@@ -612,6 +612,16 @@ async def ecc_eval_scores() -> JSONResponse:
             score = scores.get("recall")
         else:
             score = scores.get("quality")
+            # Compute average dimension scores from scenarios
+            dims = {}
+            dim_counts = {}
+            for sc in data.get("scenarios", []):
+                ds = sc.get("dimension_scores", {})
+                for dim, val in ds.items():
+                    dims[dim] = dims.get(dim, 0) + val
+                    dim_counts[dim] = dim_counts.get(dim, 0) + 1
+            if dims:
+                scores["dimensions"] = {d: round((dims[d] / dim_counts[d] - 1) / 4, 3) for d in dims}
 
         total_tokens = 0
         for f in files:

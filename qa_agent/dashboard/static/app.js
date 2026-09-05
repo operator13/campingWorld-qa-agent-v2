@@ -1236,6 +1236,12 @@
       const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
       const name = escapeHtml(agent.toUpperCase());
       const quality = fmtPct(s.quality);
+      const dims = s.dimensions || {};
+      const completeness = fmtPct(dims.completeness);
+      const actionability = fmtPct(dims.actionability);
+      const correctness = fmtPct(dims.correctness);
+      const riskAwareness = fmtPct(dims.risk_awareness);
+      const convention = fmtPct(dims.convention_adherence);
 
       const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
 
@@ -1249,6 +1255,11 @@
           <span class="eval-badge ${badgeClass}">${badgeText}</span>
           <div class="ecc-detail-metrics">
             <div class="ecc-detail-row"><span class="ecc-detail-label">Quality</span><span class="ecc-detail-val">${quality}</span></div>
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Complete</span><span class="ecc-detail-val">${completeness}</span></div>
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Actionable</span><span class="ecc-detail-val">${actionability}</span></div>
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Correct</span><span class="ecc-detail-val">${correctness}</span></div>
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Risk Aware</span><span class="ecc-detail-val">${riskAwareness}</span></div>
+            <div class="ecc-detail-row"><span class="ecc-detail-label">Convention</span><span class="ecc-detail-val">${convention}</span></div>
           </div>
           <div class="eval-cost-row">
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
