@@ -28,6 +28,16 @@ WORKER_URL = "http://localhost:8081"
 WS_URL = "ws://localhost:8080/ws/dashboard"
 
 
+@pytest.fixture(scope="module", autouse=True)
+def cleanup_after_all_tests():
+    """Clear dashboard state after ALL broadcast tests finish to prevent leaking fake data."""
+    yield
+    try:
+        requests.post(f"{DASHBOARD_URL}/api/tests/clear", timeout=3)
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="module")
 def docker_stack():
     """Skip all tests if the Docker stack isn't running."""
