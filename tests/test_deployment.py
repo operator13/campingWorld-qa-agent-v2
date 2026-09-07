@@ -117,7 +117,7 @@ def test_docker_compose_exists():
     content = compose.read_text()
     assert "dashboard:" in content
     assert "worker:" in content
-    assert "shared-results:" in content
+    assert "test-results" in content
 
 
 def test_docker_compose_has_env_file():
