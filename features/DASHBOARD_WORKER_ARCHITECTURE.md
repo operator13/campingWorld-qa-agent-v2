@@ -232,6 +232,92 @@ FROM python:3.11-slim + Node.js 20
 
 ---
 
+## Test Plan
+
+### Phase 1 Tests: Worker Server Foundation (`tests/test_worker.py`)
+
+| # | Test | Type | What It Validates |
+|---|------|------|-------------------|
+| 1 | `test_worker_health_check` | Unit | `GET /api/worker/health` returns 200 with status, API key presence, uptime |
+| 2 | `test_worker_health_no_api_key` | Unit | Health check reports `api_key: false` when `ANTHROPIC_API_KEY` is missing |
+| 3 | `test_ecc_eval_run_single_agent` | Unit | `POST /api/worker/eval/ecc/run {agents: ["security-reviewer"]}` returns 200, starts background task |
+| 4 | `test_ecc_eval_run_all` | Unit | `POST /api/worker/eval/ecc/run {all: true}` returns 200, starts background task for all 12 agents |
+| 5 | `test_ecc_eval_run_invalid_agent` | Unit | `POST /api/worker/eval/ecc/run {agents: ["fake-agent"]}` returns 400 |
+| 6 | `test_ecc_eval_reject_duplicate` | Unit | Second POST while eval running returns 409 Conflict |
+| 7 | `test_pipeline_eval_run_single` | Unit | `POST /api/worker/eval/run {agent: "triage"}` returns 200 |
+| 8 | `test_pipeline_eval_run_all` | Unit | `POST /api/worker/eval/run {all: true}` returns 200 |
+| 9 | `test_pipeline_eval_invalid_agent` | Unit | `POST /api/worker/eval/run {agent: "fake"}` returns 400 |
+| 10 | `test_test_run_selected` | Unit | `POST /api/worker/test/run {specs: ["cart.spec.ts"]}` returns 200 |
+| 11 | `test_test_run_all` | Unit | `POST /api/worker/test/run {all: true}` returns 200 |
+| 12 | `test_test_stop` | Unit | `POST /api/worker/test/stop` returns 200, kills running process |
+| 13 | `test_test_stop_nothing_running` | Unit | `POST /api/worker/test/stop` when idle returns 200 (no-op) |
+| 14 | `test_worker_broadcasts_to_dashboard` | Unit | Worker POSTs progress events to `http://dashboard:8080/api/eval/ecc/broadcast` |
+| 15 | `test_worker_broadcast_failure_resilient` | Unit | Worker continues eval even if dashboard broadcast POST fails (dashboard offline) |
+| 16 | `test_worker_status_endpoint` | Unit | `GET /api/worker/status` returns current running agent, progress, queue |
+| 17 | `test_docker_compose_both_services_start` | Integration | `docker compose up` starts both dashboard and worker, both respond to health checks |
+| 18 | `test_shared_volume_writable_by_worker` | Integration | Worker can write a file to `/data/eval/ecc/reports/`, dashboard can read it |
+
+### Phase 2 Tests: Dashboard Rewire (`tests/test_dashboard_worker.py`)
+
+| # | Test | Type | What It Validates |
+|---|------|------|-------------------|
+| 1 | `test_dashboard_proxies_ecc_eval_to_worker` | Integration | Dashboard `POST /api/eval/ecc/run` forwards to worker `POST /api/worker/eval/ecc/run` |
+| 2 | `test_dashboard_proxies_pipeline_eval_to_worker` | Integration | Dashboard `POST /api/eval/run` forwards to worker `POST /api/worker/eval/run` |
+| 3 | `test_dashboard_proxies_test_run_to_worker` | Integration | Dashboard `POST /api/test/run` forwards to worker `POST /api/worker/test/run` |
+| 4 | `test_dashboard_worker_offline_returns_503` | Integration | Dashboard returns 503 when worker is unreachable |
+| 5 | `test_dashboard_health_includes_worker_status` | Integration | `GET /api/health` includes `worker_online: true/false` |
+| 6 | `test_worker_progress_reaches_websocket_clients` | Integration | Worker broadcasts event → dashboard receives → WebSocket clients receive |
+| 7 | `test_subprocess_removed_from_server` | Unit | `server.py` no longer contains `asyncio.create_subprocess_exec` for eval execution |
+| 8 | `test_no_secrets_in_dashboard_container` | Integration | Dashboard container has no `ANTHROPIC_API_KEY` env var |
+| 9 | `test_run_buttons_disabled_when_worker_offline` | E2E | Browser test: stop worker → refresh dashboard → RUN buttons are disabled/grayed |
+| 10 | `test_run_buttons_enabled_when_worker_online` | E2E | Browser test: start worker → refresh dashboard → RUN buttons are clickable |
+| 11 | `test_ecc_eval_full_flow` | E2E | Click RUN on security-reviewer → card shows Running... → progress updates → card restores with scores |
+| 12 | `test_eval_all_full_flow` | E2E | Click EVAL ALL → all 4 pipeline cards show Running... → progress → restore |
+| 13 | `test_eval_ecc_agents_full_flow` | E2E | Click EVAL ECC AGENTS → all 12 ECC cards show Running... → progress → restore |
+
+### Phase 3 Tests: Claude Code CLI in Worker (`tests/test_worker_cli.py`)
+
+| # | Test | Type | What It Validates |
+|---|------|------|-------------------|
+| 1 | `test_claude_cli_installed` | Integration | `docker exec worker claude --version` returns version string |
+| 2 | `test_node_installed` | Integration | `docker exec worker node --version` returns v20.x |
+| 3 | `test_playwright_installed` | Integration | `docker exec worker npx playwright --version` returns version |
+| 4 | `test_ecc_agent_invocation_real` | Integration | Worker invokes security-reviewer on a sample file, gets non-empty output with findings |
+| 5 | `test_ecc_agent_token_tracking` | Integration | After ECC eval, report contains `token_estimate > 0` |
+| 6 | `test_playwright_test_execution` | Integration | Worker runs a single Playwright spec, produces results.json |
+| 7 | `test_ecc_eval_progress_events` | E2E | Run ECC eval → verify `[1/N]`, `[2/N]` progress events broadcast to dashboard |
+| 8 | `test_ecc_eval_report_written` | Integration | After eval, new report JSON exists in shared volume with valid scores |
+| 9 | `test_pipeline_eval_real_execution` | Integration | Worker runs triage eval, produces scorecard with non-zero score |
+| 10 | `test_cost_recorded_after_eval` | Integration | Report contains `token_estimate > 0`, dashboard card shows non-zero cost |
+
+### Phase 4 Tests: Cloud Deployment Readiness (`tests/test_deployment.py`)
+
+| # | Test | Type | What It Validates |
+|---|------|------|-------------------|
+| 1 | `test_dashboard_health_endpoint` | Unit | `GET /health` returns 200 with `{status: "ok", worker_online: bool}` |
+| 2 | `test_worker_health_endpoint` | Unit | `GET /health` returns 200 with `{status: "ok", api_key: bool, cli: bool}` |
+| 3 | `test_worker_graceful_shutdown` | Integration | Send SIGTERM to worker during eval → eval finishes → report saved → worker exits |
+| 4 | `test_worker_graceful_shutdown_timeout` | Integration | Send SIGTERM → eval exceeds 60s grace period → worker force exits |
+| 5 | `test_docker_build_dashboard` | CI | `docker build -f Dockerfile.dashboard .` succeeds, image < 100MB |
+| 6 | `test_docker_build_worker` | CI | `docker build -f Dockerfile.worker .` succeeds, image < 2GB |
+| 7 | `test_containers_restart_recovery` | Integration | Kill both containers → `docker compose up` → dashboard shows previous reports, RUN buttons work |
+| 8 | `test_worker_startup_validates_api_key` | Integration | Worker without `ANTHROPIC_API_KEY` starts but health check reports `api_key: false`, eval endpoints return 503 |
+| 9 | `test_github_actions_build_workflow` | CI | `.github/workflows/docker-build.yml` builds both images successfully |
+
+### Test Coverage Summary
+
+| Phase | Unit | Integration | E2E | Total |
+|-------|------|-------------|-----|-------|
+| Phase 1: Worker Foundation | 15 | 3 | 0 | 18 |
+| Phase 2: Dashboard Rewire | 2 | 6 | 5 | 13 |
+| Phase 3: CLI in Worker | 0 | 8 | 2 | 10 |
+| Phase 4: Cloud Readiness | 2 | 5 | 0 | 9* |
+| **Total** | **19** | **22** | **7** | **50** |
+
+*Phase 4 includes 2 CI tests run in GitHub Actions
+
+---
+
 ## Files Summary
 
 | Action | File | Purpose |
