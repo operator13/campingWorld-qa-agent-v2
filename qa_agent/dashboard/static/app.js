@@ -873,10 +873,11 @@
             break;
           case 'eval:complete':
             evalRunning = false;
-            // Restore any cards still stuck in running state
+            // Restore any cards still stuck in running state (didn't get agent:complete)
+            // Use direct restore — don't show 100% since these may have failed silently
             document.querySelectorAll('.eval-card.eval-running').forEach(card => {
-              const agent = card.dataset.agent;
-              if (agent) setEvalCardComplete(agent);
+              card.classList.remove('eval-running');
+              _restoreEvalCard(card);
             });
             enableAllEvalButtons();
             // Fetch new data immediately so cards show updated metrics
@@ -1611,10 +1612,11 @@
     } else if (data.event === 'ecc_eval:complete') {
       _eccEvalRunning = false;
       setEccEvalIdle(data.completed + '/' + data.total + ' COMPLETE');
-      // Restore any cards still stuck in running state
+      // Restore any cards still stuck in running state (didn't get agent:complete)
+      // Direct restore — don't show 100% since these may have failed silently
       document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
-        const agent = card.dataset.agent;
-        if (agent) setEvalCardComplete(agent);
+        card.classList.remove('eval-running');
+        _restoreEvalCard(card);
       });
       fetchEccEvalScores();
     } else if (data.event === 'ecc_eval:agent:error') {
