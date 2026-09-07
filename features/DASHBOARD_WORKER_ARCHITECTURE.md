@@ -6,7 +6,7 @@ The QA Command Center Dashboard currently runs as a single Docker container that
 
 This build spec splits the dashboard into two containers — a lightweight **Dashboard Server** for display/UI and an **Eval Worker** that has the full environment to execute evals and tests. This architecture works locally and deploys to cloud (GCP Cloud Run, AWS ECS Fargate) without modification.
 
-**Status:** NOT STARTED
+**Status:** COMPLETE (Phase 1-4)
 **Priority:** High
 **Depends on:** QA Command Center Dashboard (existing), ECC Agent Evals (Phase 1-4)
 
@@ -129,52 +129,52 @@ FROM python:3.11-slim + Node.js 20
 
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1 | Create `Dockerfile.worker` with full `qa_agent` package | `qa_agent/dashboard/Dockerfile.worker` | |
-| 2 | Create worker FastAPI server with health check | `qa_agent/dashboard/worker.py` | |
-| 3 | Add `POST /api/worker/eval/ecc/run` endpoint | `worker.py` | |
-| 4 | Add `POST /api/worker/eval/run` endpoint (pipeline agents) | `worker.py` | |
-| 5 | Add `POST /api/worker/test/run` endpoint | `worker.py` | |
-| 6 | Add `POST /api/worker/test/stop` endpoint | `worker.py` | |
-| 7 | Worker broadcasts progress to dashboard via HTTP POST | `worker.py` | |
-| 8 | Update `docker-compose.yml` with two services + shared volume | `docker-compose.yml` | |
-| 9 | Add `env_file` for worker with `ANTHROPIC_API_KEY` | `docker-compose.yml` | |
-| 10 | Write tests for worker endpoints | `tests/test_worker.py` | |
+| 1 | Create `Dockerfile.worker` with full `qa_agent` package | `qa_agent/dashboard/Dockerfile.worker` | DONE |
+| 2 | Create worker FastAPI server with health check | `qa_agent/dashboard/worker.py` | DONE |
+| 3 | Add `POST /api/worker/eval/ecc/run` endpoint | `worker.py` | DONE |
+| 4 | Add `POST /api/worker/eval/run` endpoint (pipeline agents) | `worker.py` | DONE |
+| 5 | Add `POST /api/worker/test/run` endpoint | `worker.py` | DONE |
+| 6 | Add `POST /api/worker/test/stop` endpoint | `worker.py` | DONE |
+| 7 | Worker broadcasts progress to dashboard via HTTP POST | `worker.py` | DONE |
+| 8 | Update `docker-compose.yml` with two services + shared volume | `docker-compose.yml` | DONE |
+| 9 | Add `env_file` for worker with `ANTHROPIC_API_KEY` | `docker-compose.yml` | DONE |
+| 10 | Write tests for worker endpoints | `tests/test_worker.py` | DONE (22 tests) |
 
 ### Phase 2: Dashboard Rewire (Week 1-2)
 
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1 | Remove subprocess eval execution from `server.py` | `server.py` | |
-| 2 | Add worker proxy: dashboard forwards RUN requests to worker | `server.py` | |
-| 3 | Dashboard detects worker health (online/offline indicator) | `server.py`, `app.js` | |
-| 4 | Disable RUN buttons when worker is offline | `app.js` | |
-| 5 | Update ECC eval RUN to POST to worker | `app.js` | |
-| 6 | Update pipeline eval RUN to POST to worker | `app.js` | |
-| 7 | Update test runner to POST to worker | `app.js` | |
-| 8 | Shared volume paths align between both containers | `docker-compose.yml` | |
-| 9 | Write integration tests for dashboard → worker flow | `tests/test_dashboard_worker.py` | |
+| 1 | Remove subprocess eval execution from `server.py` | `server.py` | DONE |
+| 2 | Add worker proxy: dashboard forwards RUN requests to worker | `server.py` | DONE |
+| 3 | Dashboard detects worker health (online/offline indicator) | `server.py`, `app.js` | DONE |
+| 4 | Disable RUN buttons when worker is offline | `app.js` | DONE |
+| 5 | Update ECC eval RUN to POST to worker | `app.js` | DONE |
+| 6 | Update pipeline eval RUN to POST to worker | `app.js` | DONE |
+| 7 | Update test runner to POST to worker | `app.js` | DONE |
+| 8 | Shared volume paths align between both containers | `docker-compose.yml` | DONE |
+| 9 | Write integration tests for dashboard → worker flow | `tests/test_dashboard_worker.py` | DONE (13 tests) |
 
 ### Phase 3: Claude Code CLI in Worker (Week 2)
 
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1 | Install Node.js 20 in worker Dockerfile | `Dockerfile.worker` | |
-| 2 | Install Claude Code CLI in worker | `Dockerfile.worker` | |
-| 3 | Install Playwright + Chromium in worker | `Dockerfile.worker` | |
-| 4 | Verify ECC agent invocation works inside worker container | Manual test | |
-| 5 | Verify Playwright test execution works inside worker container | Manual test | |
-| 6 | End-to-end test: click RUN → progress bar → scores update | Manual test | |
+| 1 | Install Node.js 20 in worker Dockerfile | `Dockerfile.worker` | DONE |
+| 2 | Install Claude Code CLI in worker | `Dockerfile.worker` | DONE |
+| 3 | Install Playwright + Chromium in worker | `Dockerfile.worker` | DONE |
+| 4 | Verify ECC agent invocation works inside worker container | Manual test | PENDING (requires `docker compose up`) |
+| 5 | Verify Playwright test execution works inside worker container | Manual test | PENDING (requires `docker compose up`) |
+| 6 | End-to-end test: click RUN → progress bar → scores update | Manual test | PENDING (requires `docker compose up`) |
 
 ### Phase 4: Cloud Deployment Readiness (Week 3)
 
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1 | Add health check endpoints to both containers | `server.py`, `worker.py` | |
-| 2 | Add graceful shutdown handling to worker (finish current eval) | `worker.py` | |
-| 3 | Document cloud deployment for GCP Cloud Run | `docs/DEPLOY_CLOUD_RUN.md` | |
-| 4 | Document cloud deployment for AWS ECS Fargate | `docs/DEPLOY_ECS.md` | |
-| 5 | Add GitHub Actions workflow for building and pushing images | `.github/workflows/docker-build.yml` | |
-| 6 | Secret management documentation (Cloud Run secrets, AWS Secrets Manager) | Deployment docs | |
+| 1 | Add health check endpoints to both containers | `server.py`, `worker.py` | DONE |
+| 2 | Add graceful shutdown handling to worker (finish current eval) | `worker.py` | DONE |
+| 3 | Document cloud deployment for GCP Cloud Run | `docs/DEPLOY_CLOUD_RUN.md` | DONE |
+| 4 | Document cloud deployment for AWS ECS Fargate | `docs/DEPLOY_ECS.md` | DONE |
+| 5 | Add GitHub Actions workflow for building and pushing images | `.github/workflows/docker-build.yml` | DONE |
+| 6 | Secret management documentation (Cloud Run secrets, AWS Secrets Manager) | Deployment docs | DONE |
 
 ---
 

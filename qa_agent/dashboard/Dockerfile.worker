@@ -1,0 +1,54 @@
+FROM python:3.11-slim AS base
+
+# System deps for Playwright + Node.js
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies first (cacheable layer)
+COPY pyproject.toml .
+COPY qa_agent/ ./qa_agent/
+COPY qa_agent/dashboard/requirements-worker.txt .
+RUN pip install --no-cache-dir -r requirements-worker.txt \
+    && pip install --no-cache-dir -e .
+
+# Install Node.js project dependencies (Playwright, TypeScript)
+COPY package.json ./
+RUN npm install
+
+# Install Playwright browsers (retry apt if transient failure)
+RUN apt-get update && npx playwright install --with-deps chromium || \
+    (sleep 5 && apt-get update && npx playwright install --with-deps chromium)
+
+# Install Claude Code CLI (optional — may not be available for all platforms)
+RUN npm install -g @anthropic-ai/claude-code 2>/dev/null || echo "Claude CLI not available for this platform"
+
+# Copy project files
+COPY tests_generated/ ./tests_generated/
+COPY page_objects/ ./page_objects/
+COPY playwright.config.ts ./
+COPY tsconfig.json ./
+COPY memory/ ./memory/
+COPY .claude/ ./.claude/
+
+# Create data directory for shared volume
+RUN mkdir -p /data/health-reports \
+    /data/qa_agent/eval/reports \
+    /data/qa_agent/eval/ecc/reports \
+    /data/memory/audit_runs \
+    /data/test-results
+
+EXPOSE 8081
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8081/health || exit 1
+
+CMD ["uvicorn", "qa_agent.dashboard.worker:app", "--host", "0.0.0.0", "--port", "8081"]

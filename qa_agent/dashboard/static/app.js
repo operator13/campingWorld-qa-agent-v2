@@ -10,9 +10,12 @@
   let domainsLocked = false;
   let costChart = null;
   let runnerTestCount = 0, runnerPassCount = 0, runnerFailCount = 0;
+  let workerOnline = false;
 
   document.addEventListener('DOMContentLoaded', () => {
     startTimestampClock();
+    checkWorkerHealth();
+    setInterval(checkWorkerHealth, 15000); // Poll worker health every 15s
     refreshAllData();
     connectWebSocket();
     initRunnerControls();
@@ -55,6 +58,63 @@
     fetchRunHistory();
     fetchAuditSummary();
     syncRunnerStatus();
+  }
+
+  // ============================================
+  // Worker Health
+  // ============================================
+  async function checkWorkerHealth() {
+    try {
+      const res = await fetch('/api/worker/online');
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      const wasOnline = workerOnline;
+      workerOnline = data.online === true;
+      updateWorkerIndicator();
+      if (!wasOnline && workerOnline) {
+        setRunButtonsEnabled(true);
+      } else if (wasOnline && !workerOnline) {
+        setRunButtonsEnabled(false);
+      }
+      // If offline, retry faster (3s) until online
+      if (!workerOnline) {
+        setTimeout(checkWorkerHealth, 3000);
+      }
+    } catch (err) {
+      workerOnline = false;
+      updateWorkerIndicator();
+      setRunButtonsEnabled(false);
+      setTimeout(checkWorkerHealth, 3000);
+    }
+  }
+
+  function updateWorkerIndicator() {
+    const dot = document.getElementById('worker-dot');
+    const text = document.getElementById('worker-status');
+    if (dot) {
+      dot.className = 'worker-status-dot ' + (workerOnline ? 'worker-online' : 'worker-offline');
+    }
+    if (text) {
+      text.textContent = workerOnline ? 'WORKER ONLINE' : 'WORKER OFFLINE';
+      text.className = workerOnline ? 'worker-status-text worker-text-online' : 'worker-status-text worker-text-offline';
+    }
+  }
+
+  function setRunButtonsEnabled(enabled) {
+    // Eval buttons
+    const evalAll = document.getElementById('btn-eval-all');
+    if (evalAll) evalAll.disabled = !enabled;
+    document.querySelectorAll('.eval-run-btn').forEach(b => { b.disabled = !enabled; });
+
+    // ECC eval buttons
+    const eccAll = document.getElementById('btn-ecc-eval-all');
+    if (eccAll) eccAll.disabled = !enabled;
+
+    // Test runner buttons
+    const runSelected = document.getElementById('btn-run-selected');
+    const runAll = document.getElementById('btn-run-all');
+    if (runSelected) runSelected.disabled = !enabled;
+    if (runAll) runAll.disabled = !enabled;
   }
 
   function syncRunnerStatus() {
@@ -739,18 +799,24 @@
           case 'runner:log':
             document.getElementById('runner-log-container').style.display = 'block';
             appendRunnerLog(data.line);
-            // Parse per-domain progress from log lines like "  ✓  1 [chromium] › tests_generated/cart.spec.ts:12..."
-            const specMatch = data.line.match(/([a-z0-9-]+\.spec\.ts)/);
-            if (specMatch && (data.line.includes('✓') || data.line.includes('✘') || data.line.includes('·'))) {
-              const spec = specMatch[1];
-              const passed = data.line.includes('✓');
-              if (passed) { runnerPassCount++; updateDomainProgress(spec, true); }
-              else { runnerFailCount++; updateDomainProgress(spec, false); }
-              updateProgress();
+            // Parse per-domain progress from Playwright list reporter output:
+            //   ✓  4 [chromium] › tests_generated/nav.spec.ts:26:7 › test name (6.9s)
+            // Skip retry lines (contain "retry") to avoid double-counting
+            if (data.line && !data.line.includes('retry #')) {
+              const specMatch = data.line.match(/([a-z0-9-]+\.spec\.ts)/);
+              if (specMatch && (data.line.includes('✓') || data.line.includes('✘') || data.line.includes('·'))) {
+                const spec = specMatch[1];
+                const passed = data.line.includes('✓');
+                if (passed) { runnerPassCount++; updateDomainProgress(spec, true); }
+                else { runnerFailCount++; updateDomainProgress(spec, false); }
+                updateProgress();
+              }
             }
             break;
           case 'runner:end':
             setRunnerState('complete');
+            // Force all in-progress domain bars to final state
+            _finalizeDomainProgress();
             document.getElementById('btn-run-selected').style.display = 'inline-block';
             document.getElementById('btn-run-all').style.display = 'inline-block';
             document.getElementById('btn-stop').style.display = 'none';
@@ -1130,6 +1196,32 @@
     const progressText = document.getElementById('progress-text');
     if (bar) bar.style.width = pct + '%';
     if (progressText) progressText.textContent = `${runnerPassCount} passed, ${runnerFailCount} failed`;
+  }
+
+  function _finalizeDomainProgress() {
+    // On run complete, force domains that had any activity to 100% with final result
+    DOMAINS.forEach(d => {
+      const dp = domainProgress[d.spec];
+      if (!dp || (dp.passed === 0 && dp.failed === 0)) return; // No activity — skip
+      if (dp.done) return; // Already finalized
+
+      dp.done = true;
+      const bar = document.querySelector(`[data-domain-bar="${d.spec}"]`);
+      const pctEl = document.querySelector(`[data-domain-pct="${d.spec}"]`);
+      const resultEl = document.querySelector(`[data-domain-result="${d.spec}"]`);
+
+      if (bar) bar.style.width = '100%';
+      if (pctEl) pctEl.textContent = '100%';
+      if (resultEl) {
+        if (dp.failed === 0) {
+          resultEl.textContent = '✓';
+          resultEl.className = 'domain-row-result result-pass';
+        } else {
+          resultEl.textContent = dp.failed + ' failed';
+          resultEl.className = 'domain-row-result result-fail';
+        }
+      }
+    });
   }
 
   // ============================================

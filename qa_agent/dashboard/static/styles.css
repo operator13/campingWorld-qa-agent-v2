@@ -138,6 +138,60 @@ body::before {
   letter-spacing: 2px;
 }
 
+.worker-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 0, 60, 0.3);
+  border-radius: 20px;
+  background: rgba(255, 0, 60, 0.05);
+  margin-right: 12px;
+}
+
+.worker-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.worker-status-dot.worker-online {
+  background: #00ff88;
+  box-shadow: 0 0 8px #00ff88, 0 0 20px rgba(0, 255, 136, 0.4);
+  animation: pulse-green 1.5s ease-in-out infinite;
+}
+
+.worker-status-dot.worker-offline {
+  background: #ff003c;
+  box-shadow: 0 0 8px #ff003c;
+  animation: pulse-red 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.worker-status-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.worker-text-online {
+  color: #00ff88;
+}
+
+.worker-text-offline {
+  color: #ff003c;
+}
+
+.worker-indicator:has(.worker-online) {
+  border-color: rgba(0, 255, 200, 0.3);
+  background: rgba(0, 255, 200, 0.05);
+}
+
 .timestamp {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.85rem;

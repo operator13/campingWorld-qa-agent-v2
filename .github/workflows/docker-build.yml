@@ -1,0 +1,105 @@
+name: Build Docker Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'qa_agent/dashboard/**'
+      - 'pyproject.toml'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'qa_agent/dashboard/**'
+      - 'pyproject.toml'
+
+env:
+  DASHBOARD_IMAGE: qa-command-center/dashboard
+  WORKER_IMAGE: qa-command-center/worker
+
+jobs:
+  build-dashboard:
+    name: Build Dashboard Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Dashboard Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: qa_agent/dashboard/Dockerfile
+          push: false
+          tags: ${{ env.DASHBOARD_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check Dashboard Image Size
+        run: |
+          docker images ${{ env.DASHBOARD_IMAGE }}:${{ github.sha }} --format "{{.Size}}"
+          SIZE=$(docker images ${{ env.DASHBOARD_IMAGE }}:${{ github.sha }} --format "{{.Size}}")
+          echo "Dashboard image size: ${SIZE}"
+
+  build-worker:
+    name: Build Worker Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Worker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: qa_agent/dashboard/Dockerfile.worker
+          push: false
+          tags: ${{ env.WORKER_IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check Worker Image Size
+        run: |
+          docker images ${{ env.WORKER_IMAGE }}:${{ github.sha }} --format "{{.Size}}"
+          SIZE=$(docker images ${{ env.WORKER_IMAGE }}:${{ github.sha }} --format "{{.Size}}")
+          echo "Worker image size: ${SIZE}"
+
+  test-compose:
+    name: Test Docker Compose Stack
+    runs-on: ubuntu-latest
+    needs: [build-dashboard, build-worker]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: echo "ANTHROPIC_API_KEY=sk-test-placeholder" > .env
+
+      - name: Build and Start Services
+        working-directory: qa_agent/dashboard
+        run: docker compose up -d --build --wait --wait-timeout 60
+
+      - name: Verify Dashboard Health
+        run: |
+          curl -sf http://localhost:8080/health | jq .
+          STATUS=$(curl -sf http://localhost:8080/health | jq -r '.status')
+          [ "$STATUS" = "ok" ] || (echo "Dashboard health check failed" && exit 1)
+
+      - name: Verify Worker Health
+        run: |
+          curl -sf http://localhost:8081/health | jq .
+          STATUS=$(curl -sf http://localhost:8081/health | jq -r '.status')
+          [ "$STATUS" = "ok" ] || (echo "Worker health check failed" && exit 1)
+
+      - name: Verify Dashboard Can Reach Worker
+        run: |
+          ONLINE=$(curl -sf http://localhost:8080/api/worker/online | jq -r '.online')
+          [ "$ONLINE" = "true" ] || (echo "Dashboard cannot reach worker" && exit 1)
+
+      - name: Cleanup
+        if: always()
+        working-directory: qa_agent/dashboard
+        run: docker compose down -v

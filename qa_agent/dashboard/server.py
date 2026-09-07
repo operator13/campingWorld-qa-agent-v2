@@ -1,18 +1,18 @@
 import asyncio
 import json
+import logging
 import os
 import re
-import shutil
-import subprocess
-import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+logger = logging.getLogger("qa_dashboard")
 
 # ---------------------------------------------------------------------------
 # Directory resolution
@@ -72,9 +72,10 @@ ALLOWED_WS_EVENTS = {
 MAX_WORKERS = 10
 MAX_RETRIES = 3
 
+WORKER_URL = os.getenv("WORKER_URL", "http://localhost:8081")
+
 if not DASHBOARD_API_TOKEN:
-    import logging as _logging
-    _logging.getLogger("qa_dashboard").warning(
+    logger.warning(
         "DASHBOARD_API_TOKEN is not set — all POST endpoints are unauthenticated. "
         "Set DASHBOARD_API_TOKEN in .env to enable auth."
     )
@@ -90,14 +91,11 @@ if STATIC_DIR.exists():
 # Browser clients connected to /ws/dashboard
 dashboard_connections: list[WebSocket] = []
 
-# Test runner state
-_test_process: asyncio.subprocess.Process | None = None
+# Test runner state (read from worker or cached locally)
 _test_run_status: dict = {"state": "idle", "run_id": None, "started_at": None}
 _last_run_log: list[str] = []  # Stores log lines from the last completed run
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-TESTS_DIR = PROJECT_ROOT / "tests_generated"
-TEST_RESULTS_TMP = PROJECT_ROOT / "test-results-tmp"
-TEST_RESULTS_DIR = PROJECT_ROOT / "test-results"
+TEST_RESULTS_DIR = Path(DATA_DIR) / "test-results"
 
 
 async def broadcast_to_dashboard(message: str) -> None:
@@ -110,6 +108,50 @@ async def broadcast_to_dashboard(message: str) -> None:
             dead.append(ws)
     for ws in dead:
         dashboard_connections.remove(ws)
+
+
+# ---------------------------------------------------------------------------
+# Worker proxy helpers
+# ---------------------------------------------------------------------------
+
+_worker_online: bool = False
+_worker_last_check: float = 0
+
+
+async def _check_worker_health() -> bool:
+    """Check if the worker is online. Cached for 5s (online) or 2s (offline)."""
+    global _worker_online, _worker_last_check
+    cache_ttl = 5 if _worker_online else 2
+    if time.time() - _worker_last_check < cache_ttl:
+        return _worker_online
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{WORKER_URL}/api/worker/health")
+            _worker_online = resp.status_code == 200
+    except Exception:
+        _worker_online = False
+    _worker_last_check = time.time()
+    return _worker_online
+
+
+async def _proxy_to_worker(method: str, path: str, body: dict | None = None) -> JSONResponse:
+    """Forward a request to the worker. Returns 503 if worker is offline."""
+    if not await _check_worker_health():
+        return JSONResponse(
+            {"error": "Worker offline", "detail": "The eval worker is not running"},
+            status_code=503,
+        )
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            if method == "POST":
+                resp = await client.post(f"{WORKER_URL}{path}", json=body or {})
+            else:
+                resp = await client.get(f"{WORKER_URL}{path}")
+            return JSONResponse(content=resp.json(), status_code=resp.status_code)
+    except httpx.TimeoutException:
+        return JSONResponse({"error": "Worker timeout"}, status_code=504)
+    except Exception as e:
+        return JSONResponse({"error": f"Worker error: {e}"}, status_code=502)
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +174,99 @@ def _read_json(path: Path) -> dict[str, Any] | list[Any] | None:
 
 
 # ---------------------------------------------------------------------------
+# Health + Worker health + broadcast receiver
+# ---------------------------------------------------------------------------
+
+
+@app.get("/health")
+async def dashboard_health() -> JSONResponse:
+    """Dashboard health check — includes worker online status."""
+    online = await _check_worker_health()
+    return JSONResponse(content={
+        "status": "ok",
+        "worker_online": online,
+    })
+
+
+@app.get("/api/worker/online")
+async def worker_online_check() -> JSONResponse:
+    """Check if the worker is reachable. Used by the JS frontend."""
+    online = await _check_worker_health()
+    return JSONResponse(content={"online": online})
+
+
+@app.post("/api/worker/broadcast")
+async def worker_broadcast(body: dict = {}) -> JSONResponse:
+    """Receive events from the worker, update local state, and fan out to WebSocket clients.
+
+    This is the critical bridge: the worker runs evals/tests and POSTs progress here.
+    We must update dashboard-side state so that late-joining clients (phone, second tab)
+    can sync via /api/tests/status, /api/tests/lastrun, and /api/eval/run/status.
+    """
+    global _test_run_status, _eval_status
+    event = body.get("event", "")
+    if event not in ALLOWED_WS_EVENTS:
+        return JSONResponse({"status": "ignored"})
+
+    # --- Test runner state tracking ---
+    if event == "runner:start":
+        _last_run_log.clear()
+        _test_run_status = {
+            "state": "running",
+            "run_id": body.get("run_id"),
+            "started_at": body.get("started_at"),
+        }
+    elif event == "runner:log":
+        line = body.get("line", "")
+        if line:
+            _last_run_log.append(line)
+    elif event == "runner:end":
+        _test_run_status["state"] = "complete"
+        _test_run_status["exit_code"] = body.get("exit_code")
+    elif event == "runner:healing":
+        _test_run_status["state"] = "healing"
+    elif event == "runner:healed":
+        _test_run_status["state"] = "complete"
+    elif event == "runner:clear":
+        _test_run_status = {"state": "cleared", "run_id": None, "started_at": None}
+        _last_run_log.clear()
+
+    # --- Pipeline eval state tracking ---
+    elif event == "eval:start":
+        agents = body.get("agents", [])
+        _eval_status = {
+            "state": "running",
+            "current_agent": "all" if len(agents) > 1 else (agents[0] if agents else None),
+            "completed": [],
+            "queued": [],
+            "progress": {},
+            "last_activity": time.time(),
+        }
+    elif event == "eval:agent:start":
+        agent = body.get("agent")
+        _eval_status["current_agent"] = agent
+        _eval_status["last_activity"] = time.time()
+    elif event == "eval:log":
+        agent = body.get("agent", "")
+        _eval_status["last_activity"] = time.time()
+        m = re.search(r"\[(\d+)/(\d+)\]", body.get("line", ""))
+        if m and agent:
+            _eval_status["progress"][agent] = {"current": int(m.group(1)), "total": int(m.group(2))}
+    elif event == "eval:agent:complete":
+        agent = body.get("agent")
+        if agent and agent not in _eval_status.get("completed", []):
+            _eval_status.setdefault("completed", []).append(agent)
+        _eval_status["last_activity"] = time.time()
+    elif event == "eval:complete":
+        _eval_status["state"] = "idle"
+        _eval_status["progress"] = {}
+        _eval_status["current_agent"] = None
+
+    await broadcast_to_dashboard(json.dumps(body))
+    return JSONResponse({"status": "ok"})
+
+
+# ---------------------------------------------------------------------------
 # Static page
 # ---------------------------------------------------------------------------
 
@@ -139,9 +274,8 @@ def _read_json(path: Path) -> dict[str, Any] | list[Any] | None:
 @app.get("/", include_in_schema=False)
 async def index() -> FileResponse:
     index_file = STATIC_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(str(index_file))
-    return FileResponse(str(index_file))  # FastAPI will 404 naturally if missing
+    headers = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+    return FileResponse(str(index_file), headers=headers)
 
 
 # ---------------------------------------------------------------------------
@@ -397,23 +531,8 @@ _eval_status: dict = {"state": "idle", "current_agent": None, "completed": [], "
 
 @app.post("/api/eval/run", dependencies=[Depends(require_auth)])
 async def run_eval(body: dict = {}):
-    global _eval_status
-    if _eval_status["state"] == "running":
-        return JSONResponse({"error": "Eval already running"}, status_code=409)
-
-    agents = body.get("agents", [])
-    run_all = body.get("all", False)
-    if run_all:
-        agents = ["triage", "planner", "generator", "healer"]
-
-    # Validate agent names against allowlist to prevent code injection
-    agents = [a for a in agents if a in ALLOWED_EVAL_AGENTS]
-    if not agents:
-        return JSONResponse({"error": "No valid agents specified"}, status_code=400)
-
-    _eval_status = {"state": "running", "current_agent": None, "completed": [], "queued": list(agents), "progress": {}, "last_activity": time.time()}
-    asyncio.create_task(_execute_eval_run(agents))
-    return JSONResponse({"status": "started", "agents": agents})
+    """Proxy eval run to worker."""
+    return await _proxy_to_worker("POST", "/api/worker/eval/run", body)
 
 
 @app.get("/api/eval/run/status")
@@ -444,75 +563,6 @@ async def stop_eval():
         _eval_status["current_agent"] = None
         return JSONResponse({"status": "stopped", "cancelled": cancelled})
     return JSONResponse({"status": "not_running"})
-
-
-async def _execute_eval_run(agents: list[str]):
-    global _eval_status
-
-    await broadcast_to_dashboard(json.dumps({"event": "eval:start", "agents": agents}))
-
-    # Broadcast start for all agents
-    _eval_status["queued"] = []
-    _eval_status["current_agent"] = "all" if len(agents) > 1 else agents[0]
-    for agent in agents:
-        await broadcast_to_dashboard(json.dumps({"event": "eval:agent:start", "agent": agent}))
-
-    # Run all agents in parallel as separate subprocesses
-    async def _run_one(agent: str):
-        try:
-            cmd = [
-                sys.executable, "-u", "-c",
-                f"import os; os.environ['EVAL_DASHBOARD_SUBPROCESS']='1'; "
-                f"from dotenv import load_dotenv; load_dotenv(os.path.join(os.getcwd(), '.env')); "
-                f"import logging; logging.basicConfig(level=logging.INFO, format='%(message)s'); "
-                f"import asyncio; from qa_agent.eval.eval_runner import run_{agent}_eval; asyncio.run(run_{agent}_eval())"
-            ]
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                cwd=str(PROJECT_ROOT),
-            )
-
-            agent_completed = False
-            import re as _re
-            while True:
-                line = await proc.stdout.readline()
-                if not line:
-                    break
-                decoded = line.decode("utf-8", errors="replace").rstrip()
-                if decoded:
-                    await broadcast_to_dashboard(json.dumps({"event": "eval:log", "agent": agent, "line": decoded}))
-                    # Track progress and detect when all scenarios done
-                    m = _re.search(r"\[(\d+)/(\d+)\]", decoded)
-                    if m:
-                        _eval_status["progress"][agent] = {"current": int(m.group(1)), "total": int(m.group(2))}
-                    if m and int(m.group(1)) >= int(m.group(2)) and not agent_completed:
-                        agent_completed = True
-                        _eval_status["completed"].append(agent)
-                        await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
-
-            await proc.wait()
-            # If we never saw progress markers, complete now
-            if not agent_completed:
-                _eval_status["completed"].append(agent)
-                await broadcast_to_dashboard(json.dumps({"event": "eval:agent:complete", "agent": agent}))
-
-        except Exception as e:
-            await broadcast_to_dashboard(json.dumps({"event": "eval:agent:error", "agent": agent, "error": str(e)}))
-
-    await asyncio.gather(*[_run_one(agent) for agent in agents])
-
-    _eval_status["state"] = "idle"
-    _eval_status["progress"] = {}
-    _eval_status["current_agent"] = None
-    _eval_status["queued"] = []
-
-    await broadcast_to_dashboard(json.dumps({
-        "event": "eval:complete",
-        "completed": len(_eval_status["completed"]),
-        "failed": len(agents) - len(_eval_status["completed"]),
-    }))
 
 
 @app.get("/api/eval/{agent}/latest")
@@ -712,81 +762,8 @@ async def ecc_eval_agent_history(agent: str) -> JSONResponse:
 
 @app.post("/api/eval/ecc/run", dependencies=[Depends(require_auth)])
 async def run_ecc_eval_endpoint(body: dict = {}):
-    """Trigger ECC agent eval run from dashboard."""
-    global _ecc_eval_status
-    if _ecc_eval_status["state"] == "running":
-        return JSONResponse({"error": "ECC eval already running"}, status_code=409)
-
-    agents = [a for a in body.get("agents", []) if a in ECC_ALL_AGENTS]
-    run_all = body.get("all", False)
-    tier = body.get("tier")
-    if run_all:
-        agents = list(ECC_ALL_AGENTS)
-    elif tier == "detection":
-        agents = list(ECC_DETECTION_AGENTS)
-    elif tier == "generative":
-        agents = list(ECC_GENERATIVE_AGENTS)
-
-    if not agents:
-        return JSONResponse({"error": "No valid agents specified"}, status_code=400)
-
-    _ecc_eval_status = {"state": "running", "current_agent": None, "completed": [], "progress": {}, "last_activity": time.time()}
-    asyncio.create_task(_execute_ecc_eval_run(agents))
-    return JSONResponse({"status": "started", "agents": agents})
-
-
-async def _execute_ecc_eval_run(agents: list[str]):
-    """Run ECC evals sequentially (each agent is expensive)."""
-    global _ecc_eval_status
-    await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:start", "agents": agents}))
-
-    # Broadcast start for all agents and run in parallel
-    for agent in agents:
-        await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:start", "agent": agent}))
-
-    async def _run_one(agent: str):
-        try:
-            cmd = [
-                sys.executable, "-u", "-c",
-                f"from dotenv import load_dotenv; load_dotenv('.env'); "
-                f"import logging; logging.basicConfig(level=logging.INFO, format='%(message)s', stream=__import__('sys').stdout); "
-                f"import asyncio; from qa_agent.eval.ecc.ecc_eval_runner import run_ecc_eval; "
-                f"result = asyncio.run(run_ecc_eval(agents=['{agent}'])); "
-                f"import json; print(json.dumps(result.get('results', {{}}).get('{agent}', {{}})))"
-            ]
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                cwd=str(PROJECT_ROOT),
-            )
-
-            while True:
-                line = await proc.stdout.readline()
-                if not line:
-                    break
-                decoded = line.decode("utf-8", errors="replace").rstrip()
-                if decoded:
-                    await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:log", "agent": agent, "line": decoded}))
-
-            await proc.wait()
-            _ecc_eval_status["completed"].append(agent)
-            _ecc_eval_status["last_activity"] = time.time()
-            await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:complete", "agent": agent}))
-
-        except Exception as e:
-            await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:agent:error", "agent": agent, "error": str(e)}))
-
-    await asyncio.gather(*[_run_one(agent) for agent in agents])
-
-    _ecc_eval_status["state"] = "idle"
-    _ecc_eval_status["current_agent"] = None
-    _save_ecc_status()
-    await broadcast_to_dashboard(json.dumps({
-        "event": "ecc_eval:complete",
-        "completed": len(_ecc_eval_status["completed"]),
-        "total": len(agents),
-    }))
+    """Proxy ECC eval run to worker."""
+    return await _proxy_to_worker("POST", "/api/worker/eval/ecc/run", body)
 
 
 @app.post("/api/eval/ecc/broadcast")
@@ -889,26 +866,8 @@ async def audit_summary() -> JSONResponse:
 
 @app.post("/api/tests/run", dependencies=[Depends(require_auth)])
 async def run_tests(body: dict = {}):
-    global _test_process, _test_run_status
-    if _test_process and _test_process.returncode is None:
-        return JSONResponse({"error": "Tests already running"}, status_code=409)
-
-    specs = [s for s in body.get("specs", []) if s in ALLOWED_SPECS]
-    try:
-        workers = max(1, min(int(body.get("workers", 3)), MAX_WORKERS))
-    except (TypeError, ValueError):
-        workers = 3
-    try:
-        retries = max(0, min(int(body.get("retries", 0)), MAX_RETRIES))
-    except (TypeError, ValueError):
-        retries = 0
-    heal = bool(body.get("heal", False))
-
-    run_id = datetime.now(tz=timezone.utc).strftime("%m_%d_%Y_%H-%M-%S")
-    _test_run_status = {"state": "running", "run_id": run_id, "started_at": datetime.now(tz=timezone.utc).isoformat()}
-
-    asyncio.create_task(_execute_test_run(specs, workers, retries, heal, run_id))
-    return JSONResponse({"status": "started", "run_id": run_id})
+    """Proxy test run to worker."""
+    return await _proxy_to_worker("POST", "/api/worker/test/run", body)
 
 
 @app.get("/api/tests/status")
@@ -933,109 +892,8 @@ async def clear_tests():
 
 @app.post("/api/tests/stop", dependencies=[Depends(require_auth)])
 async def stop_tests():
-    global _test_process, _test_run_status
-    if _test_process and _test_process.returncode is None:
-        _test_process.terminate()
-        _test_run_status["state"] = "stopped"
-        return JSONResponse({"status": "stopped"})
-    return JSONResponse({"status": "not_running"})
-
-
-async def _execute_test_run(specs: list, workers: int, retries: int, heal: bool, run_id: str):
-    global _test_process, _test_run_status
-
-    # Clean temp dir
-    if TEST_RESULTS_TMP.exists():
-        shutil.rmtree(TEST_RESULTS_TMP)
-
-    # Build command
-    cmd = ["npx", "playwright", "test", f"--workers={workers}", f"--retries={retries}"]
-    if specs:
-        cmd.extend([f"tests_generated/{s}" if not s.startswith("tests_generated/") else s for s in specs])
-
-    _last_run_log.clear()
-    await broadcast_to_dashboard(json.dumps({"event": "runner:start", "run_id": run_id, "specs": specs or ["all"]}))
-
-    try:
-        _test_process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            cwd=str(PROJECT_ROOT),
-        )
-
-        # Stream output line by line
-        while True:
-            line = await _test_process.stdout.readline()
-            if not line:
-                break
-            decoded = line.decode("utf-8", errors="replace").rstrip()
-            if decoded:
-                _last_run_log.append(decoded)
-                await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": decoded}))
-
-        exit_code = await _test_process.wait()
-
-        # Move results to timestamped folder
-        dest = TEST_RESULTS_DIR / run_id
-        if TEST_RESULTS_TMP.exists():
-            dest.mkdir(parents=True, exist_ok=True)
-            for item in TEST_RESULTS_TMP.iterdir():
-                target = dest / item.name
-                if item.is_dir():
-                    shutil.copytree(item, target, dirs_exist_ok=True)
-                else:
-                    shutil.copy2(item, target)
-            shutil.rmtree(TEST_RESULTS_TMP)
-
-        # Compute health score
-        results_json = dest / "results.json"
-        if results_json.exists():
-            try:
-                from qa_agent.health import compute_health_from_json
-                compute_health_from_json(results_json, dest)
-
-                # Copy to health-reports
-                health_reports = PROJECT_ROOT / "health-reports"
-                health_reports.mkdir(exist_ok=True)
-                health_json = dest / "health.json"
-                health_md = dest / "health.md"
-                if health_json.exists():
-                    shutil.copy2(health_json, health_reports / f"{run_id}.json")
-                if health_md.exists():
-                    shutil.copy2(health_md, health_reports / f"{run_id}.md")
-
-                # Git commit
-                subprocess.run(["git", "add", "health-reports/"], cwd=str(PROJECT_ROOT), capture_output=True, timeout=10)
-                subprocess.run(["git", "commit", "-m", f"Health report: {run_id} (via dashboard)"], cwd=str(PROJECT_ROOT), capture_output=True, timeout=10)
-                subprocess.run(["git", "push"], cwd=str(PROJECT_ROOT), capture_output=True, timeout=30)
-            except Exception as e:
-                await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": f"[Health] Error: {e}"}))
-
-        # Broadcast health update directly (don't HTTP self-call)
-        await broadcast_to_dashboard(json.dumps({"event": "health:updated", "run_id": run_id}))
-
-        _test_run_status["state"] = "complete"
-        _test_run_status["exit_code"] = exit_code
-        await broadcast_to_dashboard(json.dumps({"event": "runner:end", "exit_code": exit_code, "run_id": run_id}))
-
-        # Self-healing
-        if heal and exit_code != 0 and results_json.exists():
-            _test_run_status["state"] = "healing"
-            await broadcast_to_dashboard(json.dumps({"event": "runner:healing", "message": "Self-healing in progress..."}))
-            try:
-                from qa_agent.triage_runner import run_self_healing
-                summary = await run_self_healing(results_json)
-                await broadcast_to_dashboard(json.dumps({"event": "runner:healed", "healed": summary.get("healed", 0), "skipped": summary.get("unknown", 0) + summary.get("app_defects", 0)}))
-            except Exception as e:
-                await broadcast_to_dashboard(json.dumps({"event": "runner:log", "line": f"[Heal] Error: {e}"}))
-
-        _test_run_status["state"] = "idle"
-
-    except Exception as e:
-        _test_run_status["state"] = "error"
-        _test_run_status["error"] = str(e)
-        await broadcast_to_dashboard(json.dumps({"event": "runner:end", "exit_code": -1, "error": str(e)}))
+    """Proxy test stop to worker."""
+    return await _proxy_to_worker("POST", "/api/worker/test/stop")
 
 
 # ---------------------------------------------------------------------------

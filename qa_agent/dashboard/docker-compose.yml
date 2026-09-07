@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   dashboard:
     build:
@@ -11,6 +10,35 @@ services:
       - ../../qa_agent/eval/reports:/data/qa_agent/eval/reports:ro
       - ../../qa_agent/eval/ecc/reports:/data/qa_agent/eval/ecc/reports:ro
       - ../../memory/audit_runs:/data/memory/audit_runs:ro
+      - shared-results:/data/test-results:ro
     environment:
       - DATA_DIR=/data
+      - WORKER_URL=http://worker:8081
+    depends_on:
+      worker:
+        condition: service_healthy
     restart: unless-stopped
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: qa_agent/dashboard/Dockerfile.worker
+    ports:
+      - "8081:8081"
+    volumes:
+      - ../../health-reports:/data/health-reports
+      - ../../qa_agent/eval/reports:/data/qa_agent/eval/reports
+      - ../../qa_agent/eval/ecc/reports:/data/qa_agent/eval/ecc/reports
+      - ../../memory/audit_runs:/data/memory/audit_runs
+      - shared-results:/data/test-results
+    environment:
+      - DATA_DIR=/data
+      - PROJECT_ROOT=/app
+      - DASHBOARD_URL=http://dashboard:8080
+    env_file:
+      - ../../.env
+    restart: unless-stopped
+
+volumes:
+  shared-results:
+    driver: local
