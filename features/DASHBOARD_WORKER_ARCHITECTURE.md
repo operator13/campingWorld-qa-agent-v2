@@ -335,6 +335,28 @@ Playwright browser tests that verify every RUN button on the dashboard triggers 
 | 23 | `test_cost_increases_after_run` | Record cost before RUN → click RUN → wait for complete → cost is higher |
 | 24 | `test_multiple_sequential_runs` | Click RUN on agent A → wait for complete → click RUN on agent B → both produce reports |
 | 25 | `test_score_updates_after_run` | Record recall/quality score → click RUN → score reflects new eval (may be same value but timestamp updates) |
+| 26 | `test_eval_all_stop_button` | Click EVAL ALL → STOP button appears → click STOP → evals cancel → cards restore → EVAL ALL button reappears |
+| 27 | `test_eval_ecc_agents_stop_button` | Click EVAL ECC AGENTS → STOP button appears → click STOP → evals cancel → cards restore → EVAL ECC AGENTS button reappears |
+
+### UI Tests: Test Runner Buttons (`tests/e2e/test_test_runner_buttons.spec.ts`)
+
+Playwright browser tests for the Test Runner section (Run Selected, Run All, Stop).
+
+| # | Test | What It Validates |
+|---|------|-------------------|
+| 1 | `test_run_selected_single_domain` | Select Cart domain → click RUN SELECTED → runner status shows RUNNING → console output streams → status shows COMPLETE with pass/fail count |
+| 2 | `test_run_selected_multiple_domains` | Select Cart + Search → click RUN SELECTED → both domains run → progress shows per-domain |
+| 3 | `test_run_selected_none_selected` | No domains selected → click RUN SELECTED → nothing happens or shows warning |
+| 4 | `test_run_all_button` | Click RUN ALL → all domains run → runner status RUNNING → console output streams → COMPLETE with total pass/fail |
+| 5 | `test_stop_button_during_run` | Click RUN ALL → STOP button appears, RUN buttons hidden → click STOP → tests cancel → status shows STOPPED |
+| 6 | `test_stop_button_hidden_when_idle` | Verify STOP button is hidden when no tests running |
+| 7 | `test_run_buttons_disabled_during_run` | Click RUN ALL → RUN SELECTED and RUN ALL buttons hidden → STOP visible → tests complete → buttons restore |
+| 8 | `test_console_output_streams` | Click RUN ALL → console output section appears → log lines stream in real-time (not all at once) |
+| 9 | `test_domain_progress_bars` | Click RUN ALL → each domain tile shows progress (running/pass/fail indicator) |
+| 10 | `test_health_updates_after_test_run` | Run tests → complete → System Health gauge and Domain Status cards reflect new results |
+| 11 | `test_run_history_row_added` | Run tests → complete → new row appears in Run History table with timestamp, tests, passed, failed, health % |
+| 12 | `test_worker_options_respected` | Set Workers to 1, Retries to 1, Self-Heal ON → click RUN ALL → verify test command uses those options |
+| 13 | `test_clear_button` | Click CLEAR → console output cleared, domain progress reset |
 
 ### UI Tests: CLI-Triggered Runs Display on Dashboard (`tests/e2e/test_cli_dashboard_sync.spec.ts`)
 
@@ -361,11 +383,42 @@ Verify that evals triggered from the CLI on the host show live progress on the d
 | Phase 2: Dashboard Rewire | 2 | 6 | 5 | 13 |
 | Phase 3: CLI in Worker | 0 | 8 | 2 | 10 |
 | Phase 4: Cloud Readiness | 2 | 5 | 0 | 9* |
-| UI: Dashboard RUN Buttons | 0 | 0 | 25 | 25 |
+| UI: Eval RUN Buttons | 0 | 0 | 27 | 27 |
+| UI: Test Runner Buttons | 0 | 0 | 13 | 13 |
 | UI: CLI → Dashboard Sync | 0 | 0 | 10 | 10 |
-| **Total** | **19** | **22** | **42** | **85** |
+| **Total** | **19** | **22** | **57** | **100** |
 
 *Phase 4 includes 2 CI tests run in GitHub Actions
+
+### All Buttons Under Test
+
+| Button | Location | Test File | Test Count |
+|--------|----------|-----------|-----------|
+| RUN (triage) | Agent Evaluation | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (planner) | Agent Evaluation | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (generator) | Agent Evaluation | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (healer) | Agent Evaluation | `test_dashboard_buttons.spec.ts` | 1 |
+| EVAL ALL | Agent Evaluation | `test_dashboard_buttons.spec.ts` | 1 |
+| STOP (eval) | Agent Evaluation | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (security-reviewer) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (code-reviewer) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (silent-failure-hunter) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (python-reviewer) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (typescript-reviewer) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (fastapi-reviewer) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (performance-optimizer) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (planner-ecc) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (tdd-guide) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (build-error-resolver) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (e2e-runner) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN (refactor-cleaner) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| EVAL ECC AGENTS | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| STOP (ECC eval) | ECC Evals | `test_dashboard_buttons.spec.ts` | 1 |
+| RUN SELECTED | Test Runner | `test_test_runner_buttons.spec.ts` | 3 |
+| RUN ALL | Test Runner | `test_test_runner_buttons.spec.ts` | 1 |
+| STOP (test runner) | Test Runner | `test_test_runner_buttons.spec.ts` | 2 |
+| CLEAR | Test Runner | `test_test_runner_buttons.spec.ts` | 1 |
+| **Total: 24 buttons** | | | **27 tests** |
 
 ### Test Files Summary
 
@@ -375,7 +428,8 @@ Verify that evals triggered from the CLI on the host show live progress on the d
 | `tests/test_dashboard_worker.py` | 13 | Dashboard ↔ worker integration + E2E |
 | `tests/test_worker_cli.py` | 10 | CLI/Playwright installation, real eval execution |
 | `tests/test_deployment.py` | 9 | Health checks, graceful shutdown, CI builds |
-| `tests/e2e/test_dashboard_buttons.spec.ts` | 25 | Every RUN button click → progress → scores |
+| `tests/e2e/test_dashboard_buttons.spec.ts` | 27 | Every eval RUN/STOP button + progress + scores |
+| `tests/e2e/test_test_runner_buttons.spec.ts` | 13 | Test runner RUN/STOP/CLEAR + console + history |
 | `tests/e2e/test_cli_dashboard_sync.spec.ts` | 10 | CLI evals show live on dashboard |
 
 ---
