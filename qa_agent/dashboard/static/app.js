@@ -533,34 +533,28 @@
     const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
     if (!card) return;
 
-    // Snap progress bar to 100% so users see completion
+    // Snap progress bar to 100%
     const fill = card.querySelector('.eval-progress-fill');
-    const text = card.querySelector('.eval-progress-text');
+    const progText = card.querySelector('.eval-progress-text');
     if (fill) fill.style.width = '100%';
-    if (text) text.textContent = '100%';
+    if (progText) progText.textContent = '100%';
 
-    // Pre-fetch fresh data while 100% is showing
+    // Restore card immediately — no setTimeout to avoid race conditions
+    card.classList.remove('eval-running');
+    card.classList.add('eval-complete-flash');
+    _restoreEvalCard(card);
+    setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
+
+    // Fetch and apply fresh data so score/tokens/cost update atomically
     const isEcc = card.classList.contains('ecc-eval-card');
-    const dataPromise = isEcc
-      ? fetch('/api/eval/ecc/scores').then(r => r.json())
-      : fetch('/api/eval/summary').then(r => r.json());
-
-    // Hold at 100%, then restore card with fresh metrics (no stale flash)
-    setTimeout(() => {
-      card.classList.remove('eval-running');
-      card.classList.add('eval-complete-flash');
-      _restoreEvalCard(card);
-      setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
-
-      // Apply fresh data immediately — no delay, no stale values
-      dataPromise.then(data => {
-        if (isEcc) {
-          _applyEccCardData(card, agent, data[agent] || {});
-        } else {
-          _applyEvalCardData(card, agent, data[agent] || {});
-        }
-      }).catch(() => {});
-    }, 800);
+    const fetchUrl = isEcc ? '/api/eval/ecc/scores' : '/api/eval/summary';
+    fetch(fetchUrl).then(r => r.json()).then(data => {
+      if (isEcc) {
+        _applyEccCardData(card, agent, data[agent] || {});
+      } else {
+        _applyEvalCardData(card, agent, data[agent] || {});
+      }
+    }).catch(() => {});
   }
 
   function _applyEvalCardData(card, agent, data) {
