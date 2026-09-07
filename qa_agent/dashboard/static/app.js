@@ -412,6 +412,7 @@
   function setEvalCardRunning(agent) {
     const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
     if (!card) return;
+    _evalCardRunStart[agent] = Date.now();
     card.classList.add('eval-running');
     const scoreEl = card.querySelector('.eval-score');
     if (scoreEl) { scoreEl.dataset.prevText = scoreEl.textContent; scoreEl.textContent = 'Running...'; }
@@ -419,7 +420,7 @@
     if (btn) btn.style.display = 'none';
     const badge = card.querySelector('.eval-badge');
     if (badge) badge.style.display = 'none';
-    const costRow = card.querySelector('.eval-cost-row');
+    const costRow = card.querySelector('.eval-cost-row') || card.querySelector('.ecc-cost-grid');
     if (costRow) costRow.style.display = 'none';
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) tooltip.style.display = 'none';
@@ -457,7 +458,7 @@
     if (btn) btn.style.display = '';
     const badge = card.querySelector('.eval-badge');
     if (badge) badge.style.display = '';
-    const costRow = card.querySelector('.eval-cost-row');
+    const costRow = card.querySelector('.eval-cost-row') || card.querySelector('.ecc-cost-grid');
     if (costRow) costRow.style.display = '';
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) tooltip.style.display = '';
@@ -465,18 +466,39 @@
     if (prog) prog.remove();
   }
 
+  // Track when each card entered running state for minimum display time
+  const _evalCardRunStart = {};
+
   function setEvalCardComplete(agent) {
     const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
     if (!card) return;
-    card.classList.remove('eval-running');
-    card.classList.add('eval-complete-flash');
-    // Restore score text from saved value
-    const scoreEl = card.querySelector('.eval-score');
-    if (scoreEl && scoreEl.dataset.prevText) {
-      scoreEl.textContent = scoreEl.dataset.prevText;
+
+    // Ensure running state is visible for at least 1.5s
+    const runStart = _evalCardRunStart[agent] || 0;
+    const elapsed = Date.now() - runStart;
+    if (elapsed < 1500 && card.classList.contains('eval-running')) {
+      setTimeout(() => setEvalCardComplete(agent), 1500 - elapsed);
+      return;
     }
-    setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
-    _restoreEvalCard(card);
+    delete _evalCardRunStart[agent];
+
+    // Animate progress bar to 100% before restoring
+    const fill = card.querySelector('.eval-progress-fill');
+    const text = card.querySelector('.eval-progress-text');
+    if (fill) fill.style.width = '100%';
+    if (text) text.textContent = '100%';
+
+    // Brief pause to show 100%, then restore
+    setTimeout(() => {
+      card.classList.remove('eval-running');
+      card.classList.add('eval-complete-flash');
+      const scoreEl = card.querySelector('.eval-score');
+      if (scoreEl && scoreEl.dataset.prevText) {
+        scoreEl.textContent = scoreEl.dataset.prevText;
+      }
+      setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
+      _restoreEvalCard(card);
+    }, 600);
   }
 
   function setEvalCardError(agent) {
@@ -1307,6 +1329,8 @@
   function renderEccDetectionCards(scores) {
     const grid = document.getElementById('ecc-detection-grid');
     if (!grid) return;
+    // Guard: don't replace grid if any cards are in running state
+    if (grid.querySelector('.eval-running')) return;
     grid.innerHTML = ECC_DETECTION_AGENTS.map(agent => {
       const d = scores[agent] || {};
       const s = d.scores || {};
@@ -1363,6 +1387,8 @@
   function renderEccGenerativeCards(scores) {
     const grid = document.getElementById('ecc-generative-grid');
     if (!grid) return;
+    // Guard: don't replace grid if any cards are in running state
+    if (grid.querySelector('.eval-running')) return;
     grid.innerHTML = ECC_GENERATIVE_AGENTS.map(agent => {
       const d = scores[agent] || {};
       const s = d.scores || {};
@@ -1445,23 +1471,39 @@
           if (p.current && p.total) updateEvalProgress(agent, p.current, p.total);
         });
       } else if (_eccEvalRunning && status.state !== 'running') {
-        // Server says idle but we thought it was running — clear running state
-        _eccEvalRunning = false;
-        setEccEvalIdle('');
-        document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
-          if (card.dataset.agent) setEvalCardComplete(card.dataset.agent);
+        // Server says idle but we thought it was running — let WebSocket handle completion
+        // Only intervene if cards have been running for >10s (stale state)
+        const hasStaleCards = [...document.querySelectorAll('.ecc-eval-card.eval-running')].some(card => {
+          const agent = card.dataset.agent;
+          return agent && _evalCardRunStart[agent] && (Date.now() - _evalCardRunStart[agent]) > 10000;
         });
-        fetchEccEvalScores();
+        if (hasStaleCards || !document.querySelector('.ecc-eval-card.eval-running')) {
+          _eccEvalRunning = false;
+          setEccEvalIdle('');
+          document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
+            if (card.dataset.agent) setEvalCardComplete(card.dataset.agent);
+          });
+          fetchEccEvalScores();
+        }
       }
     } catch (err) { /* ignore */ }
   }
 
   window._runEccEval = function(agent) {
+    // Immediately show running state on the card
+    setEvalCardRunning(agent);
+    _eccEvalRunning = true;
+    setEccEvalRunning();
     fetch('/api/eval/ecc/run', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({agents: [agent]}),
-    }).catch(err => console.warn('ECC eval run failed:', err));
+    }).catch(err => {
+      console.warn('ECC eval run failed:', err);
+      setEvalCardError(agent);
+      _eccEvalRunning = false;
+      setEccEvalIdle('');
+    });
   };
 
   function initEccEvalControls() {
@@ -1616,16 +1658,21 @@
       }
     } else if (data.event === 'ecc_eval:agent:complete') {
       if (data.agent) setEvalCardComplete(data.agent);
-      fetchEccEvalScores();
+      // Don't re-render while cards are still in running/completing state
+      // The ecc_eval:complete handler will do the final re-render
     } else if (data.event === 'ecc_eval:complete') {
-      _eccEvalRunning = false;
       setEccEvalIdle(data.completed + '/' + data.total + ' COMPLETE');
       // Restore any cards still stuck in running state
       document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
         const agent = card.dataset.agent;
         if (agent) setEvalCardComplete(agent);
       });
-      setTimeout(() => { fetchEccEvalScores(); fetchCostTrend(); }, 1500);
+      // Delay clearing _eccEvalRunning and re-rendering to let complete animations play
+      setTimeout(() => {
+        _eccEvalRunning = false;
+        fetchEccEvalScores();
+        fetchCostTrend();
+      }, 2500);
     } else if (data.event === 'ecc_eval:agent:error') {
       if (data.agent) setEvalCardError(data.agent);
       const statusText = document.getElementById('ecc-eval-status');
