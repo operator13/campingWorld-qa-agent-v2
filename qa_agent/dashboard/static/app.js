@@ -666,12 +666,13 @@
         : 'status-critical';
 
       const clickable = run.has_report && run.run_id;
-      const rowClass = clickable ? 'clickable-row' : '';
+      const rowClass = clickable ? 'clickable-row' : 'no-report-row';
       const rowClick = clickable ? `onclick="window.open('/report/${escapeHtml(run.run_id)}', '_blank')"` : '';
       const cursor = clickable ? 'style="cursor:pointer;"' : '';
+      const rowTitle = clickable ? 'Click to view report' : 'Report not available';
 
       return `
-        <tr class="${rowClass}" ${rowClick} ${cursor} title="${clickable ? 'Click to view report' : ''}">
+        <tr class="${rowClass}" ${rowClick} ${cursor} title="${rowTitle}">
           <td>${ts}</td>
           <td>${total}</td>
           <td class="status-healthy">${passed}</td>
