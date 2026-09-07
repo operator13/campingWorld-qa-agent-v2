@@ -88,8 +88,13 @@ def _build_judge_prompt(
 
 
 def _parse_judge_response(response_text: str) -> tuple[dict[str, int], str]:
-    """Parse the judge's JSON response into scores and reasoning."""
-    # Try to extract JSON from the response
+    """Parse the judge's JSON response into scores and reasoning.
+
+    Handles common LLM quirks: markdown code blocks, truncated responses,
+    unescaped newlines in strings, and missing closing braces.
+    """
+    import re
+
     text = response_text.strip()
 
     # Handle markdown code blocks
@@ -98,7 +103,48 @@ def _parse_judge_response(response_text: str) -> tuple[dict[str, int], str]:
     elif "```" in text:
         text = text.split("```")[1].split("```")[0].strip()
 
-    parsed = json.loads(text)
+    # Try direct parse first
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        # Strategy 1: Extract just the numeric scores with regex
+        scores = {}
+        for dim in RUBRIC_DIMENSIONS:
+            m = re.search(rf'"{dim}"\s*:\s*(\d)', text)
+            if m:
+                scores[dim] = max(1, min(5, int(m.group(1))))
+
+        if len(scores) >= 3:
+            # Got enough scores — extract reasoning if possible
+            reasoning_match = re.search(r'"reasoning"\s*:\s*"([^"]*)', text)
+            reasoning = reasoning_match.group(1) if reasoning_match else ""
+            for dim in RUBRIC_DIMENSIONS:
+                if dim not in scores:
+                    scores[dim] = 3  # default mid-score for missing dims
+            return scores, reasoning
+
+        # Strategy 2: Try to fix truncated JSON by closing it
+        fixed = text.rstrip()
+        if not fixed.endswith("}"):
+            # Truncate at last complete key-value pair
+            last_comma = fixed.rfind(",")
+            last_colon = fixed.rfind(":")
+            if last_comma > last_colon:
+                fixed = fixed[:last_comma]
+            elif last_colon > 0:
+                # Find the value after the last colon
+                after_colon = fixed[last_colon + 1:].strip()
+                if after_colon and after_colon[0] == '"':
+                    # Truncated string value — close it
+                    fixed = fixed + '"'
+                elif not after_colon:
+                    fixed = fixed[:last_colon].rstrip().rstrip(",")
+            fixed = fixed.rstrip(",").rstrip() + "}"
+
+        try:
+            parsed = json.loads(fixed)
+        except json.JSONDecodeError:
+            raise  # Re-raise if still can't parse
 
     scores = {}
     for dim in RUBRIC_DIMENSIONS:
@@ -137,7 +183,7 @@ async def judge_output(
         llm = ChatAnthropic(
             model="claude-haiku-4-5-20251001",
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
-            max_tokens=500,
+            max_tokens=1024,
             temperature=0,
         )
 
