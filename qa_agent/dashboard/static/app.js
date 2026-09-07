@@ -857,11 +857,7 @@
             break;
           case 'eval:agent:complete':
             setEvalCardComplete(data.agent);
-            // Only refresh individual card data if NOT in a multi-agent run
-            // (multi-agent gets a full refresh on eval:complete)
-            if (!evalRunning) {
-              _refreshSingleEvalCard(data.agent);
-            }
+            _refreshSingleEvalCard(data.agent);
             break;
           case 'eval:agent:error':
             setEvalCardError(data.agent);
@@ -874,8 +870,9 @@
               if (agent) setEvalCardComplete(agent);
             });
             enableAllEvalButtons();
-            // Delay re-render to let green flash animations play
-            setTimeout(() => { fetchEvalSummary(); fetchAuditSummary(); }, 2500);
+            // Fetch new data immediately so cards show updated metrics
+            fetchEvalSummary();
+            fetchAuditSummary();
             break;
           case 'eval:updated':
             fetchEvalSummary();
@@ -1610,7 +1607,7 @@
         const agent = card.dataset.agent;
         if (agent) setEvalCardComplete(agent);
       });
-      setTimeout(() => fetchEccEvalScores(), 1500);
+      fetchEccEvalScores();
     } else if (data.event === 'ecc_eval:agent:error') {
       if (data.agent) setEvalCardError(data.agent);
       const statusText = document.getElementById('ecc-eval-status');
