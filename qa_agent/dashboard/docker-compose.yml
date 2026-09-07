@@ -9,6 +9,7 @@ services:
     volumes:
       - ../../health-reports:/data/health-reports:ro
       - ../../qa_agent/eval/reports:/data/qa_agent/eval/reports:ro
+      - ../../qa_agent/eval/ecc/reports:/data/qa_agent/eval/ecc/reports:ro
       - ../../memory/audit_runs:/data/memory/audit_runs:ro
     environment:
       - DATA_DIR=/data
