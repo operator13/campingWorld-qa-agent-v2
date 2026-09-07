@@ -101,14 +101,16 @@
   }
 
   function setRunButtonsEnabled(enabled) {
-    // Eval buttons
+    // Only disable/enable ALL buttons when worker goes offline/online
+    // Pipeline eval buttons
     const evalAll = document.getElementById('btn-eval-all');
     if (evalAll) evalAll.disabled = !enabled;
-    document.querySelectorAll('.eval-run-btn').forEach(b => { b.disabled = !enabled; });
+    document.querySelectorAll('#eval-grid .eval-run-btn').forEach(b => { b.disabled = !enabled; });
 
     // ECC eval buttons
     const eccAll = document.getElementById('btn-ecc-eval-all');
     if (eccAll) eccAll.disabled = !enabled;
+    document.querySelectorAll('.ecc-eval-card .eval-run-btn').forEach(b => { b.disabled = !enabled; });
 
     // Test runner buttons
     const runSelected = document.getElementById('btn-run-selected');
@@ -610,8 +612,8 @@
     _restoreEvalCard(card);
   }
 
-  function disableAllEvalButtons() {
-    document.querySelectorAll('.eval-run-btn').forEach(b => b.disabled = true);
+  function disablePipelineEvalButtons() {
+    document.querySelectorAll('#eval-grid .eval-run-btn').forEach(b => b.disabled = true);
     document.getElementById('btn-eval-all').style.display = 'none';
     document.getElementById('btn-eval-stop').style.display = 'inline-block';
     const dot = document.getElementById('eval-dot');
@@ -620,8 +622,8 @@
     if (text) text.textContent = 'RUNNING';
   }
 
-  function enableAllEvalButtons() {
-    document.querySelectorAll('.eval-run-btn').forEach(b => { b.disabled = false; b.style.display = ''; });
+  function enablePipelineEvalButtons() {
+    document.querySelectorAll('#eval-grid .eval-run-btn').forEach(b => { b.disabled = false; b.style.display = ''; });
     document.getElementById('btn-eval-all').style.display = 'inline-block';
     document.getElementById('btn-eval-stop').style.display = 'none';
     const dot = document.getElementById('eval-dot');
@@ -662,7 +664,7 @@
     fetch('/api/eval/run/status').then(r => r.json()).then(status => {
       if (status.state === 'running') {
         evalRunning = true;
-        disableAllEvalButtons();
+        disablePipelineEvalButtons();
         // Show running state for agents that have progress or are current
         const progress = status.progress || {};
         const completed = new Set(status.completed || []);
@@ -907,7 +909,7 @@
           case 'eval:start':
             evalRunning = true;
             Object.keys(_evalProgressMax).forEach(k => delete _evalProgressMax[k]);
-            disableAllEvalButtons();
+            disablePipelineEvalButtons();
             break;
           case 'eval:agent:start':
             setEvalCardRunning(data.agent);
@@ -933,7 +935,7 @@
               card.classList.remove('eval-running');
               _restoreEvalCard(card);
             });
-            enableAllEvalButtons();
+            enablePipelineEvalButtons();
             // Fetch new data immediately so cards show updated metrics
             fetchEvalSummary();
             fetchAuditSummary();
@@ -1626,6 +1628,8 @@
     if (btnStop) btnStop.style.display = 'inline-block';
     if (dot) dot.className = 'eval-status-dot eval-dot-running';
     if (statusText) statusText.textContent = 'RUNNING';
+    // Disable individual ECC RUN buttons
+    document.querySelectorAll('.ecc-eval-card .eval-run-btn').forEach(b => b.disabled = true);
   }
 
   function setEccEvalIdle(message) {
@@ -1637,6 +1641,8 @@
     if (btnStop) btnStop.style.display = 'none';
     if (dot) dot.className = 'eval-status-dot';
     if (statusText) statusText.textContent = message || '';
+    // Re-enable individual ECC RUN buttons
+    document.querySelectorAll('.ecc-eval-card .eval-run-btn').forEach(b => { b.disabled = false; b.style.display = ''; });
   }
 
   // Add ECC eval WebSocket event handlers
