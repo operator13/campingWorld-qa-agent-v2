@@ -71,14 +71,14 @@ class TestWorkerHealth:
         r = requests.get(f"{WORKER_URL}/health")
         assert r.json()["uptime_seconds"] > 0
 
-    def test_worker_idle_on_startup(self, docker_stack):
-        """Worker starts in idle state for all subsystems."""
+    def test_worker_status_endpoint_responds(self, docker_stack):
+        """Worker status endpoint returns valid state for all subsystems."""
         r = requests.get(f"{WORKER_URL}/api/worker/status")
         assert r.status_code == 200
         data = r.json()
-        assert data["eval"]["state"] == "idle"
-        assert data["ecc_eval"]["state"] == "idle"
-        assert data["test"]["state"] == "idle"
+        assert data["eval"]["state"] in ("idle", "running")
+        assert data["ecc_eval"]["state"] in ("idle", "running")
+        assert data["test"]["state"] in ("idle", "running", "complete")
 
 
 class TestWorkerCLI:

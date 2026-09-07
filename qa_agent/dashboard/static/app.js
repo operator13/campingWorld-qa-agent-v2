@@ -479,6 +479,8 @@
     if (badge) badge.style.display = 'none';
     const costRow = card.querySelector('.eval-cost-row');
     if (costRow) costRow.style.display = 'none';
+    const detailMetrics = card.querySelector('.ecc-detail-metrics');
+    if (detailMetrics) detailMetrics.style.display = 'none';
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) tooltip.style.display = 'none';
     // Add progress bar
@@ -517,6 +519,8 @@
     if (badge) badge.style.display = '';
     const costRow = card.querySelector('.eval-cost-row');
     if (costRow) costRow.style.display = '';
+    const detailMetrics = card.querySelector('.ecc-detail-metrics');
+    if (detailMetrics) detailMetrics.style.display = '';
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) tooltip.style.display = '';
     const prog = card.querySelector('.eval-progress-container');
