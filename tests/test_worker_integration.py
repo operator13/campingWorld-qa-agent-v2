@@ -235,6 +235,146 @@ class TestSharedVolume:
 
 
 # ---------------------------------------------------------------------------
+# Eval report write path — worker writes, dashboard reads
+# ---------------------------------------------------------------------------
+
+
+class TestEvalReportWritePath:
+    """Verify that when the worker runs evals, the reports are visible to the dashboard.
+
+    This tests the critical path: eval runner inside worker writes to /app/qa_agent/eval/reports/
+    which must be bind-mounted to the same host directory that the dashboard reads from
+    /data/qa_agent/eval/reports/. Without this, evals complete but scores/tokens never update.
+    """
+
+    def test_worker_eval_reports_dir_is_mounted(self, docker_stack):
+        """Worker's /app/qa_agent/eval/reports/ is the same as /data/qa_agent/eval/reports/."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        # Write a marker file via the code path (where eval runner writes)
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "sh", "-c",
+             "echo 'mount_test' > /app/qa_agent/eval/reports/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+
+        # Read it from the data path (where dashboard reads)
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "dashboard", "cat",
+             "/data/qa_agent/eval/reports/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+        assert "mount_test" in result.stdout, \
+            "Worker code path /app/qa_agent/eval/reports/ is NOT mounted to shared volume — eval reports won't be visible to dashboard"
+
+        # Cleanup
+        subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "rm", "-f",
+             "/app/qa_agent/eval/reports/_mount_test.txt"],
+            capture_output=True, timeout=10, cwd=compose_dir,
+        )
+
+    def test_worker_ecc_reports_dir_is_mounted(self, docker_stack):
+        """Worker's /app/qa_agent/eval/ecc/reports/ maps to dashboard's /data path."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "sh", "-c",
+             "echo 'ecc_mount_test' > /app/qa_agent/eval/ecc/reports/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "dashboard", "cat",
+             "/data/qa_agent/eval/ecc/reports/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+        assert "ecc_mount_test" in result.stdout, \
+            "Worker code path /app/qa_agent/eval/ecc/reports/ is NOT mounted — ECC eval reports won't be visible"
+
+        subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "rm", "-f",
+             "/app/qa_agent/eval/ecc/reports/_mount_test.txt"],
+            capture_output=True, timeout=10, cwd=compose_dir,
+        )
+
+    def test_worker_memory_audit_dir_is_mounted(self, docker_stack):
+        """Worker's /app/memory/audit_runs/ maps to dashboard's /data path."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "sh", "-c",
+             "echo 'audit_test' > /app/memory/audit_runs/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "dashboard", "cat",
+             "/data/memory/audit_runs/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+        assert "audit_test" in result.stdout, \
+            "Worker code path /app/memory/audit_runs/ is NOT mounted — cost/token tracking won't be visible"
+
+        subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "rm", "-f",
+             "/app/memory/audit_runs/_mount_test.txt"],
+            capture_output=True, timeout=10, cwd=compose_dir,
+        )
+
+    def test_worker_test_results_dir_is_mounted(self, docker_stack):
+        """Worker's /data/test-results/ is readable by dashboard."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "sh", "-c",
+             "echo 'results_test' > /data/test-results/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "dashboard", "cat",
+             "/data/test-results/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+        assert "results_test" in result.stdout
+
+        subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "rm", "-f",
+             "/data/test-results/_mount_test.txt"],
+            capture_output=True, timeout=10, cwd=compose_dir,
+        )
+
+    def test_worker_health_reports_dir_is_writable(self, docker_stack):
+        """Worker can write health reports to the shared bind mount."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "sh", "-c",
+             "echo 'health_test' > /data/health-reports/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "dashboard", "cat",
+             "/data/health-reports/_mount_test.txt"],
+            capture_output=True, text=True, timeout=10, cwd=compose_dir,
+        )
+        assert result.returncode == 0
+        assert "health_test" in result.stdout
+
+        subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "rm", "-f",
+             "/data/health-reports/_mount_test.txt"],
+            capture_output=True, timeout=10, cwd=compose_dir,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Phase 2: Dashboard data endpoints return real data
 # ---------------------------------------------------------------------------
 

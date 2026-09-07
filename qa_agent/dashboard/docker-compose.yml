@@ -31,6 +31,10 @@ services:
       - ../../qa_agent/eval/ecc/reports:/data/qa_agent/eval/ecc/reports
       - ../../memory/audit_runs:/data/memory/audit_runs
       - ../../test-results:/data/test-results
+      # Mount host dirs to code paths so eval runners write to shared volume
+      - ../../qa_agent/eval/reports:/app/qa_agent/eval/reports
+      - ../../qa_agent/eval/ecc/reports:/app/qa_agent/eval/ecc/reports
+      - ../../memory/audit_runs:/app/memory/audit_runs
     environment:
       - DATA_DIR=/data
       - PROJECT_ROOT=/app
