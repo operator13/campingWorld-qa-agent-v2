@@ -526,15 +526,24 @@
   function setEvalCardComplete(agent) {
     const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
     if (!card) return;
-    card.classList.remove('eval-running');
-    card.classList.add('eval-complete-flash');
-    // Restore score text from saved value
-    const scoreEl = card.querySelector('.eval-score');
-    if (scoreEl && scoreEl.dataset.prevText) {
-      scoreEl.textContent = scoreEl.dataset.prevText;
-    }
-    setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
-    _restoreEvalCard(card);
+
+    // Snap progress bar to 100% so users see completion
+    const fill = card.querySelector('.eval-progress-fill');
+    const text = card.querySelector('.eval-progress-text');
+    if (fill) fill.style.width = '100%';
+    if (text) text.textContent = '100%';
+
+    // Hold at 100% briefly, then restore card with fresh metrics
+    setTimeout(() => {
+      card.classList.remove('eval-running');
+      card.classList.add('eval-complete-flash');
+      const scoreEl = card.querySelector('.eval-score');
+      if (scoreEl && scoreEl.dataset.prevText) {
+        scoreEl.textContent = scoreEl.dataset.prevText;
+      }
+      setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
+      _restoreEvalCard(card);
+    }, 800);
   }
 
   function setEvalCardError(agent) {
