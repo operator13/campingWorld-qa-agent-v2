@@ -1317,8 +1317,8 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
-      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : null;
-      const totalRuns = d.total_runs || 0;
+      const cumTokens = d.cumulative_tokens ? formatNumber(d.cumulative_tokens) : '--';
+      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : '--';
       const name = escapeHtml(agent.toUpperCase());
       const recall = fmtPct(s.recall);
       const precision = fmtPct(s.precision);
@@ -1329,7 +1329,6 @@
       const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
       const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${escapeHtml(agent)}')">&#9432;</span>`;
       const tooltip = eccTooltipHtml(agent);
-      const totalLine = cumCost ? `<div class="eval-cost-total">Total: ${cumCost} (${totalRuns} runs)</div>` : '';
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
@@ -1344,11 +1343,17 @@
             <div class="ecc-detail-row"><span class="ecc-detail-label">Precision</span><span class="ecc-detail-val">${precision}</span></div>
             <div class="ecc-detail-row"><span class="ecc-detail-label">FP Rate</span><span class="ecc-detail-val">${fpRate}</span></div>
           </div>
-          <div class="eval-cost-row">
-            <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
-            <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
+          <div class="ecc-cost-grid">
+            <div class="ecc-cost-header"></div>
+            <div class="ecc-cost-header">Tokens</div>
+            <div class="ecc-cost-header">Cost</div>
+            <div class="ecc-cost-label">Last Run</div>
+            <div class="ecc-cost-val">${tokens}</div>
+            <div class="ecc-cost-val">${cost}</div>
+            <div class="ecc-cost-label">Lifetime</div>
+            <div class="ecc-cost-val">${cumTokens}</div>
+            <div class="ecc-cost-val">${cumCost}</div>
           </div>
-          ${totalLine}
           ${tooltip}
         </div>
       `;
@@ -1368,8 +1373,8 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
-      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : null;
-      const totalRuns = d.total_runs || 0;
+      const cumTokens = d.cumulative_tokens ? formatNumber(d.cumulative_tokens) : '--';
+      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : '--';
       const name = escapeHtml(agent.toUpperCase());
       const quality = fmtPct(s.quality);
       const dims = s.dimensions || {};
@@ -1382,7 +1387,6 @@
       const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
       const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${escapeHtml(agent)}')">&#9432;</span>`;
       const tooltip = eccTooltipHtml(agent);
-      const totalLine = cumCost ? `<div class="eval-cost-total">Total: ${cumCost} (${totalRuns} runs)</div>` : '';
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
@@ -1400,11 +1404,17 @@
             <div class="ecc-detail-row"><span class="ecc-detail-label">Risk Aware</span><span class="ecc-detail-val">${riskAwareness}</span></div>
             <div class="ecc-detail-row"><span class="ecc-detail-label">Convention</span><span class="ecc-detail-val">${convention}</span></div>
           </div>
-          <div class="eval-cost-row">
-            <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
-            <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
+          <div class="ecc-cost-grid">
+            <div class="ecc-cost-header"></div>
+            <div class="ecc-cost-header">Tokens</div>
+            <div class="ecc-cost-header">Cost</div>
+            <div class="ecc-cost-label">Last Run</div>
+            <div class="ecc-cost-val">${tokens}</div>
+            <div class="ecc-cost-val">${cost}</div>
+            <div class="ecc-cost-label">Lifetime</div>
+            <div class="ecc-cost-val">${cumTokens}</div>
+            <div class="ecc-cost-val">${cumCost}</div>
           </div>
-          ${totalLine}
           ${tooltip}
         </div>
       `;
@@ -1536,6 +1546,9 @@
     // Stats
     const costEl = document.getElementById('odometer-total-cost');
     if (costEl) costEl.textContent = '$' + totalCost.toFixed(2);
+    const lifetimeEl = document.getElementById('odometer-lifetime-cost');
+    const lifetimeCost = data.total_cumulative_cost || 0;
+    if (lifetimeEl) lifetimeEl.textContent = '$' + lifetimeCost.toFixed(2);
     const budgetEl = document.getElementById('odometer-budget-cap');
     if (budgetEl) budgetEl.textContent = '$' + totalBudget.toFixed(2);
     const alertEl = document.getElementById('odometer-alert-count');
