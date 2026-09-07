@@ -1,0 +1,175 @@
+name: ECC Agent Eval — Regression Gate
+
+on:
+  push:
+    paths:
+      - '.claude/agents/*.md'
+      - 'qa_agent/eval/ecc/**'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '.claude/agents/*.md'
+      - 'qa_agent/eval/ecc/**'
+  workflow_dispatch:
+    inputs:
+      agents:
+        description: 'Comma-separated agent names (blank = all changed agents)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run only (validate manifests, no LLM calls)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ecc-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job 1: Detect which agents were changed
+  # --------------------------------------------------------------------------
+  detect-changed-agents:
+    name: Detect Changed Agents
+    runs-on: ubuntu-latest
+    outputs:
+      agents: ${{ steps.detect.outputs.agents }}
+      eval_all: ${{ steps.detect.outputs.eval_all }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed agent files
+        id: detect
+        run: |
+          # If manual dispatch with specific agents, use those
+          if [ -n "${{ inputs.agents }}" ]; then
+            echo "agents=${{ inputs.agents }}" >> "$GITHUB_OUTPUT"
+            echo "eval_all=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Get changed files
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+
+          CHANGED=$(git diff --name-only "$BASE" HEAD 2>/dev/null || echo "")
+
+          # If eval framework code changed, run all agents
+          if echo "$CHANGED" | grep -q "^qa_agent/eval/ecc/"; then
+            echo "eval_all=true" >> "$GITHUB_OUTPUT"
+            echo "agents=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Map changed .claude/agents/*.md files to eval agent names
+          AGENTS=""
+          while IFS= read -r file; do
+            case "$file" in
+              .claude/agents/security-reviewer.md) AGENTS="${AGENTS:+$AGENTS,}security-reviewer" ;;
+              .claude/agents/code-reviewer.md) AGENTS="${AGENTS:+$AGENTS,}code-reviewer" ;;
+              .claude/agents/silent-failure-hunter.md) AGENTS="${AGENTS:+$AGENTS,}silent-failure-hunter" ;;
+              .claude/agents/python-reviewer.md) AGENTS="${AGENTS:+$AGENTS,}python-reviewer" ;;
+              .claude/agents/typescript-reviewer.md) AGENTS="${AGENTS:+$AGENTS,}typescript-reviewer" ;;
+              .claude/agents/fastapi-reviewer.md) AGENTS="${AGENTS:+$AGENTS,}fastapi-reviewer" ;;
+              .claude/agents/performance-optimizer.md) AGENTS="${AGENTS:+$AGENTS,}performance-optimizer" ;;
+              .claude/agents/planner.md) AGENTS="${AGENTS:+$AGENTS,}planner-ecc" ;;
+              .claude/agents/tdd-guide.md) AGENTS="${AGENTS:+$AGENTS,}tdd-guide" ;;
+              .claude/agents/build-error-resolver.md) AGENTS="${AGENTS:+$AGENTS,}build-error-resolver" ;;
+              .claude/agents/e2e-runner.md) AGENTS="${AGENTS:+$AGENTS,}e2e-runner" ;;
+              .claude/agents/refactor-cleaner.md) AGENTS="${AGENTS:+$AGENTS,}refactor-cleaner" ;;
+            esac
+          done <<< "$CHANGED"
+
+          echo "agents=$AGENTS" >> "$GITHUB_OUTPUT"
+          echo "eval_all=false" >> "$GITHUB_OUTPUT"
+
+  # --------------------------------------------------------------------------
+  # Job 2: Run ECC evals for changed agents
+  # --------------------------------------------------------------------------
+  run-ecc-eval:
+    name: Run ECC Eval
+    needs: detect-changed-agents
+    if: needs.detect-changed-agents.outputs.agents != '' || needs.detect-changed-agents.outputs.eval_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run ECC eval
+        id: eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ARGS="--ecc"
+
+          # Determine which agents to run
+          if [ "${{ needs.detect-changed-agents.outputs.eval_all }}" = "true" ]; then
+            echo "Running all ECC agent evals (framework code changed)"
+          elif [ -n "${{ needs.detect-changed-agents.outputs.agents }}" ]; then
+            # Run each changed agent individually
+            IFS=',' read -ra AGENT_LIST <<< "${{ needs.detect-changed-agents.outputs.agents }}"
+            for agent in "${AGENT_LIST[@]}"; do
+              echo "::group::Eval: $agent"
+              python -m qa_agent.cli eval --ecc --agent "$agent" ${{ inputs.dry_run && '--dry' || '' }} || true
+              echo "::endgroup::"
+            done
+            exit 0
+          fi
+
+          # Full eval run
+          python -m qa_agent.cli eval $ARGS ${{ inputs.dry_run && '--dry' || '' }}
+
+      - name: Check for regressions
+        if: always()
+        run: |
+          # Scan reports for regression alerts
+          python -c "
+          import json, glob, sys
+
+          alerts = []
+          for path in glob.glob('qa_agent/eval/ecc/reports/*/*.json'):
+              with open(path) as f:
+                  report = json.load(f)
+              for alert in report.get('alerts', []):
+                  alerts.append(alert)
+
+          if not alerts:
+              print('No regression alerts found.')
+              sys.exit(0)
+
+          has_critical = False
+          for alert in alerts:
+              level = 'error' if alert['severity'] == 'critical' else 'warning'
+              print(f'::{level}::{alert[\"message\"]}')
+              if alert['severity'] == 'critical':
+                  has_critical = True
+
+          if has_critical:
+              print('::error::Critical regressions detected — failing CI')
+              sys.exit(1)
+          "
+
+      - name: Upload eval reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecc-eval-reports
+          path: qa_agent/eval/ecc/reports/
+          retention-days: 30
