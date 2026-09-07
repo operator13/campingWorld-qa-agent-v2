@@ -558,7 +558,7 @@ body::before {
   background: linear-gradient(90deg, var(--neon-cyan), rgba(0, 255, 200, 0.6));
   box-shadow: 0 0 8px rgba(0, 255, 200, 0.4);
   border-radius: 2px;
-  transition: width 0.5s ease;
+  transition: width 0.3s ease;
 }
 
 .eval-progress-text {
