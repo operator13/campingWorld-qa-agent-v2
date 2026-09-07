@@ -533,17 +533,68 @@
     if (fill) fill.style.width = '100%';
     if (text) text.textContent = '100%';
 
-    // Hold at 100% briefly, then restore card with fresh metrics
+    // Pre-fetch fresh data while 100% is showing
+    const isEcc = card.classList.contains('ecc-eval-card');
+    const dataPromise = isEcc
+      ? fetch('/api/eval/ecc/scores').then(r => r.json())
+      : fetch('/api/eval/summary').then(r => r.json());
+
+    // Hold at 100%, then restore card with fresh metrics (no stale flash)
     setTimeout(() => {
       card.classList.remove('eval-running');
       card.classList.add('eval-complete-flash');
-      const scoreEl = card.querySelector('.eval-score');
-      if (scoreEl && scoreEl.dataset.prevText) {
-        scoreEl.textContent = scoreEl.dataset.prevText;
-      }
-      setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
       _restoreEvalCard(card);
+      setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
+
+      // Apply fresh data immediately — no delay, no stale values
+      dataPromise.then(data => {
+        if (isEcc) {
+          _applyEccCardData(card, agent, data[agent] || {});
+        } else {
+          _applyEvalCardData(card, agent, data[agent] || {});
+        }
+      }).catch(() => {});
     }, 800);
+  }
+
+  function _applyEvalCardData(card, agent, data) {
+    if (!data || data.score == null) return;
+    const score = (data.score * 100).toFixed(1) + '%';
+    const scoreEl = card.querySelector('.eval-score');
+    if (scoreEl) {
+      scoreEl.textContent = score;
+      scoreEl.className = 'eval-score ' + (data.passed ? 'score-pass' : 'score-fail');
+    }
+    const badge = card.querySelector('.eval-badge');
+    if (badge) {
+      badge.textContent = data.passed ? 'PASS' : 'FAIL';
+      badge.className = 'eval-badge ' + (data.passed ? 'badge-pass' : 'badge-fail');
+    }
+    const costValues = card.querySelectorAll('.eval-cost-value');
+    if (costValues.length >= 2) {
+      costValues[0].textContent = data.tokens != null ? formatNumber(data.tokens) : '--';
+      costValues[1].textContent = data.cost != null ? '$' + data.cost.toFixed(4) : '--';
+    }
+  }
+
+  function _applyEccCardData(card, agent, data) {
+    if (!data || data.score == null) return;
+    const score = (data.score * 100).toFixed(1) + '%';
+    const scoreEl = card.querySelector('.eval-score');
+    if (scoreEl) {
+      scoreEl.textContent = score;
+      scoreEl.className = 'eval-score ' + (data.passed ? 'score-pass' : 'score-fail');
+    }
+    const badge = card.querySelector('.eval-badge');
+    if (badge) {
+      badge.textContent = data.passed ? 'PASS' : 'FAIL';
+      badge.className = 'eval-badge ' + (data.passed ? 'badge-pass' : 'badge-fail');
+    }
+    const costValues = card.querySelectorAll('.eval-cost-value');
+    if (costValues.length >= 2) {
+      costValues[0].textContent = data.tokens != null ? formatNumber(data.tokens) : '--';
+      costValues[1].textContent = data.cost != null ? '$' + data.cost.toFixed(4) : '--';
+    }
   }
 
   function setEvalCardError(agent) {
@@ -866,7 +917,6 @@
             break;
           case 'eval:agent:complete':
             setEvalCardComplete(data.agent);
-            _refreshSingleEvalCard(data.agent);
             break;
           case 'eval:agent:error':
             setEvalCardError(data.agent);
