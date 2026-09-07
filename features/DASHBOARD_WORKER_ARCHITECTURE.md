@@ -304,17 +304,79 @@ FROM python:3.11-slim + Node.js 20
 | 8 | `test_worker_startup_validates_api_key` | Integration | Worker without `ANTHROPIC_API_KEY` starts but health check reports `api_key: false`, eval endpoints return 503 |
 | 9 | `test_github_actions_build_workflow` | CI | `.github/workflows/docker-build.yml` builds both images successfully |
 
+### UI Tests: Dashboard RUN Buttons (`tests/e2e/test_dashboard_buttons.spec.ts`)
+
+Playwright browser tests that verify every RUN button on the dashboard triggers real work and shows real progress. These run against the full two-container stack.
+
+| # | Test | What It Validates |
+|---|------|-------------------|
+| 1 | `test_security_reviewer_run_button` | Click RUN on security-reviewer → card shows Running... → progress bar moves from 0% to 100% → card restores with updated scores and token count |
+| 2 | `test_code_reviewer_run_button` | Same for code-reviewer |
+| 3 | `test_silent_failure_hunter_run_button` | Same for silent-failure-hunter |
+| 4 | `test_python_reviewer_run_button` | Same for python-reviewer |
+| 5 | `test_typescript_reviewer_run_button` | Same for typescript-reviewer |
+| 6 | `test_fastapi_reviewer_run_button` | Same for fastapi-reviewer |
+| 7 | `test_performance_optimizer_run_button` | Same for performance-optimizer |
+| 8 | `test_planner_ecc_run_button` | Same for planner-ecc (generative — checks quality score) |
+| 9 | `test_tdd_guide_run_button` | Same for tdd-guide |
+| 10 | `test_build_error_resolver_run_button` | Same for build-error-resolver |
+| 11 | `test_e2e_runner_run_button` | Same for e2e-runner |
+| 12 | `test_refactor_cleaner_run_button` | Same for refactor-cleaner |
+| 13 | `test_triage_run_button` | Click RUN on triage → card shows Running... → progress → restores with accuracy score |
+| 14 | `test_planner_run_button` | Same for planner |
+| 15 | `test_generator_run_button` | Same for generator |
+| 16 | `test_healer_run_button` | Same for healer |
+| 17 | `test_eval_all_button` | Click EVAL ALL → all 4 pipeline cards show Running... → progress bars update → all restore with scores |
+| 18 | `test_eval_ecc_agents_button` | Click EVAL ECC AGENTS → all 12 ECC cards show Running... → progress bars update → all restore with scores |
+| 19 | `test_run_button_disabled_during_run` | Click RUN on one agent → verify RUN button is hidden → eval completes → button reappears |
+| 20 | `test_stop_button_appears_during_eval_all` | Click EVAL ALL → STOP button appears, EVAL ALL hidden → click STOP → evals cancel |
+| 21 | `test_progress_bar_increments` | Click RUN → verify progress text changes from "0%" to "[1/N]" to "[2/N]" etc. (not stuck at 0%) |
+| 22 | `test_token_count_increases_after_run` | Record token count before RUN → click RUN → wait for complete → token count is higher |
+| 23 | `test_cost_increases_after_run` | Record cost before RUN → click RUN → wait for complete → cost is higher |
+| 24 | `test_multiple_sequential_runs` | Click RUN on agent A → wait for complete → click RUN on agent B → both produce reports |
+| 25 | `test_score_updates_after_run` | Record recall/quality score → click RUN → score reflects new eval (may be same value but timestamp updates) |
+
+### UI Tests: CLI-Triggered Runs Display on Dashboard (`tests/e2e/test_cli_dashboard_sync.spec.ts`)
+
+Verify that evals triggered from the CLI on the host show live progress on the dashboard, matching the existing broadcast mechanism.
+
+| # | Test | What It Validates |
+|---|------|-------------------|
+| 1 | `test_cli_ecc_eval_shows_running_state` | Start `qa-agent eval --ecc --agent security-reviewer` from CLI → dashboard card shows Running... within 5s |
+| 2 | `test_cli_ecc_eval_progress_bar_updates` | CLI eval running → dashboard progress bar updates with [1/N], [2/N] from broadcast events |
+| 3 | `test_cli_ecc_eval_card_restores_on_complete` | CLI eval finishes → dashboard card restores with updated scores |
+| 4 | `test_cli_pipeline_eval_shows_on_dashboard` | Start `qa-agent eval run --agent triage` → dashboard triage card shows Running... |
+| 5 | `test_cli_eval_all_shows_all_cards_running` | Start `qa-agent eval run --agent all` → all 4 pipeline cards show Running... |
+| 6 | `test_cli_and_dashboard_run_conflict` | CLI starts eval → user clicks RUN on dashboard → dashboard shows 409 or queues (doesn't duplicate) |
+| 7 | `test_cli_eval_tokens_reflected_on_dashboard` | CLI eval completes → refresh dashboard → token count and cost updated on card |
+| 8 | `test_cli_run_while_dashboard_closed` | Run CLI eval with dashboard stopped → start dashboard → scores reflect the completed eval |
+| 9 | `test_mobile_receives_cli_progress` | CLI eval running → open dashboard on mobile viewport (375px) → progress bar visible and updating |
+| 10 | `test_multiple_browser_tabs_receive_progress` | Open 2 dashboard tabs → run CLI eval → both tabs show Running... and progress simultaneously |
+
 ### Test Coverage Summary
 
-| Phase | Unit | Integration | E2E | Total |
-|-------|------|-------------|-----|-------|
+| Phase | Unit | Integration | E2E/UI | Total |
+|-------|------|-------------|--------|-------|
 | Phase 1: Worker Foundation | 15 | 3 | 0 | 18 |
 | Phase 2: Dashboard Rewire | 2 | 6 | 5 | 13 |
 | Phase 3: CLI in Worker | 0 | 8 | 2 | 10 |
 | Phase 4: Cloud Readiness | 2 | 5 | 0 | 9* |
-| **Total** | **19** | **22** | **7** | **50** |
+| UI: Dashboard RUN Buttons | 0 | 0 | 25 | 25 |
+| UI: CLI → Dashboard Sync | 0 | 0 | 10 | 10 |
+| **Total** | **19** | **22** | **42** | **85** |
 
 *Phase 4 includes 2 CI tests run in GitHub Actions
+
+### Test Files Summary
+
+| File | Tests | Purpose |
+|------|-------|---------|
+| `tests/test_worker.py` | 18 | Worker endpoint unit + integration tests |
+| `tests/test_dashboard_worker.py` | 13 | Dashboard ↔ worker integration + E2E |
+| `tests/test_worker_cli.py` | 10 | CLI/Playwright installation, real eval execution |
+| `tests/test_deployment.py` | 9 | Health checks, graceful shutdown, CI builds |
+| `tests/e2e/test_dashboard_buttons.spec.ts` | 25 | Every RUN button click → progress → scores |
+| `tests/e2e/test_cli_dashboard_sync.spec.ts` | 10 | CLI evals show live on dashboard |
 
 ---
 
