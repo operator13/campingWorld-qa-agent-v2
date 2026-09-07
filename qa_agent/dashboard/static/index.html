@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=20260907d">
 </head>
 <body>
 
@@ -171,6 +171,41 @@
         <span class="eval-status-text" id="ecc-eval-status"></span>
       </div>
     </div>
+    <!-- Cost Odometer -->
+    <div class="ecc-cost-odometer" id="ecc-cost-odometer">
+      <div class="odometer-header">
+        <span class="odometer-title">COST ODOMETER</span>
+        <span class="odometer-alerts" id="odometer-alerts"></span>
+      </div>
+      <div class="odometer-body">
+        <div class="odometer-gauge">
+          <svg viewBox="0 0 120 70" class="odometer-svg">
+            <path d="M 10 65 A 50 50 0 0 1 110 65" class="odometer-arc-bg" />
+            <path d="M 10 65 A 50 50 0 0 1 110 65" class="odometer-arc-fg" id="odometer-arc" />
+          </svg>
+          <div class="odometer-value" id="odometer-value">--</div>
+          <div class="odometer-label">BUDGET USED</div>
+        </div>
+        <div class="odometer-stats">
+          <div class="odometer-stat">
+            <span class="odometer-stat-label">TOTAL COST</span>
+            <span class="odometer-stat-value" id="odometer-total-cost">$--</span>
+          </div>
+          <div class="odometer-stat">
+            <span class="odometer-stat-label">BUDGET CAP</span>
+            <span class="odometer-stat-value" id="odometer-budget-cap">$--</span>
+          </div>
+          <div class="odometer-stat">
+            <span class="odometer-stat-label">ALERTS</span>
+            <span class="odometer-stat-value" id="odometer-alert-count">0</span>
+          </div>
+        </div>
+        <div class="odometer-agents" id="odometer-agents">
+          <!-- Per-agent cost bars rendered by JS -->
+        </div>
+      </div>
+    </div>
+
     <h3 class="ecc-tier-title">DETECTION AGENTS</h3>
     <div class="ecc-eval-grid" id="ecc-detection-grid">
       <!-- Detection agent cards rendered by JS -->
@@ -184,6 +219,6 @@
   <!-- Scan line overlay -->
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=20260907d"></script>
 </body>
 </html>

@@ -645,7 +645,7 @@ qa-agent eval --ecc --cost-report
 | 5 | Add ECC eval card rendering (detection + generative) | `app.js` | Done |
 | 6 | Add cyberpunk styling for ECC cards | `styles.css` | Done |
 | 7 | Add "EVAL ECC AGENTS" button with WebSocket progress | `app.js` | Done |
-| 8 | Add cost odometer card | `app.js` | Pending |
+| 8 | Add cost odometer card | `app.js` | Done |
 
 ### Phase 5: Regression Detection + CI (Week 6) — COMPLETE
 

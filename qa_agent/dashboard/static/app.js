@@ -20,6 +20,7 @@
     // ECC Development Agent Evals — fetch scores first, then apply running state on top
     initEccEvalControls();
     fetchEccEvalScores().then(() => syncEccEvalStatus());
+    fetchCostTrend();
 
     // Re-sync when user returns to tab (phone unlock, app switch)
     // Debounce to avoid wiping tooltips during normal interaction
@@ -31,6 +32,7 @@
           // Don't re-render if a tooltip is open
           if (!document.querySelector('.eval-tooltip.tooltip-open')) {
             fetchEccEvalScores().then(() => syncEccEvalStatus());
+            fetchCostTrend();
           }
         }, 2000);
       }
@@ -1315,6 +1317,8 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
+      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : null;
+      const totalRuns = d.total_runs || 0;
       const name = escapeHtml(agent.toUpperCase());
       const recall = fmtPct(s.recall);
       const precision = fmtPct(s.precision);
@@ -1325,6 +1329,7 @@
       const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
       const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${escapeHtml(agent)}')">&#9432;</span>`;
       const tooltip = eccTooltipHtml(agent);
+      const totalLine = cumCost ? `<div class="eval-cost-total">Total: ${cumCost} (${totalRuns} runs)</div>` : '';
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
@@ -1343,6 +1348,7 @@
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
             <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
+          ${totalLine}
           ${tooltip}
         </div>
       `;
@@ -1362,6 +1368,8 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
+      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : null;
+      const totalRuns = d.total_runs || 0;
       const name = escapeHtml(agent.toUpperCase());
       const quality = fmtPct(s.quality);
       const dims = s.dimensions || {};
@@ -1374,6 +1382,7 @@
       const runBtn = `<button class="eval-run-btn" data-agent="${escapeHtml(agent)}" onclick="window._runEccEval('${escapeHtml(agent)}')">&#9654; RUN</button>`;
       const infoIcon = `<span class="eval-info-icon" onclick="event.stopPropagation(); window._toggleEvalTooltip('${escapeHtml(agent)}')">&#9432;</span>`;
       const tooltip = eccTooltipHtml(agent);
+      const totalLine = cumCost ? `<div class="eval-cost-total">Total: ${cumCost} (${totalRuns} runs)</div>` : '';
 
       return `
         <div class="eval-card ecc-eval-card" data-agent="${escapeHtml(agent)}">
@@ -1395,6 +1404,7 @@
             <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
             <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
+          ${totalLine}
           ${tooltip}
         </div>
       `;
@@ -1485,6 +1495,91 @@
     if (statusText) statusText.textContent = message || '';
   }
 
+  // ----- Cost Odometer -----
+  async function fetchCostTrend() {
+    try {
+      const res = await fetch('/api/eval/ecc/cost-trend');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderCostOdometer(data);
+    } catch (err) {
+      console.warn('Cost trend fetch/render failed:', err);
+    }
+  }
+
+  function renderCostOdometer(data) {
+    const util = data.budget_utilization || 0;
+    const totalCost = data.total_current_cost || 0;
+    const totalBudget = data.total_budget_cap || 0;
+    const alertCount = data.agents_with_alerts || 0;
+    const agents = data.agents || {};
+    const overBudget = util > 100;
+
+    // Gauge arc — semi-circle path length is ~157
+    const arcLen = 157;
+    const pct = Math.min(util / 100, 1.5); // cap at 150% visually
+    const offset = arcLen - (arcLen * pct);
+    const arc = document.getElementById('odometer-arc');
+    if (arc) {
+      arc.style.strokeDasharray = arcLen;
+      arc.style.strokeDashoffset = Math.max(offset, 0);
+      arc.classList.toggle('over-budget', overBudget);
+    }
+
+    // Value
+    const valEl = document.getElementById('odometer-value');
+    if (valEl) {
+      valEl.textContent = util.toFixed(1) + '%';
+      valEl.classList.toggle('over-budget', overBudget);
+    }
+
+    // Stats
+    const costEl = document.getElementById('odometer-total-cost');
+    if (costEl) costEl.textContent = '$' + totalCost.toFixed(2);
+    const budgetEl = document.getElementById('odometer-budget-cap');
+    if (budgetEl) budgetEl.textContent = '$' + totalBudget.toFixed(2);
+    const alertEl = document.getElementById('odometer-alert-count');
+    if (alertEl) {
+      alertEl.textContent = alertCount;
+      alertEl.classList.toggle('alert-value', alertCount > 0);
+    }
+
+    // Alert badge
+    const alertBadge = document.getElementById('odometer-alerts');
+    if (alertBadge) {
+      alertBadge.textContent = alertCount > 0 ? alertCount + ' ALERT' + (alertCount > 1 ? 'S' : '') : '';
+    }
+
+    // Per-agent bars
+    const container = document.getElementById('odometer-agents');
+    if (!container) return;
+
+    // Sort agents by cost descending
+    const sortedAgents = Object.entries(agents).sort((a, b) => (b[1].current_cost || 0) - (a[1].current_cost || 0));
+    const maxCost = Math.max(...sortedAgents.map(([, a]) => a.budget_cap || 1), 0.01);
+
+    container.innerHTML = sortedAgents.map(([name, a]) => {
+      const cost = a.current_cost || 0;
+      const cap = a.budget_cap || 1;
+      const barPct = Math.min((cost / cap) * 100, 100);
+      const isOver = cost > cap;
+      const isAlert = a.alert || false;
+      const barClass = isAlert ? 'alert' : isOver ? 'over-budget' : '';
+      const costClass = isOver ? 'over-budget' : '';
+      const shortName = name.replace('-reviewer', '-rev').replace('-optimizer', '-opt').replace('-resolver', '-res').replace('-cleaner', '-cln').replace('-runner', '-run').replace('planner-ecc', 'planner');
+
+      return `
+        <div class="odometer-agent-row">
+          <span class="odometer-agent-name" title="${escapeHtml(name)}">${escapeHtml(shortName)}</span>
+          <div class="odometer-bar-track">
+            <div class="odometer-bar-fill ${barClass}" style="width: ${barPct}%"></div>
+          </div>
+          <span class="odometer-agent-cost ${costClass}">$${cost.toFixed(2)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
   // Add ECC eval WebSocket event handlers
   function handleEccEvalEvent(data) {
     if (data.event === 'ecc_eval:start') {
@@ -1517,7 +1612,7 @@
         const agent = card.dataset.agent;
         if (agent) setEvalCardComplete(agent);
       });
-      setTimeout(() => fetchEccEvalScores(), 1500);
+      setTimeout(() => { fetchEccEvalScores(); fetchCostTrend(); }, 1500);
     } else if (data.event === 'ecc_eval:agent:error') {
       if (data.agent) setEvalCardError(data.agent);
       const statusText = document.getElementById('ecc-eval-status');
