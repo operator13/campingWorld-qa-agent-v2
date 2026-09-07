@@ -1899,7 +1899,7 @@ body::before {
 
 .odometer-body {
   display: grid;
-  grid-template-columns: 240px 200px 1fr;
+  grid-template-columns: 240px 200px minmax(300px, 800px);
   gap: 30px;
   align-items: center;
 }
@@ -1994,31 +1994,30 @@ body::before {
   flex-direction: column;
   gap: 6px;
   padding-top: 4px;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .odometer-agent-row {
   display: grid;
-  grid-template-columns: 120px 1fr 50px;
+  grid-template-columns: 140px 1fr 60px;
   align-items: center;
   gap: 8px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.5rem;
+  font-size: 0.6rem;
 }
 
 .odometer-agent-name {
   color: var(--text-secondary);
   text-transform: uppercase;
+  letter-spacing: 0.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .odometer-bar-track {
-  height: 6px;
+  height: 8px;
   background: rgba(255, 255, 255, 0.06);
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -2039,10 +2038,10 @@ body::before {
 }
 
 .odometer-agent-cost {
-  color: var(--neon-cyan);
+  color: var(--neon-amber);
   font-weight: 700;
   text-align: right;
-  font-size: 0.5rem;
+  font-size: 0.7rem;
 }
 
 .odometer-agent-cost.over-budget {
