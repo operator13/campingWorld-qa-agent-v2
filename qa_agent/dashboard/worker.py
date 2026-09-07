@@ -127,28 +127,17 @@ _startup_time = time.time()
 async def _broadcast_to_dashboard(event_data: dict[str, Any]) -> None:
     """POST an event to the Dashboard for WebSocket fan-out.
 
+    All events go through /api/worker/broadcast (runner/eval/health) or
+    /api/eval/ecc/broadcast (ECC events). The dashboard handles state
+    tracking and WebSocket fan-out in those endpoints.
+
     Best-effort: if the dashboard is down, we log and continue.
     """
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            # Route to the correct broadcast endpoint based on event prefix
             event = event_data.get("event", "")
             if event.startswith("ecc_eval:"):
                 url = f"{DASHBOARD_URL}/api/eval/ecc/broadcast"
-            elif event.startswith("eval:"):
-                # Use the appropriate external endpoint
-                if event == "eval:start":
-                    url = f"{DASHBOARD_URL}/api/eval/run/start-external"
-                elif event == "eval:agent:start":
-                    url = f"{DASHBOARD_URL}/api/eval/run/agent-start-external"
-                elif event == "eval:agent:complete":
-                    url = f"{DASHBOARD_URL}/api/eval/run/agent-complete-external"
-                elif event == "eval:log":
-                    url = f"{DASHBOARD_URL}/api/eval/run/progress"
-                else:
-                    url = f"{DASHBOARD_URL}/api/eval/notify"
-            elif event.startswith("runner:") or event.startswith("health:"):
-                url = f"{DASHBOARD_URL}/api/worker/broadcast"
             else:
                 url = f"{DASHBOARD_URL}/api/worker/broadcast"
             await client.post(url, json=event_data)

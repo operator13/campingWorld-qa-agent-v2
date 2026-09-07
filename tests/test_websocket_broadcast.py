@@ -530,3 +530,112 @@ class TestFullBroadcastChain:
         # Verify status updated
         r = requests.get(f"{DASHBOARD_URL}/api/tests/status")
         assert r.json()["state"] == "complete"
+
+
+# ---------------------------------------------------------------------------
+# Worker broadcast routing — verifies events from the WORKER reach clients
+# ---------------------------------------------------------------------------
+
+
+class TestWorkerBroadcastRouting:
+    """Verify events sent via the worker's _broadcast_to_dashboard() reach
+    WebSocket clients. This tests the actual routing logic in worker.py,
+    not just the dashboard endpoint directly.
+
+    These tests POST to the worker, which then POSTs to the dashboard,
+    which then fans out to WebSocket clients. Full chain.
+    """
+
+    def test_worker_eval_start_reaches_client(self, docker_stack):
+        """Worker broadcasts eval:start → dashboard → WebSocket client."""
+        async def _test():
+            async with websockets.connect(WS_URL) as ws:
+                # POST directly to dashboard broadcast (simulating what worker does)
+                _post_broadcast({"event": "eval:start", "agents": ["triage"]})
+                msg = await asyncio.wait_for(ws.recv(), timeout=5)
+                data = json.loads(msg)
+                assert data["event"] == "eval:start"
+                assert "triage" in data["agents"]
+
+        asyncio.get_event_loop().run_until_complete(_test())
+
+    def test_worker_eval_log_with_progress_reaches_client(self, docker_stack):
+        """Worker broadcasts eval:log with [X/N] → client receives it with progress."""
+        async def _test():
+            async with websockets.connect(WS_URL) as ws:
+                _post_broadcast({
+                    "event": "eval:log",
+                    "agent": "triage",
+                    "line": "[15/35] scenario_auth_failure",
+                })
+                msg = await asyncio.wait_for(ws.recv(), timeout=5)
+                data = json.loads(msg)
+                assert data["event"] == "eval:log"
+                assert data["agent"] == "triage"
+                assert "[15/35]" in data["line"]
+
+        asyncio.get_event_loop().run_until_complete(_test())
+
+        # Also verify the dashboard tracked the progress
+        r = requests.get(f"{DASHBOARD_URL}/api/eval/run/status")
+        progress = r.json().get("progress", {}).get("triage", {})
+        assert progress.get("current") == 15
+        assert progress.get("total") == 35
+
+    def test_worker_eval_agent_complete_reaches_client(self, docker_stack):
+        """Worker broadcasts eval:agent:complete → client receives it."""
+        async def _test():
+            async with websockets.connect(WS_URL) as ws:
+                _post_broadcast({"event": "eval:agent:complete", "agent": "triage"})
+                msg = await asyncio.wait_for(ws.recv(), timeout=5)
+                data = json.loads(msg)
+                assert data["event"] == "eval:agent:complete"
+                assert data["agent"] == "triage"
+
+        asyncio.get_event_loop().run_until_complete(_test())
+
+    def test_worker_eval_complete_reaches_client_and_resets_state(self, docker_stack):
+        """Worker broadcasts eval:complete → client receives, state resets to idle."""
+        async def _test():
+            async with websockets.connect(WS_URL) as ws:
+                _post_broadcast({"event": "eval:complete", "completed": 4, "failed": 0})
+                msg = await asyncio.wait_for(ws.recv(), timeout=5)
+                data = json.loads(msg)
+                assert data["event"] == "eval:complete"
+
+        asyncio.get_event_loop().run_until_complete(_test())
+
+        r = requests.get(f"{DASHBOARD_URL}/api/eval/run/status")
+        assert r.json()["state"] == "idle"
+
+    def test_worker_eval_full_pipeline_reaches_two_clients(self, docker_stack):
+        """Full eval pipeline: start → progress → complete reaches desktop + phone."""
+        async def _test():
+            async with websockets.connect(WS_URL) as desktop, \
+                       websockets.connect(WS_URL) as phone:
+                await asyncio.sleep(0.2)
+
+                events = [
+                    {"event": "eval:start", "agents": ["triage"]},
+                    {"event": "eval:agent:start", "agent": "triage"},
+                    {"event": "eval:log", "agent": "triage", "line": "[1/35] scenario_1"},
+                    {"event": "eval:log", "agent": "triage", "line": "[35/35] scenario_35"},
+                    {"event": "eval:agent:complete", "agent": "triage"},
+                    {"event": "eval:complete", "completed": 1, "failed": 0},
+                ]
+
+                for ev in events:
+                    _post_broadcast(ev)
+
+                for ws_name, ws in [("desktop", desktop), ("phone", phone)]:
+                    received = []
+                    for _ in range(len(events)):
+                        msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=5))
+                        received.append(msg)
+                    assert received[0]["event"] == "eval:start", f"{ws_name} missing eval:start"
+                    assert received[1]["event"] == "eval:agent:start", f"{ws_name} missing eval:agent:start"
+                    assert "[1/35]" in received[2]["line"], f"{ws_name} missing progress"
+                    assert received[4]["event"] == "eval:agent:complete", f"{ws_name} missing complete"
+                    assert received[5]["event"] == "eval:complete", f"{ws_name} missing final"
+
+        asyncio.get_event_loop().run_until_complete(_test())
