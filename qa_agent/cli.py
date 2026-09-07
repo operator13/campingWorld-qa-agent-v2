@@ -563,11 +563,6 @@ def main() -> None:
         choices=["detection", "generative"],
         help="ECC eval tier filter: detection or generative",
     )
-    parser.add_argument(
-        "--cost-report",
-        action="store_true",
-        help="Show cost trend report for ECC agents",
-    )
 
     args = parser.parse_args()
 
@@ -604,23 +599,7 @@ def main() -> None:
             overwrite=args.overwrite,
         ))
     elif args.command == "eval":
-        if getattr(args, "ecc", False) and getattr(args, "cost_report", False):
-            from qa_agent.eval.ecc.cost_tracker import compute_all_agents_cost_summary
-            summary = compute_all_agents_cost_summary()
-            print("=== ECC Agent Cost Report ===\n")
-            print(f"Total current cost:  ${summary['total_current_cost']:.4f}")
-            print(f"Total budget cap:    ${summary['total_budget_cap']:.2f}")
-            print(f"Budget utilization:  {summary['budget_utilization']:.1f}%")
-            print(f"Agents with alerts:  {summary['agents_with_alerts']}\n")
-            print(f"{'Agent':<25} {'Cost':>8} {'Avg':>8} {'Trend':>12} {'Budget':>8} {'Alert':>6}")
-            print("-" * 75)
-            for name, trend in summary["agents"].items():
-                alert_str = "YES" if trend["alert"] else ""
-                print(
-                    f"{name:<25} ${trend['current_cost']:>6.4f} ${trend['avg_cost']:>6.4f} "
-                    f"{trend['trend']:>12} ${trend['budget_cap']:>6.2f} {alert_str:>6}"
-                )
-        elif getattr(args, "ecc", False):
+        if getattr(args, "ecc", False):
             from qa_agent.eval.ecc.ecc_eval_runner import run_ecc_eval
             agents_list = [args.agent] if args.agent and args.agent != "triage" else None
             result = asyncio.run(run_ecc_eval(
@@ -634,27 +613,8 @@ def main() -> None:
             for name, r in result.get("results", {}).items():
                 status = "PASS" if r.get("passed") else "FAIL"
                 scores = r.get("scores", {})
-                tier = r.get("tier", "detection")
-                if tier == "detection":
-                    metric = f"recall={scores.get('recall', 0):.1%}"
-                else:
-                    metric = f"quality={scores.get('quality', 0):.1%}"
-                print(f"  {name}: {status} ({metric})")
-
-                # Show regression info
-                reg = r.get("regression_vs_previous")
-                if reg and reg.get("status") != "first_run":
-                    delta_str = f"{reg['delta']:+.1%}"
-                    print(f"    Regression: {reg['status'].upper()} ({delta_str})")
-                    if reg.get("new_failures"):
-                        print(f"    New failures: {', '.join(reg['new_failures'][:5])}")
-                    if reg.get("recovered"):
-                        print(f"    Recovered: {', '.join(reg['recovered'][:5])}")
-
-                # Show alerts
-                for alert in r.get("alerts", []):
-                    icon = "!!" if alert["severity"] == "critical" else "!"
-                    print(f"    [{icon}] {alert['message']}")
+                recall = scores.get("recall", 0)
+                print(f"  {name}: {status} (recall={recall:.1%})")
         elif args.subcommand in ("run", "baseline"):
             baseline = args.subcommand == "baseline"
             asyncio.run(_eval_run(

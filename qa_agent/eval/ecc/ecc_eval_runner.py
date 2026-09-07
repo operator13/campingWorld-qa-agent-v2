@@ -20,14 +20,6 @@ from qa_agent.eval.ecc.config import (
     AgentEvalConfig,
     get_agent_config,
 )
-from qa_agent.eval.ecc.alerts import (
-    RegressionAlert,
-    check_cost_alerts,
-    check_regression_alerts,
-    format_alerts_console,
-)
-from qa_agent.eval.ecc.cost_tracker import compute_cost_trend
-from qa_agent.eval.ecc.ecc_regression import detect_ecc_regression
 from qa_agent.eval.ecc.finding_extractor import Finding, extract_findings
 from qa_agent.eval.ecc.finding_matcher import (
     MatchResult,
@@ -212,7 +204,6 @@ async def run_detection_eval(
         "scenarios": scenario_details,
     }
 
-    _enrich_with_regression(agent_name, scorecard)
     _save_report(agent_name, scorecard)
     _notify_dashboard("ecc_eval:agent:complete", agent=agent_name)
     return scorecard
@@ -347,7 +338,6 @@ async def run_generative_eval(
         "scenarios": scenario_details,
     }
 
-    _enrich_with_regression(agent_name, scorecard)
     _save_report(agent_name, scorecard)
     _notify_dashboard("ecc_eval:agent:complete", agent=agent_name)
     return scorecard
@@ -407,53 +397,6 @@ async def run_ecc_eval(
 
     _notify_dashboard("ecc_eval:complete", completed=len(results), total=len(agent_list))
     return summary
-
-
-def _load_previous_report(agent_name: str) -> dict[str, Any] | None:
-    """Load the most recent saved report for an agent (for regression comparison)."""
-    agent_dir = REPORTS_DIR / agent_name
-    if not agent_dir.exists():
-        return None
-    report_files = sorted(agent_dir.glob("*.json"), reverse=True)
-    if not report_files:
-        return None
-    try:
-        with open(report_files[0]) as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
-        logger.warning("Failed to load previous report for %s: %s", agent_name, e)
-        return None
-
-
-def _enrich_with_regression(
-    agent_name: str,
-    scorecard: dict[str, Any],
-) -> list[RegressionAlert]:
-    """Add regression analysis, cost trend, and alerts to a scorecard.
-
-    Mutates the scorecard dict in-place. Returns any generated alerts.
-    """
-    previous = _load_previous_report(agent_name)
-    regression = detect_ecc_regression(scorecard, previous)
-    scorecard["regression_vs_previous"] = regression
-
-    cost_trend = compute_cost_trend(agent_name)
-    scorecard["cost_trend"] = cost_trend
-
-    alerts = check_regression_alerts(agent_name, scorecard, regression)
-    alerts.extend(check_cost_alerts(agent_name, cost_trend))
-
-    if alerts:
-        scorecard["regression_alert"] = True
-        scorecard["alerts"] = [
-            {"type": a.alert_type, "severity": a.severity, "message": a.message}
-            for a in alerts
-        ]
-        console_output = format_alerts_console(alerts)
-        if console_output:
-            logger.warning(console_output)
-
-    return alerts
 
 
 def _save_report(agent_name: str, scorecard: dict[str, Any]) -> None:

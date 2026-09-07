@@ -6,7 +6,7 @@ The 12 ECC (Everything Claude Code) development agents are used daily for planni
 
 This build spec defines an eval framework for all 12 ECC agents. Unlike the existing 4 pipeline agent evals (triage, planner, generator, healer) which operate on QA pipeline state (`QAState`), ECC agent evals operate on **planted code samples** -- code snippets with known issues where we measure detection rate, false positive rate, and recommendation quality.
 
-**Status:** IN PROGRESS (Phase 1-5 complete, Phase 6 next)
+**Status:** IN PROGRESS (Phase 1-4 complete, Phase 5 next)
 **Priority:** High
 **Depends on:** Agent Evaluation System (existing), QA Command Center Dashboard
 
@@ -645,16 +645,16 @@ qa-agent eval --ecc --cost-report
 | 5 | Add ECC eval card rendering (detection + generative) | `app.js` | Done |
 | 6 | Add cyberpunk styling for ECC cards | `styles.css` | Done |
 | 7 | Add "EVAL ECC AGENTS" button with WebSocket progress | `app.js` | Done |
-| 8 | Add cost odometer card | `app.js` | Done |
+| 8 | Add cost odometer card | `app.js` | Pending |
 
-### Phase 5: Regression Detection + CI (Week 6) — COMPLETE
+### Phase 5: Regression Detection + CI (Week 6)
 
-| # | Task | File | Status |
-|---|------|------|--------|
-| 1 | Extend regression detector for ECC scorecard format | `ecc_regression.py` | Done |
-| 2 | Add ECC eval to CI pipeline (triggers on `.claude/agents/*.md` changes) | `ecc-agent-eval.yml` | Done |
-| 3 | Alert on agent regression (recall drops >5% or crosses threshold) | `alerts.py` | Done |
-| 4 | Cost trend tracking with alerts | `cost_tracker.py` | Done |
+| # | Task |
+|---|------|
+| 1 | Extend regression detector for ECC scorecard format |
+| 2 | Add ECC eval to CI pipeline (triggers on `.claude/agents/*.md` changes) |
+| 3 | Alert on agent regression (recall drops >5% or crosses threshold) |
+| 4 | Cost trend tracking with alerts |
 
 ---
 

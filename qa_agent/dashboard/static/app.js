@@ -20,7 +20,6 @@
     // ECC Development Agent Evals — fetch scores first, then apply running state on top
     initEccEvalControls();
     fetchEccEvalScores().then(() => syncEccEvalStatus());
-    fetchCostTrend();
 
     // Re-sync when user returns to tab (phone unlock, app switch)
     // Debounce to avoid wiping tooltips during normal interaction
@@ -32,7 +31,6 @@
           // Don't re-render if a tooltip is open
           if (!document.querySelector('.eval-tooltip.tooltip-open')) {
             fetchEccEvalScores().then(() => syncEccEvalStatus());
-            fetchCostTrend();
           }
         }, 2000);
       }
@@ -419,7 +417,7 @@
     if (btn) btn.style.display = 'none';
     const badge = card.querySelector('.eval-badge');
     if (badge) badge.style.display = 'none';
-    const costRow = card.querySelector('.eval-cost-row') || card.querySelector('.ecc-cost-grid');
+    const costRow = card.querySelector('.eval-cost-row');
     if (costRow) costRow.style.display = 'none';
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) tooltip.style.display = 'none';
@@ -457,7 +455,7 @@
     if (btn) btn.style.display = '';
     const badge = card.querySelector('.eval-badge');
     if (badge) badge.style.display = '';
-    const costRow = card.querySelector('.eval-cost-row') || card.querySelector('.ecc-cost-grid');
+    const costRow = card.querySelector('.eval-cost-row');
     if (costRow) costRow.style.display = '';
     const tooltip = card.querySelector('.eval-tooltip');
     if (tooltip) tooltip.style.display = '';
@@ -470,6 +468,7 @@
     if (!card) return;
     card.classList.remove('eval-running');
     card.classList.add('eval-complete-flash');
+    // Restore score text from saved value
     const scoreEl = card.querySelector('.eval-score');
     if (scoreEl && scoreEl.dataset.prevText) {
       scoreEl.textContent = scoreEl.dataset.prevText;
@@ -1316,8 +1315,6 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
-      const cumTokens = d.cumulative_tokens ? formatNumber(d.cumulative_tokens) : '--';
-      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : '--';
       const name = escapeHtml(agent.toUpperCase());
       const recall = fmtPct(s.recall);
       const precision = fmtPct(s.precision);
@@ -1342,16 +1339,9 @@
             <div class="ecc-detail-row"><span class="ecc-detail-label">Precision</span><span class="ecc-detail-val">${precision}</span></div>
             <div class="ecc-detail-row"><span class="ecc-detail-label">FP Rate</span><span class="ecc-detail-val">${fpRate}</span></div>
           </div>
-          <div class="ecc-cost-grid">
-            <div class="ecc-cost-header"></div>
-            <div class="ecc-cost-header">Tokens</div>
-            <div class="ecc-cost-header">Cost</div>
-            <div class="ecc-cost-label">Last Run</div>
-            <div class="ecc-cost-val">${tokens}</div>
-            <div class="ecc-cost-val">${cost}</div>
-            <div class="ecc-cost-label">Lifetime</div>
-            <div class="ecc-cost-val">${cumTokens}</div>
-            <div class="ecc-cost-val">${cumCost}</div>
+          <div class="eval-cost-row">
+            <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
+            <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
           ${tooltip}
         </div>
@@ -1372,8 +1362,6 @@
       const badgeText = passed === true ? 'PASS' : passed === false ? 'FAIL' : 'NO DATA';
       const tokens = d.tokens ? formatNumber(d.tokens) : '--';
       const cost = d.cost != null ? '$' + d.cost.toFixed(4) : '--';
-      const cumTokens = d.cumulative_tokens ? formatNumber(d.cumulative_tokens) : '--';
-      const cumCost = d.cumulative_cost != null ? '$' + d.cumulative_cost.toFixed(2) : '--';
       const name = escapeHtml(agent.toUpperCase());
       const quality = fmtPct(s.quality);
       const dims = s.dimensions || {};
@@ -1403,16 +1391,9 @@
             <div class="ecc-detail-row"><span class="ecc-detail-label">Risk Aware</span><span class="ecc-detail-val">${riskAwareness}</span></div>
             <div class="ecc-detail-row"><span class="ecc-detail-label">Convention</span><span class="ecc-detail-val">${convention}</span></div>
           </div>
-          <div class="ecc-cost-grid">
-            <div class="ecc-cost-header"></div>
-            <div class="ecc-cost-header">Tokens</div>
-            <div class="ecc-cost-header">Cost</div>
-            <div class="ecc-cost-label">Last Run</div>
-            <div class="ecc-cost-val">${tokens}</div>
-            <div class="ecc-cost-val">${cost}</div>
-            <div class="ecc-cost-label">Lifetime</div>
-            <div class="ecc-cost-val">${cumTokens}</div>
-            <div class="ecc-cost-val">${cumCost}</div>
+          <div class="eval-cost-row">
+            <span class="eval-cost-item"><span class="eval-cost-label">Tokens</span> <span class="eval-cost-value">${tokens}</span></span>
+            <span class="eval-cost-item"><span class="eval-cost-label">Cost</span> <span class="eval-cost-value">${cost}</span></span>
           </div>
           ${tooltip}
         </div>
@@ -1455,25 +1436,12 @@
     } catch (err) { /* ignore */ }
   }
 
-  let _eccEvalClickTime = 0;
-
   window._runEccEval = function(agent) {
-    // Immediately show running state on the card
-    _eccEvalClickTime = Date.now();
-    setEvalCardRunning(agent);
-    _eccEvalRunning = true;
-    setEccEvalRunning();
     fetch('/api/eval/ecc/run', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({agents: [agent]}),
-    }).catch(err => {
-      console.warn('ECC eval run failed:', err);
-      _eccEvalClickTime = 0;
-      setEvalCardError(agent);
-      _eccEvalRunning = false;
-      setEccEvalIdle('');
-    });
+    }).catch(err => console.warn('ECC eval run failed:', err));
   };
 
   function initEccEvalControls() {
@@ -1517,94 +1485,6 @@
     if (statusText) statusText.textContent = message || '';
   }
 
-  // ----- Cost Odometer -----
-  async function fetchCostTrend() {
-    try {
-      const res = await fetch('/api/eval/ecc/cost-trend');
-      if (!res.ok) return;
-      const data = await res.json();
-      renderCostOdometer(data);
-    } catch (err) {
-      console.warn('Cost trend fetch/render failed:', err);
-    }
-  }
-
-  function renderCostOdometer(data) {
-    const util = data.budget_utilization || 0;
-    const totalCost = data.total_current_cost || 0;
-    const totalBudget = data.total_budget_cap || 0;
-    const alertCount = data.agents_with_alerts || 0;
-    const agents = data.agents || {};
-    const overBudget = util > 100;
-
-    // Gauge arc — semi-circle path length is ~157
-    const arcLen = 157;
-    const pct = Math.min(util / 100, 1.5); // cap at 150% visually
-    const offset = arcLen - (arcLen * pct);
-    const arc = document.getElementById('odometer-arc');
-    if (arc) {
-      arc.style.strokeDasharray = arcLen;
-      arc.style.strokeDashoffset = Math.max(offset, 0);
-      arc.classList.toggle('over-budget', overBudget);
-    }
-
-    // Value
-    const valEl = document.getElementById('odometer-value');
-    if (valEl) {
-      valEl.textContent = util.toFixed(1) + '%';
-      valEl.classList.toggle('over-budget', overBudget);
-    }
-
-    // Stats
-    const costEl = document.getElementById('odometer-total-cost');
-    if (costEl) costEl.textContent = '$' + totalCost.toFixed(2);
-    const lifetimeEl = document.getElementById('odometer-lifetime-cost');
-    const lifetimeCost = data.total_cumulative_cost || 0;
-    if (lifetimeEl) lifetimeEl.textContent = '$' + lifetimeCost.toFixed(2);
-    const budgetEl = document.getElementById('odometer-budget-cap');
-    if (budgetEl) budgetEl.textContent = '$' + totalBudget.toFixed(2);
-    const alertEl = document.getElementById('odometer-alert-count');
-    if (alertEl) {
-      alertEl.textContent = alertCount;
-      alertEl.classList.toggle('alert-value', alertCount > 0);
-    }
-
-    // Alert badge
-    const alertBadge = document.getElementById('odometer-alerts');
-    if (alertBadge) {
-      alertBadge.textContent = alertCount > 0 ? alertCount + ' ALERT' + (alertCount > 1 ? 'S' : '') : '';
-    }
-
-    // Per-agent bars
-    const container = document.getElementById('odometer-agents');
-    if (!container) return;
-
-    // Sort agents by cost descending
-    const sortedAgents = Object.entries(agents).sort((a, b) => (b[1].current_cost || 0) - (a[1].current_cost || 0));
-    const maxCost = Math.max(...sortedAgents.map(([, a]) => a.budget_cap || 1), 0.01);
-
-    container.innerHTML = sortedAgents.map(([name, a]) => {
-      const cost = a.current_cost || 0;
-      const cap = a.budget_cap || 1;
-      const barPct = Math.min((cost / cap) * 100, 100);
-      const isOver = cost > cap;
-      const isAlert = a.alert || false;
-      const barClass = isAlert ? 'alert' : isOver ? 'over-budget' : '';
-      const costClass = isOver ? 'over-budget' : '';
-      const shortName = name.replace('-reviewer', '-rev').replace('-optimizer', '-opt').replace('-resolver', '-res').replace('-cleaner', '-cln').replace('-runner', '-run').replace('planner-ecc', 'planner');
-
-      return `
-        <div class="odometer-agent-row">
-          <span class="odometer-agent-name" title="${escapeHtml(name)}">${escapeHtml(shortName)}</span>
-          <div class="odometer-bar-track">
-            <div class="odometer-bar-fill ${barClass}" style="width: ${barPct}%"></div>
-          </div>
-          <span class="odometer-agent-cost ${costClass}">$${cost.toFixed(2)}</span>
-        </div>
-      `;
-    }).join('');
-  }
-
   // Add ECC eval WebSocket event handlers
   function handleEccEvalEvent(data) {
     if (data.event === 'ecc_eval:start') {
@@ -1627,23 +1507,17 @@
         if (m) updateEvalProgress(data.agent, parseInt(m[1]), parseInt(m[2]));
       }
     } else if (data.event === 'ecc_eval:agent:complete') {
-      // Don't restore card yet — ecc_eval:complete handles it after delay
-      if (!_eccEvalClickTime && data.agent) setEvalCardComplete(data.agent);
+      if (data.agent) setEvalCardComplete(data.agent);
+      fetchEccEvalScores();
     } else if (data.event === 'ecc_eval:complete') {
-      // If eval completed too fast after click, delay so user sees running state
-      const elapsed = Date.now() - _eccEvalClickTime;
-      const delay = (_eccEvalClickTime && elapsed < 2000) ? (2000 - elapsed) : 0;
-      setTimeout(() => {
-        _eccEvalClickTime = 0;
-        _eccEvalRunning = false;
-        setEccEvalIdle(data.completed + '/' + data.total + ' COMPLETE');
-        document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
-          const agent = card.dataset.agent;
-          if (agent) setEvalCardComplete(agent);
-        });
-        fetchEccEvalScores();
-        fetchCostTrend();
-      }, delay);
+      _eccEvalRunning = false;
+      setEccEvalIdle(data.completed + '/' + data.total + ' COMPLETE');
+      // Restore any cards still stuck in running state
+      document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
+        const agent = card.dataset.agent;
+        if (agent) setEvalCardComplete(agent);
+      });
+      setTimeout(() => fetchEccEvalScores(), 1500);
     } else if (data.event === 'ecc_eval:agent:error') {
       if (data.agent) setEvalCardError(data.agent);
       const statusText = document.getElementById('ecc-eval-status');

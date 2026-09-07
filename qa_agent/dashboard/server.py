@@ -588,13 +588,6 @@ ECC_GENERATIVE_AGENTS = [
 ]
 ECC_ALL_AGENTS = ECC_DETECTION_AGENTS + ECC_GENERATIVE_AGENTS
 
-_ECC_BUDGET_CAPS: dict[str, float] = {
-    "security-reviewer": 0.96, "code-reviewer": 0.72, "silent-failure-hunter": 0.54,
-    "python-reviewer": 0.58, "typescript-reviewer": 0.58, "fastapi-reviewer": 0.48,
-    "performance-optimizer": 0.36, "planner-ecc": 3.60, "tdd-guide": 0.48,
-    "build-error-resolver": 0.36, "e2e-runner": 0.48, "refactor-cleaner": 0.36,
-}
-
 _ECC_STATUS_FILE = PROJECT_ROOT / ".ecc_eval_status.json"
 
 def _load_ecc_status() -> dict:
@@ -653,42 +646,32 @@ async def ecc_eval_scores() -> JSONResponse:
             if dims:
                 scores["dimensions"] = {d: round((dims[d] / dim_counts[d] - 1) / 4, 3) for d in dims}
 
-        # Latest run tokens/cost
-        latest_tokens = data.get("token_estimate", 0) or 0
-
-        # Cumulative tokens/cost across all runs
-        cumulative_tokens = 0
+        total_tokens = 0
         for f in files:
             report = _read_json(f)
             if report and isinstance(report, dict):
-                cumulative_tokens += report.get("token_estimate", 0) or 0
+                total_tokens += report.get("token_estimate", 0) or 0
 
         # Estimate cost: Sonnet ~$3/M input + $15/M output, Opus ~$15/M input + $75/M output
         # Rough estimate using ~30% output ratio
         is_opus = agent in ("planner-ecc",)
-
-        def _estimate_cost(tokens: int) -> float | None:
-            if tokens <= 0:
-                return None
-            inp = int(tokens * 0.7)
-            out = int(tokens * 0.3)
+        if total_tokens > 0:
+            input_tokens = int(total_tokens * 0.7)
+            output_tokens = int(total_tokens * 0.3)
             if is_opus:
-                return (inp * 15 + out * 75) / 1_000_000
-            return (inp * 3 + out * 15) / 1_000_000
-
-        cost = _estimate_cost(latest_tokens)
-        cumulative_cost = _estimate_cost(cumulative_tokens)
+                cost = (input_tokens * 15 + output_tokens * 75) / 1_000_000
+            else:
+                cost = (input_tokens * 3 + output_tokens * 15) / 1_000_000
+        else:
+            cost = None
 
         summary[agent] = {
             "score": score,
             "passed": data.get("passed"),
             "tier": tier,
             "scores": scores,
-            "tokens": latest_tokens if latest_tokens > 0 else None,
+            "tokens": total_tokens if total_tokens > 0 else None,
             "cost": round(cost, 4) if cost else None,
-            "cumulative_tokens": cumulative_tokens if cumulative_tokens > 0 else None,
-            "cumulative_cost": round(cumulative_cost, 4) if cumulative_cost else None,
-            "total_runs": len(files),
             "timestamp": data.get("timestamp"),
         }
     return JSONResponse(content=summary)
@@ -725,102 +708,6 @@ async def ecc_eval_agent_history(agent: str) -> JSONResponse:
                 "scores": data.get("scores"),
             })
     return JSONResponse(content=history)
-
-
-@app.get("/api/eval/ecc/cost-trend")
-async def ecc_eval_cost_trend() -> JSONResponse:
-    """Return cost trend data for all ECC agents."""
-    summary: dict[str, Any] = {}
-    total_current = 0.0
-    total_cumulative = 0.0
-    total_budget = 0.0
-    alerts_count = 0
-
-    for agent in ECC_ALL_AGENTS:
-        agent_dir = ECC_EVAL_DIR / agent
-        files = _sorted_json_files(agent_dir)
-        all_files = files  # all reports for cumulative
-        recent_files = files[-10:]  # last 10 for trend
-
-        reports = []
-        for f in recent_files:
-            data = _read_json(f)
-            if data and isinstance(data, dict):
-                reports.append(data)
-
-        if not reports:
-            budget_cap = _ECC_BUDGET_CAPS.get(agent, 1.00)
-            summary[agent] = {
-                "current_cost": 0, "avg_cost": 0, "cumulative_cost": 0,
-                "total_runs": 0, "trend": "no_data",
-                "percent_change": 0, "budget_cap": budget_cap, "alert": False,
-            }
-            total_budget += budget_cap
-            continue
-
-        is_opus = agent in ("planner-ecc",)
-
-        def _calc_cost(tokens: int) -> float:
-            if tokens <= 0:
-                return 0
-            inp = int(tokens * 0.7)
-            out = int(tokens * 0.3)
-            if is_opus:
-                return (inp * 15 + out * 75) / 1_000_000
-            return (inp * 3 + out * 15) / 1_000_000
-
-        # Recent costs for trend analysis
-        costs = [round(_calc_cost(r.get("token_estimate", 0)), 4) for r in reports]
-
-        # Cumulative cost across ALL runs
-        cumulative_cost = 0.0
-        for f in all_files:
-            report = _read_json(f)
-            if report and isinstance(report, dict):
-                cumulative_cost += _calc_cost(report.get("token_estimate", 0))
-
-        current_cost = costs[-1] if costs else 0
-        avg_cost = sum(costs[:-1]) / len(costs[:-1]) if len(costs) > 1 else current_cost
-        if avg_cost > 0:
-            pct = ((current_cost - avg_cost) / avg_cost) * 100
-        else:
-            pct = 0
-
-        if pct > 20:
-            trend = "increasing"
-        elif pct < -20:
-            trend = "decreasing"
-        else:
-            trend = "stable"
-
-        budget_cap = _ECC_BUDGET_CAPS.get(agent, 1.00)
-        alert = (pct > 50 and len(costs) > 1) or current_cost > budget_cap
-
-        summary[agent] = {
-            "current_cost": round(current_cost, 4),
-            "avg_cost": round(avg_cost, 4),
-            "cumulative_cost": round(cumulative_cost, 4),
-            "total_runs": len(all_files),
-            "trend": trend,
-            "percent_change": round(pct, 1),
-            "budget_cap": budget_cap,
-            "budget_exceeded": current_cost > budget_cap,
-            "alert": alert,
-        }
-        total_current += current_cost
-        total_cumulative += cumulative_cost
-        total_budget += budget_cap
-        if alert:
-            alerts_count += 1
-
-    return JSONResponse(content={
-        "total_current_cost": round(total_current, 4),
-        "total_cumulative_cost": round(total_cumulative, 4),
-        "total_budget_cap": round(total_budget, 2),
-        "budget_utilization": round(total_current / total_budget * 100, 1) if total_budget else 0,
-        "agents_with_alerts": alerts_count,
-        "agents": summary,
-    })
 
 
 @app.post("/api/eval/ecc/run", dependencies=[Depends(require_auth)])
