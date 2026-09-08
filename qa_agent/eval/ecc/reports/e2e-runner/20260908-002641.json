@@ -1,0 +1,117 @@
+{
+  "eval_run_id": "ecc-eval-20260908-002641",
+  "agent": "e2e-runner",
+  "tier": "generative",
+  "timestamp": "2026-09-08T00:26:41.294650+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.9563,
+    "per_scenario": [
+      0.85,
+      0.8,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": true,
+  "token_estimate": 31903,
+  "scenarios": [
+    {
+      "scenario_id": "e2e_001_new_user_flow",
+      "quality_score": 0.85,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 4,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: The output provides both required files (RegisterPage.ts and register.spec.ts) with comprehensive coverage of happy-path and validation scenarios. However, the spec file appears truncated mid-test (cuts off at email validation), leaving some test cases incomplete. The core structure and most test cases are present. Actionability: Excellent\u2014provides exact file paths, complete TypeScript code with proper imports, detailed comments, and clear test organization. Developers can implement this directly. Correctness: Very sound approach using Page Object Model, semantic locators (getByTestId, getByRole), proper async/await patterns, and AAA structure. The use of Promise.all for handling network responses is pragmatic. Minor concern: error locators assume data-testid naming convention (e.g., 'first-name-error') not explicitly stated in requirements, though reasonable inference. Risk_awareness: Strong\u2014identifies timing issues (uses waitForResponse instead of hardcoded waits), handles missing XHR gracefully, uses unique emails to avoid collisions, includes accessibility checks (aria-invalid), and provides screenshot artifacts for CI debugging. Acknowledges that actual API endpoint may differ. Convention_adherence: Excellent\u2014follows Playwright best practices, uses semantic locators as required, no hardcoded waits, assertions in spec not page object, AAA pattern throughout, proper TypeScript typing, and comprehensive JSDoc comments. File structure matches expected output format.",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_002_product_search_filter",
+      "quality_score": 0.8,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 4,
+        "correctness": 4,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: The output provides both required files (SearchPage.ts and search.spec.ts) with comprehensive coverage of search, filter, and combined scenarios. However, the spec file is truncated mid-test, leaving some test cases incomplete. The Page Object includes excellent helper methods and assertions. Actionability: Code is production-ready with clear file paths, specific locator strategies, and detailed method signatures. The truncation of the spec file slightly reduces actionability as developers would need to complete the remaining tests. Correctness: The approach is technically sound\u2014uses semantic locators (getByRole, getByTestId), avoids hardcoded waits (uses waitForResponse and auto-wait), follows Page Object Model correctly with assertions in spec not POM, and implements AAA pattern. The response handling and network wait strategy is appropriate. Risk Awareness: Demonstrates strong risk awareness with error handling (response status checks), fallback locator strategies (or() chains), edge case handling (no-results state, empty categories), price parsing with currency stripping, and timeout specifications. Includes guards and validation. Minor gap: doesn't explicitly address potential flakiness of price range slider interactions. Convention Adherence: Excellent adherence\u2014uses TypeScript with proper typing, follows POM pattern strictly, semantic locators throughout, no hardcoded waits, assertions separated from POM, AAA pattern in tests, includes JSDoc comments, uses test fixtures for setup/teardown, and captures screenshots on failure. The code style and structure align with modern Playwright best practices.",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_003_flaky_timing",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014waitForTimeout is replaced with waitForResponse, auto-wait assertions are used, no hardcoded sleeps remain, and AAA pattern is followed throughout. Actionability: The output provides exact code implementations with file paths (cart.spec.ts, ProductPage.ts), clear before/after comparisons, and specific CLI commands for validation. The Page Object Model example is production-ready. Correctness: The Promise.all pattern correctly prevents the race condition where responses arrive before listeners attach. The waitForResponse predicate properly filters by URL, method, and status. The approach is technically optimal for Playwright and addresses the root cause precisely. Risk_awareness: Comprehensive coverage of edge cases including the response-before-listener race condition, explanation of why waitForTimeout fails on slow CI, guidance on timeout configuration, warnings against using retries to mask flakiness, and stress-testing commands. Includes trace/screenshot/video capture recommendations. Convention_adherence: Follows Playwright best practices (Page Object Model, AAA pattern, proper use of auto-wait mechanisms), includes proper TypeScript typing, uses Playwright's built-in locator strategies, and aligns with modern test automation conventions. The config recommendations follow Playwright documentation standards.",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_004_flaky_race_condition",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014uses waitForResponse, removes waitForTimeout, ensures deterministic behavior, eliminates hardcoded waits, and follows AAA pattern. Includes helper functions, page objects, multiple test cases (happy path + edge cases), and config updates. Actionability: Provides exact code with file paths (checkout.spec.ts, playwright.config.ts), copy-paste-ready implementations, verification commands (npx playwright test --repeat-each=10), and clear before/after comparisons. Correctness: Technically sound approach\u2014registers promise before click to avoid race conditions, uses response.ok() for error handling, sets realistic timeouts (15s for gateway SLA, 10s for DOM updates), includes cross-validation of orderId. The critical ordering pattern (listen\u2192click\u2192consume) is correct and well-explained. Risk_awareness: Identifies and mitigates multiple risks: fast responses being missed (solved by pre-registration), API errors being silent (solved by status check), double-submission (tested explicitly), network variability (15s timeout based on real SLA), and CI flakiness (retries + trace config). Includes edge case tests for declined cards and button state. Convention_adherence: Follows Playwright best practices (page objects, helper functions, test.describe grouping, trace/video config), uses TypeScript with proper typing, follows AAA pattern strictly, uses descriptive test names, includes comments explaining non-obvious decisions, and aligns with modern E2E testing conventions.",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_005_broken_locator_text",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are met\u2014the stale text selector is updated to 'Add to Bag', semantic locator (getByRole with name) is used, only the Page Object is modified, and no unnecessary changes are made. Actionability: The output provides exact file paths, complete code with before/after comparison, specific test commands with grep patterns, and clear verification steps. The table format makes changes transparent. Correctness: The fix directly addresses the root cause (button text change) using the correct Playwright API. The decision to preserve method/property names is sound\u2014it maintains backward compatibility with existing tests while the locator is updated. The recommendation for data-testid follows best practices. Risk_awareness: The agent identifies the brittleness of text-based locators, proactively recommends a more resilient solution (data-testid), provides follow-up implementation guidance, and includes verification steps (single run + flakiness testing with repeat-each=5). Convention_adherence: The solution aligns with the project's stated locator priority (data-testid > role > CSS > XPath), matches the pattern used for other locators in the same class (productTitle, price, quantityInput), maintains TypeScript conventions, and includes helpful comments explaining the change and future direction.",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_006_broken_locator_restructured",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are met\u2014brittle CSS selectors replaced with semantic locators (getByRole), data-testid fallback provided, page object updated (not spec), and resilience to future DOM changes demonstrated. Actionability: Exact file paths provided (page_objects/NavigationPage.ts, tests/navigation.spec.ts), complete working code with clear before/after comparison, recommended HTML changes for dev team, and migration path from getByRole to data-testid. Correctness: Approach is technically sound\u2014uses Playwright best practices (role-based locators, scoped containers, auto-wait semantics), handles accordion expansion with expandSection(), includes scrollIntoViewIfNeeded for below-fold elements, and proper async/await patterns. Risk_awareness: Comprehensively addresses edge cases\u2014accordion visibility handling, link text variations (exact vs regex matching), multiple navigation contexts (breadcrumbs, footer), animation waits, keyboard accessibility testing, and aria-current state verification. Convention_adherence: Follows Playwright testing conventions (Page Object Model, semantic locators over CSS, JSDoc comments), includes proper TypeScript typing, test organization with describe/beforeEach, and accessibility-first assertions (aria-expanded, aria-current, role attributes).",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_007_passing_test_decoy",
+      "is_clean": true,
+      "quality_score": 1.0,
+      "note": "Decoy scenario \u2014 scored as pass"
+    },
+    {
+      "scenario_id": "e2e_008_stable_pom_decoy",
+      "is_clean": true,
+      "quality_score": 1.0,
+      "note": "Decoy scenario \u2014 scored as pass"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-09-07T23:54:16.827107+00:00",
+  "run_id": "09_07_2026_23-53-12",
+  "overall_score": 1.0,
+  "overall_status": "HEALTHY",
+  "total_passed": 24,
+  "total_failed": 0,
+  "total_skipped": 0,
+  "total_tests": 24,
+  "trend": null,
+  "domains": [
+    {
+      "name": "Product",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 64209,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Register",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "total": 6,
+      "duration_ms": 43713,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.0,
+      "is_critical": false
+    },
+    {
+      "name": "Search",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "total": 9,
+      "duration_ms": 59068,
+      "score": 1.0,
+      "status": "HEALTHY",
+      "weight": 1.5,
+      "is_critical": false
+    }
+  ],
+  "critical_domains": []
+}

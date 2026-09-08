@@ -1,0 +1,209 @@
+{
+  "eval_run_id": "ecc-eval-20260907-193806",
+  "agent": "security-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-07T19:38:06.777809+00:00",
+  "scenarios_total": 20,
+  "scores": {
+    "recall": 0.0,
+    "precision": 0.0,
+    "false_positive_rate": 0.0,
+    "total_planted": 0,
+    "total_found": 0,
+    "total_false_positives": 0
+  },
+  "thresholds": {
+    "recall": 0.9,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 0,
+  "scenarios": [
+    {
+      "scenario_id": "sec_001_sql_injection_fstring",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_002_sql_injection_raw_query",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_003_sql_injection_dynamic_table",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_004_xss_innerhtml",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_005_xss_template_safe_filter",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_006_hardcoded_api_key",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_007_base64_encoded_secret",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_008_secret_in_comment",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_009_path_traversal_open",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_010_path_traversal_symlink",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_011_command_injection_os_system",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_012_command_injection_subprocess_shell",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_013_missing_auth_middleware",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_014_broken_rbac",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_015_ssrf",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_016_clean_parameterized_sql",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_017_clean_html_escaping",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_018_clean_env_secrets",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_019_clean_safe_file_serving",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "sec_020_clean_auth_middleware",
+      "error": "Agent definition not found: /app/.claude/agents/security-reviewer.md",
+      "timed_out": false
+    }
+  ],
+  "regression_vs_previous": {
+    "status": "regression",
+    "severity": "major",
+    "delta": -1.0,
+    "previous_score": 1.0,
+    "current_score": 0.0,
+    "new_failures": [],
+    "recovered": [],
+    "threshold_crossed": true,
+    "threshold_delta": 0.05
+  },
+  "cost_trend": {
+    "agent": "security-reviewer",
+    "current_cost": 0.623,
+    "avg_cost": 0.6057,
+    "trend": "stable",
+    "percent_change": 2.9,
+    "budget_cap": 0.96,
+    "budget_exceeded": false,
+    "history": [
+      {
+        "timestamp": "2026-09-05T16:32:58.726278+00:00",
+        "tokens": 79871,
+        "cost": 0.623
+      },
+      {
+        "timestamp": "2026-09-05T16:20:20.125273+00:00",
+        "tokens": 78498,
+        "cost": 0.6123
+      },
+      {
+        "timestamp": "2026-09-05T16:08:08.618935+00:00",
+        "tokens": 76264,
+        "cost": 0.5949
+      },
+      {
+        "timestamp": "2026-09-05T16:05:18.106201+00:00",
+        "tokens": 80379,
+        "cost": 0.627
+      },
+      {
+        "timestamp": "2026-09-05T15:52:50.887407+00:00",
+        "tokens": 77610,
+        "cost": 0.6054
+      },
+      {
+        "timestamp": "2026-09-05T15:38:45.971552+00:00",
+        "tokens": 77056,
+        "cost": 0.601
+      },
+      {
+        "timestamp": "2026-09-05T15:18:21.548302+00:00",
+        "tokens": 78055,
+        "cost": 0.6088
+      },
+      {
+        "timestamp": "2026-09-05T14:43:33.661634+00:00",
+        "tokens": 77994,
+        "cost": 0.6084
+      },
+      {
+        "timestamp": "2026-09-05T14:23:36.010138+00:00",
+        "tokens": 76752,
+        "cost": 0.5987
+      },
+      {
+        "timestamp": "2026-09-05T13:14:51.057197+00:00",
+        "tokens": 76203,
+        "cost": 0.5944
+      }
+    ],
+    "alert": false
+  },
+  "regression_alert": true,
+  "alerts": [
+    {
+      "type": "recall_drop",
+      "severity": "critical",
+      "message": "security-reviewer: recall dropped 100.0% (100.0% \u2192 0.0%)"
+    },
+    {
+      "type": "threshold_crossed",
+      "severity": "critical",
+      "message": "security-reviewer: recall (0.0%) is below threshold (90.0%)"
+    }
+  ]
+}

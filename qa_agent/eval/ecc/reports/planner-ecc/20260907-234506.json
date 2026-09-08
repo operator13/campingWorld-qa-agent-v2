@@ -1,0 +1,131 @@
+{
+  "eval_run_id": "ecc-eval-20260907-234506",
+  "agent": "planner-ecc",
+  "tier": "generative",
+  "timestamp": "2026-09-07T23:45:06.123787+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.8375,
+    "per_scenario": [
+      0.95,
+      0.75,
+      0.8,
+      0.85,
+      0.75,
+      0.7,
+      0.95,
+      0.95
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": true,
+  "token_estimate": 51064,
+  "scenarios": [
+    {
+      "scenario_id": "plan_001_simple_feature",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All requirements are addressed\u2014GET/PUT endpoints, all preference fields, defaults, authentication, validation, and PostgreSQL persistence. The plan includes data layer, validation layer, business logic, and API layer. Actionability: Extremely specific with exact file paths, complete code examples, and phased implementation steps. Each step has clear 'Action', 'Why', 'Dependencies', and 'Risk' sections. Code is production-ready with proper imports, docstrings, and error handling. Correctness: The technical approach is sound\u2014SQLAlchemy model with server defaults, Pydantic schemas with proper validation, service layer separation, and FastAPI route handlers. Use of `exclude_unset=True` for partial updates is correct. Enum handling across layers is consistent. The migration script properly handles PostgreSQL-specific types. Risk_awareness: Identifies the race condition in `get_or_create_preferences` and provides mitigation (IntegrityError handling). Mentions the need to verify `down_revision` in migrations. However, the output is truncated mid-implementation (Step 5 is incomplete), which slightly limits comprehensive risk discussion. Could have mentioned testing strategy more explicitly. Convention_adherence: Perfectly follows FastAPI conventions (APIRouter, Depends, HTTPException), Pydantic best practices (separate request/response schemas, field validators, model_config), SQLAlchemy patterns (relationships, cascade rules, server defaults), and project structure (routers, models, schemas, services separation). Code style matches typical FastAPI projects. The only minor issue is the output being cut off, preventing full evaluation of the PUT endpoint implementation and test suite.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_002_email_notification",
+      "quality_score": 0.75,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 4,
+        "risk_awareness": 3,
+        "convention_adherence": 4
+      },
+      "reasoning": "Completeness: The plan covers all 6 requirements (email events, Jinja2 templates, SMTP/SES backends, unsubscribe links, logging, async/retry). However, the output appears truncated at Step 10 (template engine section is incomplete), missing the final phases for notification service, router integration, and tests. This is a significant gap despite strong coverage of earlier phases. Actionability: Excellent specificity\u2014exact file paths, code snippets, Pydantic models, SQLAlchemy definitions, and dependency graphs provided. A developer could begin implementation immediately. The phased structure (Phase 1-2 shown, Phase 3-4 implied) is clear. Correctness: The architecture is sound\u2014abstract backends, factory pattern, async-native libraries (aiosmtplib, aiobotocore), background tasks for non-blocking sends, and proper retry/logging patterns. One minor concern: the SMTP backend uses `aiosmtplib.send()` directly rather than connection pooling, which could be inefficient at scale; SES backend correctly uses context managers. Jinja2 templating and unsubscribe token approach (RFC 8058 compliant) are correct. Risk Awareness: Moderate. Identifies some risks (SMTP slowness, AWS credential management) but lacks discussion of: email deliverability (SPF/DKIM/DMARC), rate limiting, database transaction handling for concurrent retries, idempotency of email sends (duplicate prevention), handling of invalid email addresses, and testing strategy for external services. No mention of monitoring/alerting for failed sends. Convention Adherence: Strong alignment with FastAPI/SQLAlchemy patterns shown in codebase (config via Settings, models with Mapped types, routers structure). Uses standard Python async patterns and Pydantic v2 conventions. Follows project's apparent use of Alembic migrations. Minor: doesn't explicitly state whether to use dependency injection for backend factory in routers, though this is implied.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_003_sqlite_to_postgres",
+      "quality_score": 0.8,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 4,
+        "risk_awareness": 4,
+        "convention_adherence": 4
+      },
+      "reasoning": "Completeness (4): The plan covers all major acceptance criteria\u2014data migration strategy, SQLite-specific syntax identification, phased rollout (dual-write, shadow read, cutover), schema differences, testing strategy, and downtime mitigation. However, the output is truncated at Step 2.3c, missing Phase 3 (Alembic migrations), Phase 4 (data migration execution), Phase 5 (cutover), and the rollback plan details. The 48-hour rollback capability is mentioned but not fully detailed. Actionability (5): Exceptional specificity\u2014exact file paths (app/database.py, app/models/*, app/services/*), concrete code examples (before/after for models, raw SQL conversions), Docker Compose YAML, environment variable setup, and grep commands for auditing. Each step has clear dependencies and risk levels. Correctness (4): The technical approach is sound\u2014phased rollout with dual-write is industry-standard, psycopg2 is appropriate, connection pooling parameters are reasonable, and SQL conversions (GROUP_CONCAT\u2192STRING_AGG, strftime\u2192TO_CHAR) are accurate. Minor concern: the fallback to SQLite in app/database.py during transition adds complexity; the plan could be clearer about when this is removed. The assumption of PostgreSQL 15+ is reasonable but not justified. Correctness slightly reduced because the plan doesn't address potential issues like sequence ownership during data migration or handling of foreign key constraints during bulk load. Risk_awareness (4): Identifies key risks\u2014medium risk for model changes, connection pooling criticality, stale connections, timezone handling, and developer environment consistency. Mentions rollback capability and 48-hour window. However, lacks explicit discussion of: (1) data validation checksums during migration, (2) handling concurrent writes during dual-write phase, (3) network partition scenarios, (4) performance testing on PostgreSQL before cutover, (5) monitoring/alerting strategy post-cutover. Convention_adherence (4): Follows Python/SQLAlchemy conventions well\u2014uses environment variables, SQLAlchemy ORM patterns, proper connection pooling, and Docker best practices. Aligns with typical migration project structure. Minor gap: doesn't reference existing project conventions (e.g., if the project uses a specific logging framework, error handling pattern, or deployment tool). The truncation prevents full assessment of adherence to Alembic conventions.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_004_extract_shared_utils",
+      "quality_score": 0.85,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 4,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: The plan addresses all major requirements (package creation, unification, backward compatibility, testing, publishing, phased migration). However, the output is truncated mid-implementation of `currency_utils.py`, leaving that module and `validation_utils.py` and `pagination.py` incomplete. The migration strategy for Sprint 2 is mentioned but lacks detail. Actionability: Excellent specificity\u2014exact file paths, directory structures, YAML workflows, Python code examples, and step-by-step actions with dependencies and risk levels. The audit matrix, API design document, and CI/CD configurations are all concrete deliverables. Correctness: The technical approach is sound: `src/` layout, PEP 621 compliance, `zoneinfo` over `pytz`, tag-based publishing, and backward-compatible shims. The audit-first methodology prevents data loss. Minor concern: the plan doesn't explicitly address how shims will handle divergent APIs (e.g., pagination's 'slightly different APIs'), though the adapter layer concept is mentioned. Correctness is high but not perfect. Risk Awareness: Good identification of risks (API disagreements, credential provisioning, code drift during migration). Mitigations are provided (time-boxing reviews, early credential requests). However, missing: rollback strategy if a service breaks after migration, testing strategy for shim layer, and handling of transitive dependency conflicts. Convention Adherence: Excellent\u2014follows Python packaging best practices (PEP 517/518/561), GitHub Actions conventions, semantic versioning, and modern tooling (Hatchling, Ruff, mypy). Aligns with the stated codebase structure and requirements.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_005_webhook_delivery",
+      "quality_score": 0.75,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 4,
+        "correctness": 4,
+        "risk_awareness": 4,
+        "convention_adherence": 4
+      },
+      "reasoning": "Completeness (4): The plan addresses all 8 acceptance criteria and most requirements. It covers queue infrastructure (Redis), retry strategy with exponential backoff, idempotency considerations, dead letter queue, monitoring/dashboard, webhook signatures, and phased implementation. Minor gap: the plan mentions idempotency in acceptance criteria but doesn't explicitly detail deduplication strategy (e.g., delivery_id tracking on partner side or request deduplication window). Actionability (4): Excellent specificity with exact file paths, function signatures, database schema, and implementation steps. The 10-phase breakdown is clear and sequenced logically. Minor issue: Phase 10 (docker-compose) is incomplete/truncated mid-sentence ('Why: Worker must...'). Code examples are concrete (e.g., job payload JSON, backoff array `[10, 60, 300]`). Correctness (4): The technical approach is sound. HMAC-SHA256 signing is correct. Redis list + sorted set design for queue/retry is appropriate for the throughput requirement. Exponential backoff timing (10s, 60s, 300s) is reasonable. Concurrency model (50 concurrent deliveries via Semaphore) is well-reasoned for 500/min throughput. Minor concern: The plan doesn't address webhook signature verification on the *partner* side (only signing on platform side), though this is arguably partner responsibility. The 5-second delivery SLA is tight but achievable with the proposed architecture. Risk_awareness (4): Good identification of risks in Phase 9 (worker process): race conditions, memory leaks, Redis connection drops, DB pool exhaustion. Mentions graceful shutdown, health checks, and structured logging. Identifies that webhook failures should not block main event flow (Phase 7). However, some gaps: (1) No discussion of idempotency key strategy if a webhook is delivered twice due to retry logic bugs; (2) No mention of payload size limits or truncation strategy (response_body truncated to 1KB is noted, but not event payload); (3) No discussion of partner URL validation (DNS rebinding, private IP ranges); (4) Limited discussion of monitoring/alerting specifics (what triggers alerts?); (5) No mention of rate limiting per partner to prevent abuse. Convention_adherence (4): The plan aligns well with the described codebase structure (FastAPI, SQLAlchemy, Pydantic, pytest, Alembic). Uses existing patterns (routers, services, models). Follows naming conventions (snake_case, descriptive names). Proposes admin endpoints under `/api/v1/admin/` which is reasonable. Minor: The plan doesn't explicitly reference existing auth patterns in the codebase (e.g., how partner_id is authenticated), though it mentions 'follow existing admin auth pattern.' The worker as a separate process is a good architectural choice but requires operational overhead (deployment, monitoring) not fully detailed.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_006_sso_microservices",
+      "quality_score": 0.7,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 4,
+        "correctness": 4,
+        "risk_awareness": 4,
+        "convention_adherence": 3
+      },
+      "reasoning": "Completeness (4): The plan addresses all major acceptance criteria\u2014OIDC protocol selection with justification, Keycloak deployment, user migration, phased rollout, token propagation, and security risks. However, it cuts off mid-Step 1.5 and doesn't fully detail Steps 1.6-3 (fallback mechanisms, per-service implementation, rollback strategies, feature flags). The phased rollout structure is outlined but implementation details for phases 2-3 are incomplete. Actionability (4): Extremely specific\u2014includes exact file paths (infra/keycloak/docker-compose.yml, scripts/migration/user_dedup.py), code structure (FastAPI dependencies, Django backends), database migrations, and API calls. Step 1.1-1.5 are highly actionable. However, the truncation means Steps 1.6 onward lack this specificity. The password hash handling section is thorough but incomplete (cuts off mid-sentence). Correctness (4): Architecture is sound\u2014OIDC over SAML is well-justified, Keycloak is appropriate, graceful fallback pattern is correct, token lifespan choices (5min access, 30-day refresh) are reasonable. User deduplication strategy (email-based with human review) is conservative and safe. Password import approach using Keycloak's credential format is correct. Minor concern: the plan doesn't explicitly address cross-service token validation (how storefront validates a token issued by Keycloak when support-portal makes a request), though the shared OIDC library hints at this. Risk Awareness (4): Identifies multiple risks\u2014TLS misconfiguration causing redirect loops, OIDC redirect URI mismatches, password hash format incompatibility, email-based deduplication conflicts, brute force protection, token leakage. Mitigations are provided (dry-run mode, human review, test with 10 accounts). However, some risks are underexplored: (1) what happens if Keycloak is down during the migration window? (2) how are existing active sessions handled during cutover? (3) token revocation strategy if a service is compromised? (4) audit logging for compliance. Convention Adherence (3): Follows reasonable conventions (Docker Compose for infra, alembic for migrations, .env for secrets, .gitignore for credentials). However, lacks explicit alignment with the company's existing conventions\u2014no mention of whether they use Kubernetes vs Docker Compose, their CI/CD pipeline, naming conventions for branches/PRs, or code review process. The plan assumes containerization and PostgreSQL but doesn't verify these match the company's actual stack. File structure is logical but not validated against existing project layout.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_007_pagination",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: The plan covers all 6 endpoints systematically, addresses all requirements (offset pagination, response envelope, Link headers, backward compatibility), and provides a clear phased approach. Actionability: Extremely specific with exact file paths, code snippets showing before/after, and detailed docstrings. Each step is independently mergeable and includes rationale. Correctness: The technical approach is sound\u2014using a generic PaginatedResponse[T], FastAPI dependencies for param validation, SQLAlchemy offset/limit, separate count queries, and RFC 8288 Link headers. The pattern correctly handles filtered endpoints (orders by user_id) and preserves query params in links. Deterministic ordering with order_by is included. Risk_awareness: Identifies the breaking change to response shape and suggests documentation/mitigation. Notes the count query adds a round-trip (with caching as future optimization). Mentions searching for old ProductList usages. However, could have elaborated more on: (1) database index requirements for large tables (80k reviews), (2) potential N+1 query issues if items contain nested relations, (3) concurrent modification edge cases (total count changes between queries), (4) performance testing thresholds. Convention_adherence: Perfectly aligned with FastAPI patterns (Depends, response_model, Request/Response objects), Pydantic (BaseModel, Generic[T], Config), SQLAlchemy async patterns (AsyncSession, select, scalars), and project structure (routers, schemas, services, utils). Docstrings follow Google style. The plan is incomplete at Step 7 (cuts off mid-sentence for Orders schema), but the first 6 steps are comprehensive and the pattern is clear enough to complete the remaining 3 resources.",
+      "error": null
+    },
+    {
+      "scenario_id": "plan_008_rate_limiting",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All 7 requirements are explicitly addressed\u2014global/auth/API-key limits, Redis backend, 429 with Retry-After, X-RateLimit headers, and runtime-adjustable config via env+Redis. All acceptance criteria covered (middleware integration, strategy, per-endpoint limits, storage backend, proper responses, FastAPI conventions). Actionability: Exceptional specificity\u2014exact file paths (app/middleware/rate_limit.py, app/services/redis.py, etc.), pseudocode for Lua script and middleware dispatch logic, concrete config keys (RATE_LIMIT_CONFIG_KEY), and step-by-step phases. Code snippets show exact implementation patterns (BaseHTTPMiddleware, async Redis, Lua ZREMRANGEBYSCORE). Correctness: Technically sound\u2014sliding window counter via Lua is atomic and accurate, fail-open strategy prevents Redis from being a SPOF, proper use of redis.asyncio, correct middleware ordering explanation (add_middleware reverse order), X-Forwarded-For handling for proxies, 30-second config cache balances freshness vs. performance. Lua script logic (ZREMRANGEBYSCORE, ZCARD, ZADD, PEXPIRE) is correct. Risk_awareness: Strong identification of risks\u2014Lua script correctness (mitigated by testing), Redis unavailability (fail-open), middleware ordering subtlety (explained clearly), connection pooling overhead avoided. Minor gap: doesn't explicitly mention rate limit key collision risks across different identifier types (though the f-string prefixing mitigates this) or potential clock skew in distributed systems. Convention_adherence: Excellent\u2014uses existing FastAPI/Starlette patterns (BaseHTTPMiddleware matching CORS/auth), respects existing config.py structure, integrates with existing middleware stack, follows async/await conventions, uses standard Redis patterns. One minor note: Phase 6 (docs/observability) is incomplete in the output (cuts off mid-sentence), but this is a presentation issue, not a planning issue.",
+      "error": null
+    }
+  ]
+}
