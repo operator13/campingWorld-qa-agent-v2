@@ -104,15 +104,42 @@ A real-time cyberpunk-themed dashboard for monitoring and controlling the entire
 | **Event-Driven Updates** | Zero polling — health, eval, and test data push via WebSocket |
 | **Mobile Responsive** | 2-column grids on iPhone, optimized for touch |
 
+### Two-Container Architecture
+
+The dashboard runs as two Docker containers — a lightweight **Dashboard Server** (read-only display, no secrets) and an **Eval Worker** (full `qa_agent` package, Node.js, Playwright, Claude CLI, API keys).
+
+```
+┌─────────────────────────┐         ┌──────────────────────────┐
+│  Container A:           │         │  Container B:            │
+│  DASHBOARD SERVER       │  HTTP   │  EVAL WORKER             │
+│                         │────────>│                          │
+│  - FastAPI + WebSocket  │         │  - Full qa_agent package │
+│  - Static UI (JS/CSS)   │<────────│  - Claude Code CLI       │
+│  - Read-only data view  │   WS    │  - ANTHROPIC_API_KEY     │
+│  - No secrets           │  push   │  - Playwright + Node.js  │
+│  - Port 8080            │         │  - Port 8081 (internal)  │
+└─────────────────────────┘         └──────────────────────────┘
+              │                                   │
+              └──────────────┬────────────────────┘
+                     Shared Bind Mounts
+               (health-reports, eval/reports,
+                test-results, audit_runs)
+```
+
+- **RUN buttons** → Dashboard proxies to Worker → Worker runs subprocess → Worker broadcasts progress back → Dashboard fans out to all WebSocket clients
+- **STOP buttons** → Dashboard proxies to Worker → Worker terminates running subprocesses
+- **Worker offline** → All RUN buttons disabled, red WORKER OFFLINE indicator
+- **Cross-device sync** → Start eval on desktop, watch progress on phone
+
 ### Run the Dashboard
 
 ```bash
-# Direct
-uvicorn qa_agent.dashboard.server:app --host 0.0.0.0 --port 8080
-
-# Via Docker
+# Docker (recommended) — starts both containers
 cd qa_agent/dashboard
-docker-compose up -d
+docker compose up -d
+
+# Direct (local dev, no Docker)
+uvicorn qa_agent.dashboard.server:app --host 0.0.0.0 --port 8080
 
 # Access
 open http://localhost:8080                    # Desktop
@@ -123,24 +150,26 @@ open http://<your-local-ip>:8080             # iPhone/iPad on same WiFi
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
+| `GET` | `/health` | Dashboard health check (includes worker status) |
+| `GET` | `/api/worker/online` | Worker reachability check for UI |
+| `POST` | `/api/worker/broadcast` | Worker → dashboard event relay + state tracking |
 | `GET` | `/api/health/latest` | Latest health with partial run merging |
 | `GET` | `/api/health/history` | Last 20 runs (test + self-heal) |
-| `POST` | `/api/health/notify` | Event-driven health update broadcast |
 | `GET` | `/api/eval/summary` | All 4 agent scores + cumulative token/cost |
 | `GET` | `/api/eval/{agent}/latest` | Latest eval for specific agent |
-| `POST` | `/api/eval/run` | Trigger agent evals (per-agent or all, parallel) |
+| `POST` | `/api/eval/run` | Trigger agent evals (proxied to worker) |
 | `GET` | `/api/eval/run/status` | Current eval runner state |
-| `POST` | `/api/eval/stop` | Stop running evals |
-| `POST` | `/api/eval/notify` | Event-driven eval update broadcast |
+| `POST` | `/api/eval/stop` | Stop running evals (kills worker subprocesses) |
 | `GET` | `/api/audit/summary` | Total tokens, cost, per-run breakdown |
-| `POST` | `/api/tests/run` | Start test run with specs/workers/retries/heal |
-| `POST` | `/api/tests/stop` | Kill running subprocess |
+| `POST` | `/api/tests/run` | Start test run (proxied to worker) |
+| `POST` | `/api/tests/stop` | Kill running test process (proxied to worker) |
 | `POST` | `/api/tests/clear` | Clear runner state (syncs across devices) |
 | `GET` | `/api/tests/status` | Current runner state |
 | `GET` | `/api/tests/lastrun` | Last run's log for late-joining clients |
 | `GET` | `/api/eval/ecc/scores` | All 12 ECC agent scores + metrics |
 | `GET` | `/api/eval/ecc/scores/{agent}` | Specific ECC agent scorecard |
-| `POST` | `/api/eval/ecc/run` | Trigger ECC evals (per-agent, per-tier, or all) |
+| `POST` | `/api/eval/ecc/run` | Trigger ECC evals (proxied to worker) |
+| `POST` | `/api/eval/ecc/stop` | Stop ECC evals (kills worker subprocesses) |
 | `GET` | `/api/eval/ecc/status` | Current ECC eval running state |
 | `GET` | `/api/eval/ecc/history/{agent}` | Historical ECC eval data for trends |
 | `POST` | `/api/eval/ecc/broadcast` | CLI-to-dashboard event relay |
@@ -356,13 +385,15 @@ Storage: `memory/AUDIT_TRAIL.md` (human-readable) + `memory/audit_runs/*.json` (
 | **Orchestration** | LangGraph StateGraph, Python 3.11+ |
 | **LLM** | Claude Opus + Sonnet via `langchain-anthropic` |
 | **Browser** | Playwright (127 tests, 14 domains) |
-| **Dashboard** | FastAPI + WebSocket + Vanilla JS (event-driven, zero polling) |
+| **Dashboard** | FastAPI + WebSocket + Vanilla JS (two-container: dashboard + worker) |
 | **Design** | Figma MCP |
 | **Tickets** | Atlassian MCP (Jira) |
-| **Containerization** | Docker + docker-compose |
+| **Containerization** | Docker Compose (dashboard + worker containers, shared bind mounts) |
 | **Generated Tests** | TypeScript `@playwright/test` with POM |
 | **Memory** | Git-tracked markdown (14 files, zero databases) |
 | **Eval** | Custom harness: 16 agents, 201 golden scenarios, LLM judge, parallel execution |
+| **Testing** | 106 pytest tests (unit + integration + WebSocket broadcast) |
+| **Cloud Deploy** | GCP Cloud Run + AWS ECS Fargate deployment guides |
 | **Audit** | Dual-format (Markdown + JSON) with token tracking |
 
 ---
@@ -485,6 +516,7 @@ Build specs for planned features are in `features/`:
 | Pipeline Eval Agent | **COMPLETE** | [BUILD_SPEC_EVAL_AGENT.md](features/BUILD_SPEC_EVAL_AGENT.md) |
 | QA Command Center | **COMPLETE** | [QA_COMMAND_CENTER_DASHBOARD.md](features/QA_COMMAND_CENTER_DASHBOARD.md) |
 | ECC Agent Evals (Phase 1-4) | **COMPLETE** | [ECC_AGENT_EVALS.md](features/ECC_AGENT_EVALS.md) |
+| Dashboard + Worker Architecture | **COMPLETE** | [DASHBOARD_WORKER_ARCHITECTURE.md](features/DASHBOARD_WORKER_ARCHITECTURE.md) |
 | ECC Anti-Overfitting | PLANNED | [ECC_EVAL_ANTI_OVERFITTING.md](features/ECC_EVAL_ANTI_OVERFITTING.md) |
 | Dashboard Security Hardening | **COMPLETE** | 9 vulnerabilities patched (path traversal, code injection, auth, XSS, WebSocket) |
 | Guild.AI Dashboard Alignment | PLANNED | [GUILD_AI_DASHBOARD_ALIGNMENT.md](features/GUILD_AI_DASHBOARD_ALIGNMENT.md) |
@@ -500,9 +532,11 @@ Build specs for planned features are in `features/`:
 qa-automation-agent/
 ├── qa_agent/
 │   ├── dashboard/                  # QA Command Center
-│   │   ├── server.py               # FastAPI + WebSocket (20+ endpoints)
-│   │   ├── Dockerfile              # Container config
-│   │   ├── docker-compose.yml      # Docker orchestration
+│   │   ├── server.py               # Dashboard server (read-only + worker proxy)
+│   │   ├── worker.py               # Eval Worker server (runs evals/tests)
+│   │   ├── Dockerfile              # Dashboard container (lightweight, no secrets)
+│   │   ├── Dockerfile.worker       # Worker container (full env + CLI)
+│   │   ├── docker-compose.yml      # Two-container orchestration
 │   │   └── static/                 # Cyberpunk UI (HTML/JS/CSS)
 │   ├── eval/                       # Agent evaluation system
 │   │   ├── eval_runner.py          # Pipeline eval execution (4 agents)
@@ -534,6 +568,9 @@ qa-automation-agent/
 ├── health-reports/                 # Health score history (git-tracked)
 ├── memory/                         # Agent memory (14 markdown files)
 ├── features/                       # Feature build specs (20 specs)
+├── docs/                           # Deployment guides
+│   ├── DEPLOY_CLOUD_RUN.md         # GCP Cloud Run deployment
+│   └── DEPLOY_ECS.md              # AWS ECS Fargate deployment
 ├── run-tests.sh                    # Test runner script
 └── pyproject.toml                  # Python project config
 ```
