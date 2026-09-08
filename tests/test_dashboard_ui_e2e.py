@@ -34,11 +34,20 @@ ECC_ALL_AGENTS = ECC_DETECTION_AGENTS + ECC_GENERATIVE_AGENTS
 
 
 def _wait_for_idle(section="eval"):
+    """Wait for worker to be idle AND reset dashboard state."""
+    key = section if section != "ecc" else "ecc_eval"
     for _ in range(120):
         try:
             r = requests.get(f"{WORKER_URL}/api/worker/status", timeout=3)
-            s = r.json()[section if section != "ecc" else "ecc_eval"]["state"]
-            if s == "idle":
+            if r.json()[key]["state"] == "idle":
+                # Also ensure dashboard state is reset
+                if section == "ecc":
+                    requests.post(f"{DASHBOARD_URL}/api/eval/ecc/broadcast",
+                                  json={"event": "ecc_eval:complete", "completed": 0, "total": 0}, timeout=3)
+                else:
+                    requests.post(f"{DASHBOARD_URL}/api/worker/broadcast",
+                                  json={"event": "eval:complete", "completed": 0, "failed": 0}, timeout=3)
+                time.sleep(0.5)
                 return
         except Exception:
             pass
