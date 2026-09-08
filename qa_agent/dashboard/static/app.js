@@ -427,7 +427,7 @@
     document.getElementById('btn-eval-all').addEventListener('click', () => {
       // Optimistic UI — show all cards running immediately
       evalRunning = true;
-      disablePipelineEvalButtons();
+        disablePipelineEvalButtons();
       ['triage', 'planner', 'generator', 'healer'].forEach(a => setEvalCardRunning(a));
       fetch('/api/eval/run', {
         method: 'POST',
@@ -938,13 +938,11 @@
             break;
           case 'eval:complete':
             evalRunning = false;
-            // Restore any cards still stuck in running state (didn't get agent:complete)
             document.querySelectorAll('.eval-card.eval-running').forEach(card => {
               card.classList.remove('eval-running');
               _restoreEvalCard(card);
             });
             enablePipelineEvalButtons();
-            // Refresh each agent card individually (don't re-render entire grid)
             ['triage', 'planner', 'generator', 'healer'].forEach(a => _refreshSingleEvalCard(a));
             fetchAuditSummary();
             break;

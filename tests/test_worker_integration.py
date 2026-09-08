@@ -375,6 +375,90 @@ class TestEvalReportWritePath:
 
 
 # ---------------------------------------------------------------------------
+# Eval runner import validation — catches missing imports that crash evals
+# ---------------------------------------------------------------------------
+
+
+class TestEvalRunnerImports:
+    """Verify eval runner modules import without errors inside the worker container."""
+
+    def test_eval_runner_imports_cleanly(self, docker_stack):
+        """eval_runner.py imports without NameError/ImportError inside worker."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "python", "-c",
+             "from qa_agent.eval.eval_runner import run_triage_eval, _start_eval_audit, _end_eval_audit; print('ok')"],
+            capture_output=True, text=True, timeout=15, cwd=compose_dir,
+        )
+        assert result.returncode == 0, f"eval_runner import failed: {result.stderr}"
+        assert "ok" in result.stdout
+
+    def test_ecc_eval_runner_imports_cleanly(self, docker_stack):
+        """ecc_eval_runner.py imports without errors inside worker."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "python", "-c",
+             "from qa_agent.eval.ecc.ecc_eval_runner import run_ecc_eval; print('ok')"],
+            capture_output=True, text=True, timeout=15, cwd=compose_dir,
+        )
+        assert result.returncode == 0, f"ecc_eval_runner import failed: {result.stderr}"
+        assert "ok" in result.stdout
+
+    def test_eval_runner_start_audit_works(self, docker_stack):
+        """_start_eval_audit actually works (caught missing 'import time')."""
+        compose_dir = "/Users/oantazo/Desktop/claud_projects/campingWorld-qa-agent-v2/qa_agent/dashboard"
+        result = subprocess.run(
+            ["docker", "compose", "exec", "-T", "worker", "python", "-c",
+             "from qa_agent.eval.eval_runner import _start_eval_audit; "
+             "rid = _start_eval_audit('triage'); "
+             "assert rid.startswith('eval-triage-'), f'Bad run_id: {rid}'; "
+             "print('ok')"],
+            capture_output=True, text=True, timeout=15, cwd=compose_dir,
+        )
+        assert result.returncode == 0, f"_start_eval_audit failed: {result.stderr}"
+        assert "ok" in result.stdout
+
+    def test_triage_eval_does_not_crash_on_start(self, docker_stack):
+        """Triage eval subprocess doesn't crash immediately (no import/name errors)."""
+        async def _test():
+            import asyncio, json, websockets
+            async with websockets.connect("ws://localhost:8080/ws/dashboard") as ws:
+                # Wait for idle
+                for _ in range(30):
+                    r = requests.get(f"{WORKER_URL}/api/worker/status")
+                    if r.json()["eval"]["state"] == "idle":
+                        break
+                    await asyncio.sleep(1)
+
+                resp = requests.post(f"{DASHBOARD_URL}/api/eval/run", json={"agents": ["triage"]})
+                assert resp.status_code == 200
+
+                # Collect first few events — should see progress, NOT traceback
+                events = []
+                try:
+                    for _ in range(20):
+                        msg = await asyncio.wait_for(ws.recv(), timeout=30)
+                        data = json.loads(msg)
+                        if data.get("event", "").startswith("eval:"):
+                            events.append(data)
+                            line = data.get("line", "")
+                            assert "Traceback" not in line, f"Eval crashed: {line}"
+                            assert "NameError" not in line, f"Eval has NameError: {line}"
+                            assert "ImportError" not in line, f"Eval has ImportError: {line}"
+                            if data.get("event") == "eval:complete":
+                                break
+                except asyncio.TimeoutError:
+                    pass
+
+                # Should have received at least eval:start and some progress
+                event_types = [e["event"] for e in events]
+                assert "eval:start" in event_types, f"No eval:start received: {event_types}"
+
+        import asyncio
+        asyncio.get_event_loop().run_until_complete(_test())
+
+
+# ---------------------------------------------------------------------------
 # Phase 2: Dashboard data endpoints return real data
 # ---------------------------------------------------------------------------
 
