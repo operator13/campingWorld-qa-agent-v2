@@ -425,11 +425,19 @@
 
   function initEvalControls() {
     document.getElementById('btn-eval-all').addEventListener('click', () => {
+      // Optimistic UI — show all cards running immediately
+      evalRunning = true;
+      disablePipelineEvalButtons();
+      ['triage', 'planner', 'generator', 'healer'].forEach(a => setEvalCardRunning(a));
       fetch('/api/eval/run', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({all: true}),
-      }).catch(err => console.warn('Eval run failed:', err));
+      }).catch(err => {
+        console.warn('Eval run failed:', err);
+        evalRunning = false;
+        enablePipelineEvalButtons();
+      });
     });
 
     document.getElementById('btn-eval-stop').addEventListener('click', () => {
@@ -462,11 +470,19 @@
   });
 
   window._runEval = function(agent) {
+    // Optimistic UI — show running state immediately, don't wait for WebSocket
+    evalRunning = true;
+    disablePipelineEvalButtons();
+    setEvalCardRunning(agent);
     fetch('/api/eval/run', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({agents: [agent]}),
-    }).catch(err => console.warn('Eval run failed:', err));
+    }).catch(err => {
+      console.warn('Eval run failed:', err);
+      evalRunning = false;
+      enablePipelineEvalButtons();
+    });
   };
 
   function setEvalCardRunning(agent) {
@@ -1577,11 +1593,19 @@
   }
 
   window._runEccEval = function(agent) {
+    // Optimistic UI — show running state immediately
+    _eccEvalRunning = true;
+    setEccEvalRunning();
+    setEvalCardRunning(agent);
     fetch('/api/eval/ecc/run', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({agents: [agent]}),
-    }).catch(err => console.warn('ECC eval run failed:', err));
+    }).catch(err => {
+      console.warn('ECC eval run failed:', err);
+      _eccEvalRunning = false;
+      setEccEvalIdle('');
+    });
   };
 
   function initEccEvalControls() {
@@ -1589,11 +1613,21 @@
     const btnStop = document.getElementById('btn-ecc-eval-stop');
     if (btnRun) {
       btnRun.addEventListener('click', () => {
+        // Optimistic UI — show all 12 cards running immediately
+        _eccEvalRunning = true;
+        setEccEvalRunning();
+        document.querySelectorAll('.ecc-eval-card').forEach(card => {
+          if (card.dataset.agent) setEvalCardRunning(card.dataset.agent);
+        });
         fetch('/api/eval/ecc/run', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({all: true}),
-        }).catch(err => console.warn('ECC eval run failed:', err));
+        }).catch(err => {
+          console.warn('ECC eval run failed:', err);
+          _eccEvalRunning = false;
+          setEccEvalIdle('');
+        });
       });
     }
     if (btnStop) {
