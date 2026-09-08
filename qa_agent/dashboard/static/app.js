@@ -1555,12 +1555,6 @@
       if (status.state === 'running') {
         _eccEvalRunning = true;
         setEccEvalRunning();
-        // Complete any cards stuck in running state that aren't the current agent
-        document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
-          if (card.dataset.agent && card.dataset.agent !== status.current_agent) {
-            setEvalCardComplete(card.dataset.agent);
-          }
-        });
         // Set current agent's card to running state
         if (status.current_agent) {
           setEvalCardRunning(status.current_agent);
@@ -1643,12 +1637,6 @@
     } else if (data.event === 'ecc_eval:agent:start') {
       _eccEvalRunning = true;
       setEccEvalRunning();
-      // Complete any other cards still in running state
-      document.querySelectorAll('.ecc-eval-card.eval-running').forEach(card => {
-        if (card.dataset.agent && card.dataset.agent !== data.agent) {
-          setEvalCardComplete(card.dataset.agent);
-        }
-      });
       if (data.agent) setEvalCardRunning(data.agent);
     } else if (data.event === 'ecc_eval:log') {
       // Parse [X/N] progress from log lines
