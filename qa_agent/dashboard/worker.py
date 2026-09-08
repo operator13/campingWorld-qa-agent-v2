@@ -67,6 +67,7 @@ MAX_RETRIES = 3
 # ---------------------------------------------------------------------------
 
 GRACEFUL_SHUTDOWN_TIMEOUT = 60  # seconds to wait for running evals
+EVAL_SUBPROCESS_TIMEOUT = 300  # 5 minutes max per eval subprocess
 
 
 @asynccontextmanager
@@ -258,22 +259,33 @@ async def _execute_pipeline_eval(agents: list[str]) -> None:
             )
             _eval_processes.append(proc)
 
-            while True:
-                line = await proc.stdout.readline()
-                if not line:
-                    break
-                decoded = line.decode("utf-8", errors="replace").rstrip()
-                if decoded:
-                    await _broadcast_to_dashboard({
-                        "event": "eval:log", "agent": agent, "line": decoded,
-                    })
-                    m = re.search(r"\[(\d+)/(\d+)\]", decoded)
-                    if m:
-                        current, total = int(m.group(1)), int(m.group(2))
-                        _eval_status["progress"][agent] = {"current": current, "total": total}
+            async def _read_output():
+                while True:
+                    line = await proc.stdout.readline()
+                    if not line:
+                        break
+                    decoded = line.decode("utf-8", errors="replace").rstrip()
+                    if decoded:
+                        await _broadcast_to_dashboard({
+                            "event": "eval:log", "agent": agent, "line": decoded,
+                        })
+                        m = re.search(r"\[(\d+)/(\d+)\]", decoded)
+                        if m:
+                            current, total = int(m.group(1)), int(m.group(2))
+                            _eval_status["progress"][agent] = {"current": current, "total": total}
 
-            # Wait for subprocess to exit — scorecard is saved to disk on exit
-            await proc.wait()
+            try:
+                await asyncio.wait_for(_read_output(), timeout=EVAL_SUBPROCESS_TIMEOUT)
+                await asyncio.wait_for(proc.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                logger.error("Pipeline eval timeout for %s (>%ds), killing", agent, EVAL_SUBPROCESS_TIMEOUT)
+                proc.terminate()
+                await _broadcast_to_dashboard({
+                    "event": "eval:agent:error", "agent": agent,
+                    "error": f"Timeout after {EVAL_SUBPROCESS_TIMEOUT}s",
+                })
+                return
+
             _eval_status["completed"].append(agent)
             await _broadcast_to_dashboard({
                 "event": "eval:agent:complete", "agent": agent,
@@ -367,17 +379,29 @@ async def _execute_ecc_eval(agents: list[str]) -> None:
             )
             _ecc_eval_processes.append(proc)
 
-            while True:
-                line = await proc.stdout.readline()
-                if not line:
-                    break
-                decoded = line.decode("utf-8", errors="replace").rstrip()
-                if decoded:
-                    await _broadcast_to_dashboard({
-                        "event": "ecc_eval:log", "agent": agent, "line": decoded,
-                    })
+            async def _read_output():
+                while True:
+                    line = await proc.stdout.readline()
+                    if not line:
+                        break
+                    decoded = line.decode("utf-8", errors="replace").rstrip()
+                    if decoded:
+                        await _broadcast_to_dashboard({
+                            "event": "ecc_eval:log", "agent": agent, "line": decoded,
+                        })
 
-            await proc.wait()
+            try:
+                await asyncio.wait_for(_read_output(), timeout=EVAL_SUBPROCESS_TIMEOUT)
+                await asyncio.wait_for(proc.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                logger.error("ECC eval timeout for %s (>%ds), killing", agent, EVAL_SUBPROCESS_TIMEOUT)
+                proc.terminate()
+                await _broadcast_to_dashboard({
+                    "event": "ecc_eval:agent:error", "agent": agent,
+                    "error": f"Timeout after {EVAL_SUBPROCESS_TIMEOUT}s",
+                })
+                return
+
             _ecc_eval_status["completed"].append(agent)
             _ecc_eval_status["last_activity"] = time.time()
             await _broadcast_to_dashboard({
