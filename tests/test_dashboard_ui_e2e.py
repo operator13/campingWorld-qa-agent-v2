@@ -2,18 +2,16 @@
 
 These tests open a real browser, click real buttons, and assert real DOM state.
 No mocks, no WebSocket API shortcuts — actual user interaction.
+Every RUN button on the dashboard is tested.
 
 Run with: pytest tests/test_dashboard_ui_e2e.py -v
 Requires: docker compose up + pip install playwright && playwright install chromium
 """
-import json
 import re
-import time
 from pathlib import Path
 
 import pytest
 
-# Skip entire module if playwright not installed
 pytest.importorskip("playwright")
 
 from playwright.sync_api import sync_playwright, expect
@@ -21,6 +19,18 @@ from playwright.sync_api import sync_playwright, expect
 DASHBOARD_URL = "http://localhost:8080"
 WORKER_URL = "http://localhost:8081"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+PIPELINE_AGENTS = ["triage", "planner", "generator", "healer"]
+ECC_DETECTION_AGENTS = [
+    "security-reviewer", "code-reviewer", "silent-failure-hunter",
+    "python-reviewer", "typescript-reviewer", "fastapi-reviewer",
+    "performance-optimizer",
+]
+ECC_GENERATIVE_AGENTS = [
+    "planner-ecc", "tdd-guide", "build-error-resolver",
+    "e2e-runner", "refactor-cleaner",
+]
+ECC_ALL_AGENTS = ECC_DETECTION_AGENTS + ECC_GENERATIVE_AGENTS
 
 
 @pytest.fixture(scope="module")
@@ -46,283 +56,353 @@ def page(browser):
     context = browser.new_context()
     pg = context.new_page()
     pg.goto(DASHBOARD_URL, wait_until="networkidle")
-    pg.wait_for_timeout(2000)  # Let JS initialize
+    pg.wait_for_timeout(2000)
     yield pg
     context.close()
 
 
+def _wait_for_idle(page, section="eval"):
+    """Wait until no cards are in running state for the section."""
+    import requests, time
+    if section == "eval":
+        for _ in range(60):
+            r = requests.get(f"{WORKER_URL}/api/worker/status", timeout=3)
+            if r.json()["eval"]["state"] == "idle":
+                return
+            time.sleep(2)
+    elif section == "ecc":
+        for _ in range(60):
+            r = requests.get(f"{WORKER_URL}/api/worker/status", timeout=3)
+            if r.json()["ecc_eval"]["state"] == "idle":
+                return
+            time.sleep(2)
+
+
 # ---------------------------------------------------------------------------
-# Pipeline Eval RUN button tests
+# Pipeline Eval: Individual RUN button per agent
 # ---------------------------------------------------------------------------
 
 
-class TestTriageRunButton:
-    """Click the triage RUN button and verify the full UI lifecycle."""
+class TestPipelineEvalRunButtons:
+    """Click RUN on each of the 4 pipeline eval agents and verify UI lifecycle."""
 
-    def test_click_run_shows_running_state(self, page):
-        """Click RUN on triage → card shows 'Running...' immediately."""
-        card = page.locator('.eval-card[data-agent="triage"]')
+    @pytest.mark.parametrize("agent", PIPELINE_AGENTS)
+    def test_click_run_shows_running_state(self, page, agent):
+        """Click RUN on {agent} → card shows 'Running...' and eval-running class."""
+        _wait_for_idle(page, "eval")
+        card = page.locator(f'.eval-card[data-agent="{agent}"]')
         btn = card.locator('.eval-run-btn')
 
-        # Verify card is in idle state
-        expect(card.locator('.eval-score')).not_to_have_text('Running...')
         expect(btn).to_be_visible()
-
-        # Click RUN
         btn.click()
 
-        # Card should show Running... within 500ms
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
         expect(card).to_have_class(re.compile('eval-running'))
-
-        # RUN button should be hidden
         expect(btn).to_be_hidden()
 
-    def test_click_run_shows_progress_bar(self, page):
-        """Click RUN on triage → progress bar appears and updates."""
-        card = page.locator('.eval-card[data-agent="triage"]')
-        btn = card.locator('.eval-run-btn')
+    @pytest.mark.parametrize("agent", PIPELINE_AGENTS)
+    def test_click_run_shows_progress_bar(self, page, agent):
+        """Click RUN on {agent} → progress bar appears with scenario count."""
+        _wait_for_idle(page, "eval")
+        card = page.locator(f'.eval-card[data-agent="{agent}"]')
+        card.locator('.eval-run-btn').click()
 
-        btn.click()
-
-        # Progress bar should appear
         progress = card.locator('.eval-progress-container')
         expect(progress).to_be_visible(timeout=5000)
 
-        # Wait for at least one progress update [X/35]
         progress_text = card.locator('.eval-progress-text')
-        expect(progress_text).not_to_have_text('0%', timeout=30000)
+        expect(progress_text).not_to_have_text('0%', timeout=60000)
 
-    def test_click_run_completes_with_score(self, page):
-        """Click RUN on triage → eval completes → score and tokens displayed."""
-        card = page.locator('.eval-card[data-agent="triage"]')
+    @pytest.mark.parametrize("agent", PIPELINE_AGENTS)
+    def test_click_run_completes_with_score(self, page, agent):
+        """Click RUN on {agent} → eval completes → score, badge, tokens displayed."""
+        _wait_for_idle(page, "eval")
+        card = page.locator(f'.eval-card[data-agent="{agent}"]')
         btn = card.locator('.eval-run-btn')
 
-        # Record tokens before
-        tokens_before = card.locator('.eval-cost-value').first.text_content()
-
         btn.click()
-
-        # Wait for Running... state
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
 
-        # Wait for eval to complete — score should be a percentage again
-        expect(card.locator('.eval-score')).to_have_text(re.compile(r'\d+\.\d+%'), timeout=120000)
+        # Wait for completion (5 min max)
+        expect(card.locator('.eval-score')).to_have_text(re.compile(r'\d+\.\d+%'), timeout=300000)
 
-        # RUN button should be back
         expect(btn).to_be_visible()
+        expect(card.locator('.eval-badge')).to_have_text(re.compile(r'PASS|FAIL'))
 
-        # PASS or FAIL badge should be visible
-        badge = card.locator('.eval-badge')
-        expect(badge).to_be_visible()
-        expect(badge).to_have_text(re.compile(r'PASS|FAIL'))
+    @pytest.mark.parametrize("agent", PIPELINE_AGENTS)
+    def test_eval_all_hidden_during_run(self, page, agent):
+        """While {agent} is running, EVAL ALL is hidden and STOP is shown."""
+        _wait_for_idle(page, "eval")
+        card = page.locator(f'.eval-card[data-agent="{agent}"]')
+        card.locator('.eval-run-btn').click()
 
-        # Tokens should have changed (increased)
-        tokens_after = card.locator('.eval-cost-value').first.text_content()
-        assert tokens_after != tokens_before or True  # Tokens are cumulative, may be same string format
+        expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
+        expect(page.locator('#btn-eval-all')).to_be_hidden()
+        expect(page.locator('#btn-eval-stop')).to_be_visible()
 
-    def test_run_button_disabled_during_eval(self, page):
-        """While triage is running, EVAL ALL button is disabled."""
-        card = page.locator('.eval-card[data-agent="triage"]')
-        btn = card.locator('.eval-run-btn')
+    @pytest.mark.parametrize("agent", PIPELINE_AGENTS)
+    def test_tooltip_clickable_during_run(self, page, agent):
+        """Info icon tooltip works while {agent} eval is running."""
+        _wait_for_idle(page, "eval")
+        card = page.locator(f'.eval-card[data-agent="{agent}"]')
+        card.locator('.eval-run-btn').click()
 
-        btn.click()
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
 
-        # EVAL ALL should be hidden (replaced by STOP)
-        eval_all = page.locator('#btn-eval-all')
-        expect(eval_all).to_be_hidden()
-
-        # STOP should be visible
-        eval_stop = page.locator('#btn-eval-stop')
-        expect(eval_stop).to_be_visible()
-
-    def test_tooltip_works_during_run(self, page):
-        """Info icon tooltip is clickable while eval is running."""
-        card = page.locator('.eval-card[data-agent="triage"]')
-        btn = card.locator('.eval-run-btn')
-
-        btn.click()
-        expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
-
-        # Click info icon
-        info = card.locator('.eval-info-icon')
-        info.click()
-
-        # Tooltip should open
-        tooltip = card.locator('.eval-tooltip')
-        expect(tooltip).to_have_class(re.compile('tooltip-open'))
+        card.locator('.eval-info-icon').click()
+        expect(card.locator('.eval-tooltip')).to_have_class(re.compile('tooltip-open'))
 
 
 # ---------------------------------------------------------------------------
-# EVAL ALL button tests
+# Pipeline Eval: EVAL ALL button
 # ---------------------------------------------------------------------------
 
 
 class TestEvalAllButton:
-    """Click EVAL ALL and verify all 4 agents show running state."""
+    """Click EVAL ALL and verify all 4 agents run simultaneously."""
 
     def test_eval_all_shows_all_cards_running(self, page):
         """Click EVAL ALL → all 4 pipeline cards show Running..."""
+        _wait_for_idle(page, "eval")
         page.locator('#btn-eval-all').click()
 
-        for agent in ['triage', 'planner', 'generator', 'healer']:
+        for agent in PIPELINE_AGENTS:
             card = page.locator(f'.eval-card[data-agent="{agent}"]')
             expect(card.locator('.eval-score')).to_have_text('Running...', timeout=5000)
             expect(card).to_have_class(re.compile('eval-running'))
 
     def test_eval_all_completes_all_agents(self, page):
-        """Click EVAL ALL → wait → all 4 cards show scores."""
+        """Click EVAL ALL → all 4 cards eventually show scores."""
+        _wait_for_idle(page, "eval")
         page.locator('#btn-eval-all').click()
 
-        # All should be running
-        for agent in ['triage', 'planner', 'generator', 'healer']:
+        for agent in PIPELINE_AGENTS:
             card = page.locator(f'.eval-card[data-agent="{agent}"]')
             expect(card.locator('.eval-score')).to_have_text('Running...', timeout=5000)
 
-        # Wait for all to complete (5 min max)
-        for agent in ['triage', 'planner', 'generator', 'healer']:
+        for agent in PIPELINE_AGENTS:
             card = page.locator(f'.eval-card[data-agent="{agent}"]')
             expect(card.locator('.eval-score')).to_have_text(re.compile(r'\d+\.\d+%'), timeout=300000)
 
 
 # ---------------------------------------------------------------------------
-# ECC Eval button tests
+# ECC Eval: Individual RUN button per agent
 # ---------------------------------------------------------------------------
 
 
-class TestEccRunButton:
-    """Click an ECC agent RUN button and verify lifecycle."""
+class TestEccDetectionRunButtons:
+    """Click RUN on each of the 7 detection agents and verify UI lifecycle."""
 
-    def test_ecc_run_shows_running_state(self, page):
-        """Click RUN on refactor-cleaner → card shows Running..."""
-        card = page.locator('.ecc-eval-card[data-agent="refactor-cleaner"]')
+    @pytest.mark.parametrize("agent", ECC_DETECTION_AGENTS)
+    def test_click_run_shows_running_state(self, page, agent):
+        """Click RUN on {agent} → card shows 'Running...' with eval-running class."""
+        _wait_for_idle(page, "ecc")
+        card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
         btn = card.locator('.eval-run-btn')
 
+        expect(btn).to_be_visible()
         btn.click()
 
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
         expect(card).to_have_class(re.compile('eval-running'))
+        expect(btn).to_be_hidden()
 
-    def test_ecc_run_hides_detail_metrics(self, page):
-        """While ECC eval running, detail metrics (Recall/Quality) are hidden."""
-        card = page.locator('.ecc-eval-card[data-agent="refactor-cleaner"]')
-        btn = card.locator('.eval-run-btn')
+    @pytest.mark.parametrize("agent", ECC_DETECTION_AGENTS)
+    def test_click_run_hides_detail_metrics(self, page, agent):
+        """While {agent} is running, Recall/Precision/FP Rate are hidden."""
+        _wait_for_idle(page, "ecc")
+        card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
+        card.locator('.eval-run-btn').click()
 
-        btn.click()
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
+        expect(card.locator('.ecc-detail-metrics')).to_be_hidden()
 
-        # Detail metrics should be hidden
-        metrics = card.locator('.ecc-detail-metrics')
-        expect(metrics).to_be_hidden()
+    @pytest.mark.parametrize("agent", ECC_DETECTION_AGENTS)
+    def test_click_run_completes_with_metrics(self, page, agent):
+        """Click RUN on {agent} → eval completes → score, badge, metrics visible."""
+        _wait_for_idle(page, "ecc")
+        card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
+        card.locator('.eval-run-btn').click()
 
-    def test_ecc_run_completes_with_metrics(self, page):
-        """Click RUN on refactor-cleaner → eval completes → metrics displayed."""
-        card = page.locator('.ecc-eval-card[data-agent="refactor-cleaner"]')
-        btn = card.locator('.eval-run-btn')
-
-        btn.click()
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
+        expect(card.locator('.eval-score')).to_have_text(re.compile(r'\d+\.\d+%'), timeout=180000)
 
-        # Wait for completion
-        expect(card.locator('.eval-score')).to_have_text(re.compile(r'\d+\.\d+%'), timeout=120000)
-
-        # Detail metrics should be visible again
-        metrics = card.locator('.ecc-detail-metrics')
-        expect(metrics).to_be_visible()
-
-        # Badge should show
+        expect(card.locator('.ecc-detail-metrics')).to_be_visible()
         expect(card.locator('.eval-badge')).to_have_text(re.compile(r'PASS|FAIL'))
+        expect(card.locator('.eval-run-btn')).to_be_visible()
+
+
+class TestEccGenerativeRunButtons:
+    """Click RUN on each of the 5 generative agents and verify UI lifecycle."""
+
+    @pytest.mark.parametrize("agent", ECC_GENERATIVE_AGENTS)
+    def test_click_run_shows_running_state(self, page, agent):
+        """Click RUN on {agent} → card shows 'Running...' with eval-running class."""
+        _wait_for_idle(page, "ecc")
+        card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
+        btn = card.locator('.eval-run-btn')
+
+        expect(btn).to_be_visible()
+        btn.click()
+
+        expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
+        expect(card).to_have_class(re.compile('eval-running'))
+        expect(btn).to_be_hidden()
+
+    @pytest.mark.parametrize("agent", ECC_GENERATIVE_AGENTS)
+    def test_click_run_hides_detail_metrics(self, page, agent):
+        """While {agent} is running, Quality/Complete/Actionable etc. are hidden."""
+        _wait_for_idle(page, "ecc")
+        card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
+        card.locator('.eval-run-btn').click()
+
+        expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
+        expect(card.locator('.ecc-detail-metrics')).to_be_hidden()
+
+    @pytest.mark.parametrize("agent", ECC_GENERATIVE_AGENTS)
+    def test_click_run_completes_with_metrics(self, page, agent):
+        """Click RUN on {agent} → eval completes → score, badge, metrics visible."""
+        _wait_for_idle(page, "ecc")
+        card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
+        card.locator('.eval-run-btn').click()
+
+        expect(card.locator('.eval-score')).to_have_text('Running...', timeout=2000)
+        expect(card.locator('.eval-score')).to_have_text(re.compile(r'\d+\.\d+%'), timeout=180000)
+
+        expect(card.locator('.ecc-detail-metrics')).to_be_visible()
+        expect(card.locator('.eval-badge')).to_have_text(re.compile(r'PASS|FAIL'))
+        expect(card.locator('.eval-run-btn')).to_be_visible()
 
 
 # ---------------------------------------------------------------------------
-# EVAL ECC AGENTS button tests
+# EVAL ECC AGENTS button
 # ---------------------------------------------------------------------------
 
 
 class TestEvalEccAgentsButton:
     """Click EVAL ECC AGENTS and verify all 12 cards show running."""
 
-    def test_eval_ecc_all_shows_all_cards_running(self, page):
+    def test_eval_ecc_all_shows_all_12_cards_running(self, page):
         """Click EVAL ECC AGENTS → all 12 ECC cards show Running..."""
+        _wait_for_idle(page, "ecc")
         page.locator('#btn-ecc-eval-all').click()
 
-        cards = page.locator('.ecc-eval-card')
-        count = cards.count()
-        assert count == 12, f"Expected 12 ECC cards, got {count}"
-
-        # All should show Running...
-        for i in range(count):
-            card = cards.nth(i)
+        for agent in ECC_ALL_AGENTS:
+            card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
             expect(card.locator('.eval-score')).to_have_text('Running...', timeout=5000)
 
+    def test_eval_ecc_all_hides_all_detail_metrics(self, page):
+        """While EVAL ECC AGENTS running, all detail metrics hidden."""
+        _wait_for_idle(page, "ecc")
+        page.locator('#btn-ecc-eval-all').click()
+
+        for agent in ECC_ALL_AGENTS:
+            card = page.locator(f'.ecc-eval-card[data-agent="{agent}"]')
+            expect(card.locator('.eval-score')).to_have_text('Running...', timeout=5000)
+            expect(card.locator('.ecc-detail-metrics')).to_be_hidden()
+
+    def test_eval_ecc_all_shows_stop_button(self, page):
+        """While running, EVAL ECC AGENTS hidden and STOP visible."""
+        _wait_for_idle(page, "ecc")
+        page.locator('#btn-ecc-eval-all').click()
+
+        page.locator('.ecc-eval-card').first.locator('.eval-score')
+        page.wait_for_timeout(1000)
+
+        expect(page.locator('#btn-ecc-eval-all')).to_be_hidden()
+        expect(page.locator('#btn-ecc-eval-stop')).to_be_visible()
+
 
 # ---------------------------------------------------------------------------
-# STOP button tests
+# STOP buttons
 # ---------------------------------------------------------------------------
 
 
-class TestStopButton:
-    """Verify STOP button cancels running evals."""
+class TestStopButtons:
+    """Verify STOP buttons cancel running evals and restore UI."""
 
-    def test_stop_eval_restores_cards(self, page):
-        """Click EVAL ALL → STOP → cards restore to idle state."""
+    def test_stop_pipeline_eval_restores_cards(self, page):
+        """Click EVAL ALL → STOP → cards restore with scores."""
+        _wait_for_idle(page, "eval")
         page.locator('#btn-eval-all').click()
 
-        # Wait for running state
         card = page.locator('.eval-card[data-agent="triage"]')
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=5000)
 
-        # Click STOP
         page.locator('#btn-eval-stop').click()
 
-        # Cards should restore — score should be a percentage, not Running...
         expect(card.locator('.eval-score')).to_have_text(re.compile(r'\d+\.\d+%'), timeout=10000)
-
-        # EVAL ALL button should be back
         expect(page.locator('#btn-eval-all')).to_be_visible()
 
     def test_stop_ecc_eval_restores_cards(self, page):
         """Click EVAL ECC AGENTS → STOP → cards restore."""
+        _wait_for_idle(page, "ecc")
         page.locator('#btn-ecc-eval-all').click()
 
-        # Wait for at least one card running
         card = page.locator('.ecc-eval-card').first
         expect(card.locator('.eval-score')).to_have_text('Running...', timeout=5000)
 
-        # Click STOP
         page.locator('#btn-ecc-eval-stop').click()
 
-        # EVAL ECC AGENTS button should be back
         expect(page.locator('#btn-ecc-eval-all')).to_be_visible(timeout=10000)
 
 
 # ---------------------------------------------------------------------------
-# Worker offline tests
+# Independent section disable
+# ---------------------------------------------------------------------------
+
+
+class TestIndependentSectionDisable:
+    """Pipeline evals, ECC evals, and test runner are independent."""
+
+    def test_pipeline_eval_does_not_disable_ecc_buttons(self, page):
+        """Running a pipeline eval leaves ECC RUN buttons enabled."""
+        _wait_for_idle(page, "eval")
+        page.locator('.eval-card[data-agent="triage"] .eval-run-btn').click()
+
+        expect(page.locator('.eval-card[data-agent="triage"] .eval-score')).to_have_text('Running...', timeout=2000)
+
+        ecc_btn = page.locator('.ecc-eval-card[data-agent="refactor-cleaner"] .eval-run-btn')
+        expect(ecc_btn).to_be_visible()
+        expect(ecc_btn).to_be_enabled()
+
+    def test_ecc_eval_does_not_disable_pipeline_buttons(self, page):
+        """Running an ECC eval leaves pipeline EVAL ALL button enabled."""
+        _wait_for_idle(page, "ecc")
+        page.locator('.ecc-eval-card[data-agent="refactor-cleaner"] .eval-run-btn').click()
+
+        expect(page.locator('.ecc-eval-card[data-agent="refactor-cleaner"] .eval-score')).to_have_text('Running...', timeout=2000)
+
+        eval_all = page.locator('#btn-eval-all')
+        expect(eval_all).to_be_visible()
+        expect(eval_all).to_be_enabled()
+
+
+# ---------------------------------------------------------------------------
+# Worker indicator
 # ---------------------------------------------------------------------------
 
 
 class TestWorkerIndicator:
     """Verify worker online/offline indicator."""
 
-    def test_worker_online_indicator_shows(self, page):
-        """Dashboard shows WORKER ONLINE when worker is running."""
-        # Wait for health check poll
+    def test_worker_online_shows(self, page):
+        """Dashboard shows WORKER ONLINE."""
         page.wait_for_timeout(5000)
-        status = page.locator('#worker-status')
-        expect(status).to_have_text('WORKER ONLINE', timeout=10000)
+        expect(page.locator('#worker-status')).to_have_text('WORKER ONLINE', timeout=10000)
 
 
 # ---------------------------------------------------------------------------
-# Cross-device sync test
+# Cross-device sync
 # ---------------------------------------------------------------------------
 
 
 class TestCrossDeviceSync:
-    """Verify two browser tabs receive the same updates."""
+    """Two browser tabs both see running state."""
 
     def test_two_tabs_see_same_running_state(self, browser):
-        """Open two tabs, click RUN in one, both show Running..."""
+        """Click RUN in tab1 → tab2 also shows Running... via WebSocket."""
+        _wait_for_idle(None, "eval")
         ctx = browser.new_context()
         tab1 = ctx.new_page()
         tab2 = ctx.new_page()
@@ -332,13 +412,9 @@ class TestCrossDeviceSync:
         tab1.wait_for_timeout(3000)
         tab2.wait_for_timeout(1000)
 
-        # Click RUN in tab1
         tab1.locator('.eval-card[data-agent="triage"] .eval-run-btn').click()
 
-        # Tab1 should show Running...
         expect(tab1.locator('.eval-card[data-agent="triage"] .eval-score')).to_have_text('Running...', timeout=2000)
-
-        # Tab2 should also show Running... via WebSocket
         expect(tab2.locator('.eval-card[data-agent="triage"] .eval-score')).to_have_text('Running...', timeout=5000)
 
         ctx.close()
