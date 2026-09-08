@@ -470,8 +470,9 @@
   });
 
   window._runEval = function(agent) {
-    // Optimistic UI — show running state immediately, don't wait for WebSocket
+    // Show running state immediately — set flag BEFORE fetch so fetchEvalSummary guard works
     evalRunning = true;
+    Object.keys(_evalProgressMax).forEach(k => delete _evalProgressMax[k]);
     disablePipelineEvalButtons();
     setEvalCardRunning(agent);
     fetch('/api/eval/run', {
@@ -482,6 +483,8 @@
       console.warn('Eval run failed:', err);
       evalRunning = false;
       enablePipelineEvalButtons();
+      const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
+      if (card) { card.classList.remove('eval-running'); _restoreEvalCard(card); }
     });
   };
 
@@ -936,14 +939,13 @@
           case 'eval:complete':
             evalRunning = false;
             // Restore any cards still stuck in running state (didn't get agent:complete)
-            // Use direct restore — don't show 100% since these may have failed silently
             document.querySelectorAll('.eval-card.eval-running').forEach(card => {
               card.classList.remove('eval-running');
               _restoreEvalCard(card);
             });
             enablePipelineEvalButtons();
-            // Fetch new data immediately so cards show updated metrics
-            fetchEvalSummary();
+            // Refresh each agent card individually (don't re-render entire grid)
+            ['triage', 'planner', 'generator', 'healer'].forEach(a => _refreshSingleEvalCard(a));
             fetchAuditSummary();
             break;
           case 'eval:updated':
