@@ -548,21 +548,8 @@ async def eval_run_status():
 
 @app.post("/api/eval/stop", dependencies=[Depends(require_auth)])
 async def stop_eval():
-    global _eval_status
-    if _eval_status["state"] == "running":
-        _eval_status["state"] = "stopped"
-        cancelled = list(_eval_status["queued"])
-        _eval_status["queued"] = []
-        await broadcast_to_dashboard(json.dumps({
-            "event": "eval:complete",
-            "completed": len(_eval_status["completed"]),
-            "cancelled": cancelled,
-        }))
-        _eval_status["state"] = "idle"
-        _eval_status["progress"] = {}
-        _eval_status["current_agent"] = None
-        return JSONResponse({"status": "stopped", "cancelled": cancelled})
-    return JSONResponse({"status": "not_running"})
+    """Proxy eval stop to worker to kill running subprocesses."""
+    return await _proxy_to_worker("POST", "/api/worker/eval/stop")
 
 
 @app.get("/api/eval/{agent}/latest")
@@ -806,11 +793,8 @@ async def ecc_eval_status() -> JSONResponse:
 
 @app.post("/api/eval/ecc/stop", dependencies=[Depends(require_auth)])
 async def stop_ecc_eval():
-    global _ecc_eval_status
-    _ecc_eval_status["state"] = "idle"
-    _ecc_eval_status["current_agent"] = None
-    await broadcast_to_dashboard(json.dumps({"event": "ecc_eval:complete", "completed": len(_ecc_eval_status.get("completed", [])), "total": 0}))
-    return JSONResponse({"status": "stopped"})
+    """Proxy ECC eval stop to worker to kill running subprocesses."""
+    return await _proxy_to_worker("POST", "/api/worker/eval/ecc/stop")
 
 
 # ---------------------------------------------------------------------------

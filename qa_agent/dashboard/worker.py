@@ -115,6 +115,10 @@ _ecc_eval_status: dict[str, Any] = {
 _test_process: asyncio.subprocess.Process | None = None
 _test_run_status: dict[str, Any] = {"state": "idle", "run_id": None}
 
+# Track running eval subprocesses for cancellation
+_eval_processes: list[asyncio.subprocess.Process] = []
+_ecc_eval_processes: list[asyncio.subprocess.Process] = []
+
 # Graceful shutdown
 _shutdown_event = asyncio.Event()
 _startup_time = time.time()
@@ -236,6 +240,8 @@ async def _execute_pipeline_eval(agents: list[str]) -> None:
 
     async def _run_one(agent: str) -> None:
         try:
+            if _eval_status["state"] != "running":
+                return  # Stopped
             cmd = [
                 sys.executable, "-u", "-c",
                 f"import os; os.environ['EVAL_DASHBOARD_SUBPROCESS']='1'; "
@@ -250,6 +256,7 @@ async def _execute_pipeline_eval(agents: list[str]) -> None:
                 stderr=asyncio.subprocess.STDOUT,
                 cwd=str(PROJECT_ROOT),
             )
+            _eval_processes.append(proc)
 
             agent_completed = False
             while True:
@@ -291,6 +298,7 @@ async def _execute_pipeline_eval(agents: list[str]) -> None:
 
     await asyncio.gather(*[_run_one(a) for a in agents])
 
+    _eval_processes.clear()
     _eval_status["state"] = "idle"
     _eval_status["progress"] = {}
     _eval_status["current_agent"] = None
@@ -352,6 +360,8 @@ async def _execute_ecc_eval(agents: list[str]) -> None:
 
     async def _run_one(agent: str) -> None:
         try:
+            if _ecc_eval_status["state"] != "running":
+                return  # Stopped
             cmd = [
                 sys.executable, "-u", "-c",
                 f"from dotenv import load_dotenv; load_dotenv('.env'); "
@@ -366,6 +376,7 @@ async def _execute_ecc_eval(agents: list[str]) -> None:
                 stderr=asyncio.subprocess.STDOUT,
                 cwd=str(PROJECT_ROOT),
             )
+            _ecc_eval_processes.append(proc)
 
             while True:
                 line = await proc.stdout.readline()
@@ -392,6 +403,7 @@ async def _execute_ecc_eval(agents: list[str]) -> None:
 
     await asyncio.gather(*[_run_one(a) for a in agents])
 
+    _ecc_eval_processes.clear()
     _ecc_eval_status["state"] = "idle"
     _ecc_eval_status["current_agent"] = None
 
@@ -400,6 +412,52 @@ async def _execute_ecc_eval(agents: list[str]) -> None:
         "completed": len(_ecc_eval_status["completed"]),
         "total": len(agents),
     })
+
+
+# ---------------------------------------------------------------------------
+# Eval Stop endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/worker/eval/stop")
+async def stop_pipeline_eval() -> JSONResponse:
+    """Kill all running pipeline eval subprocesses."""
+    global _eval_status
+    killed = 0
+    for proc in _eval_processes:
+        if proc.returncode is None:
+            proc.terminate()
+            killed += 1
+    _eval_processes.clear()
+    _eval_status["state"] = "idle"
+    _eval_status["progress"] = {}
+    _eval_status["current_agent"] = None
+    await _broadcast_to_dashboard({
+        "event": "eval:complete",
+        "completed": len(_eval_status.get("completed", [])),
+        "failed": 0,
+    })
+    return JSONResponse({"status": "stopped", "killed": killed})
+
+
+@app.post("/api/worker/eval/ecc/stop")
+async def stop_ecc_eval() -> JSONResponse:
+    """Kill all running ECC eval subprocesses."""
+    global _ecc_eval_status
+    killed = 0
+    for proc in _ecc_eval_processes:
+        if proc.returncode is None:
+            proc.terminate()
+            killed += 1
+    _ecc_eval_processes.clear()
+    _ecc_eval_status["state"] = "idle"
+    _ecc_eval_status["current_agent"] = None
+    await _broadcast_to_dashboard({
+        "event": "ecc_eval:complete",
+        "completed": len(_ecc_eval_status.get("completed", [])),
+        "total": 0,
+    })
+    return JSONResponse({"status": "stopped", "killed": killed})
 
 
 # ---------------------------------------------------------------------------

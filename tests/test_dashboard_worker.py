@@ -156,18 +156,17 @@ def test_ecc_broadcast_endpoint_still_works(client):
 
 def test_eval_stop_endpoint(client):
     """POST /api/eval/stop proxies to worker."""
-    mock_resp = AsyncMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {"status": "stopped"}
-
-    with patch("qa_agent.dashboard.server._check_worker_health", new_callable=AsyncMock, return_value=True), \
-         patch("qa_agent.dashboard.server.httpx.AsyncClient") as MockClient:
-        mock_instance = AsyncMock()
-        mock_instance.post = AsyncMock(return_value=mock_resp)
-        MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
-        MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
-
-        # eval/stop is still handled locally (not proxied)
+    with patch("qa_agent.dashboard.server._proxy_to_worker",
+               side_effect=_mock_proxy_response(200, {"status": "stopped", "killed": 0})):
         resp = client.post("/api/eval/stop")
-    # This should still work since eval/stop is still local
     assert resp.status_code == 200
+    assert resp.json()["status"] == "stopped"
+
+
+def test_ecc_eval_stop_endpoint(client):
+    """POST /api/eval/ecc/stop proxies to worker."""
+    with patch("qa_agent.dashboard.server._proxy_to_worker",
+               side_effect=_mock_proxy_response(200, {"status": "stopped", "killed": 0})):
+        resp = client.post("/api/eval/ecc/stop")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "stopped"
