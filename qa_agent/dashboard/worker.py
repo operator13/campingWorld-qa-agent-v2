@@ -258,7 +258,6 @@ async def _execute_pipeline_eval(agents: list[str]) -> None:
             )
             _eval_processes.append(proc)
 
-            agent_completed = False
             while True:
                 line = await proc.stdout.readline()
                 if not line:
@@ -272,23 +271,13 @@ async def _execute_pipeline_eval(agents: list[str]) -> None:
                     if m:
                         current, total = int(m.group(1)), int(m.group(2))
                         _eval_status["progress"][agent] = {"current": current, "total": total}
-                        await _broadcast_to_dashboard({
-                            "event": "eval:log", "agent": agent,
-                            "current": current, "total": total,
-                        })
-                        if current >= total and not agent_completed:
-                            agent_completed = True
-                            _eval_status["completed"].append(agent)
-                            await _broadcast_to_dashboard({
-                                "event": "eval:agent:complete", "agent": agent,
-                            })
 
+            # Wait for subprocess to exit — scorecard is saved to disk on exit
             await proc.wait()
-            if not agent_completed:
-                _eval_status["completed"].append(agent)
-                await _broadcast_to_dashboard({
-                    "event": "eval:agent:complete", "agent": agent,
-                })
+            _eval_status["completed"].append(agent)
+            await _broadcast_to_dashboard({
+                "event": "eval:agent:complete", "agent": agent,
+            })
 
         except Exception as e:
             logger.error("Pipeline eval error for %s: %s", agent, e)

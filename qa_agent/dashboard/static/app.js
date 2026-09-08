@@ -945,12 +945,12 @@
             break;
           case 'eval:complete':
             evalRunning = false;
+            // Only restore cards that never got agent:complete (stuck cards)
             document.querySelectorAll('.eval-card.eval-running').forEach(card => {
               card.classList.remove('eval-running');
               _restoreEvalCard(card);
             });
             enablePipelineEvalButtons();
-            ['triage', 'planner', 'generator', 'healer'].forEach(a => _refreshSingleEvalCard(a));
             fetchAuditSummary();
             break;
           case 'eval:updated':
