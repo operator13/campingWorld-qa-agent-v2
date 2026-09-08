@@ -548,28 +548,35 @@
     const card = document.querySelector(`.eval-card[data-agent="${agent}"]`);
     if (!card) return;
 
-    // Snap progress bar to 100%
+    // Snap progress bar to 100% and let browser render it
     const fill = card.querySelector('.eval-progress-fill');
     const progText = card.querySelector('.eval-progress-text');
     if (fill) fill.style.width = '100%';
     if (progText) progText.textContent = '100%';
 
-    // Restore card immediately — no setTimeout to avoid race conditions
-    card.classList.remove('eval-running');
-    card.classList.add('eval-complete-flash');
-    _restoreEvalCard(card);
-    setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
-
-    // Fetch and apply fresh data so score/tokens/cost update atomically
+    // Pre-fetch fresh data while 100% is visible
     const isEcc = card.classList.contains('ecc-eval-card');
     const fetchUrl = isEcc ? '/api/eval/ecc/scores' : '/api/eval/summary';
-    fetch(fetchUrl).then(r => r.json()).then(data => {
-      if (isEcc) {
-        _applyEccCardData(card, agent, data[agent] || {});
-      } else {
-        _applyEvalCardData(card, agent, data[agent] || {});
-      }
-    }).catch(() => {});
+    const dataPromise = fetch(fetchUrl).then(r => r.json());
+
+    // Wait for browser to paint 100%, then restore card with fresh data
+    // requestAnimationFrame fires before next paint, second rAF fires after paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        card.classList.remove('eval-running');
+        card.classList.add('eval-complete-flash');
+        _restoreEvalCard(card);
+        setTimeout(() => card.classList.remove('eval-complete-flash'), 2000);
+
+        dataPromise.then(data => {
+          if (isEcc) {
+            _applyEccCardData(card, agent, data[agent] || {});
+          } else {
+            _applyEvalCardData(card, agent, data[agent] || {});
+          }
+        }).catch(() => {});
+      });
+    });
   }
 
   function _applyEvalCardData(card, agent, data) {
