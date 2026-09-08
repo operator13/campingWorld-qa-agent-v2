@@ -371,6 +371,12 @@ async def run_ecc_eval(
     if not agent_list:
         return {"error": "No valid agents specified"}
 
+    # Start audit trail
+    import time as _time
+    from qa_agent.audit import AuditStore
+    audit_run_id = f"ecc-eval-{int(_time.time())}"
+    AuditStore.start_run(audit_run_id)
+
     _notify_dashboard("ecc_eval:start", agents=agent_list)
 
     # Run all agents in parallel
@@ -396,6 +402,34 @@ async def run_ecc_eval(
     }
 
     _notify_dashboard("ecc_eval:complete", completed=len(results), total=len(agent_list))
+
+    # Write audit trail with per-agent token/cost data
+    total_tokens = 0
+    total_cost = 0.0
+    for agent_name, result in results.items():
+        tokens = result.get("token_estimate", 0) or 0
+        total_tokens += tokens
+        AuditStore._current_run_entries.append({
+            "node": f"ecc_eval:{agent_name}",
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "duration_ms": 0,
+            "model": None,
+            "input_tokens": int(tokens * 0.7),
+            "output_tokens": int(tokens * 0.3),
+            "cost_usd": 0.0,
+            "errors": [] if result.get("passed") is not False else [],
+            "input_state": {"agent": agent_name, "type": "ecc_eval"},
+            "parsed_output": {
+                "passed": result.get("passed"),
+                "score": result.get("scores", {}).get("recall") or result.get("scores", {}).get("quality"),
+                "token_estimate": tokens,
+            },
+        })
+    # Set run-level totals for the JSON output
+    AuditStore._run_total_input_tokens = int(total_tokens * 0.7)
+    AuditStore._run_total_output_tokens = int(total_tokens * 0.3)
+    AuditStore.end_run()
+
     return summary
 
 

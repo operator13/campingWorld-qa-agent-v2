@@ -65,6 +65,47 @@ def _reset_eval_token_tracking() -> None:
     AuditStore._run_total_cost = 0.0
 
 
+def _start_eval_audit(agent: str) -> str:
+    """Start an audit trail run for an eval. Returns the run_id."""
+    from qa_agent.audit import AuditStore
+    run_id = f"eval-{agent}-{int(time.time())}"
+    AuditStore.start_run(run_id)
+    return run_id
+
+
+def _end_eval_audit(agent: str, scorecard: dict[str, Any]) -> None:
+    """End the audit trail run, writing the JSON audit file.
+
+    Adds a synthetic node entry so the audit JSON has token/cost data.
+    """
+    from qa_agent.audit import AuditStore
+
+    token_usage = scorecard.get("token_usage", {})
+    passed = scorecard.get("passed")
+    score_key = f"{agent}_accuracy"
+    score_val = scorecard.get(score_key, {})
+    score = score_val.get("score") if isinstance(score_val, dict) else None
+
+    AuditStore._current_run_entries.append({
+        "node": f"eval:{agent}",
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "duration_ms": 0,
+        "model": None,
+        "input_tokens": token_usage.get("input_tokens", 0),
+        "output_tokens": token_usage.get("output_tokens", 0),
+        "cost_usd": token_usage.get("cost_usd", 0.0),
+        "errors": [] if passed is not False else [f"score={score}"],
+        "input_state": {"agent": agent, "type": "pipeline_eval"},
+        "parsed_output": {
+            "score": score,
+            "passed": passed,
+            "total_tokens": token_usage.get("total_tokens", 0),
+        },
+    })
+
+    AuditStore.end_run()
+
+
 def _git_commit_and_push_reports(agent: str, scorecard: dict) -> None:
     """Auto-commit and push eval reports after each eval run."""
     try:
@@ -243,6 +284,7 @@ async def run_triage_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _start_eval_audit("triage")
     _notify_dashboard_agent_start("triage")
 
     # Load scenarios
@@ -357,6 +399,9 @@ async def run_triage_eval(
     report_path.write_text(report_md)
     logger.info("Report written to %s", report_path)
 
+    # Write audit trail entry
+    _end_eval_audit("triage", scorecard)
+
     _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
 
     return scorecard
@@ -424,6 +469,7 @@ async def run_planner_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _start_eval_audit("planner")
     _notify_dashboard_agent_start("planner")
 
     # Load scenarios
@@ -594,6 +640,7 @@ async def run_planner_eval(
     logger.info("Report written to %s", report_path)
 
     _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
+    _end_eval_audit("planner", scorecard)
 
     return scorecard
 
@@ -691,6 +738,7 @@ async def run_healer_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _start_eval_audit("healer")
     _notify_dashboard_agent_start("healer")
 
     skipped = 0
@@ -927,6 +975,7 @@ async def run_healer_eval(
     logger.info("Report written to %s", healer_report_path)
 
     _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
+    _end_eval_audit("healer", scorecard)
 
     return scorecard
 
@@ -1020,6 +1069,7 @@ async def run_generator_eval(
         The full scorecard dict.
     """
     _reset_eval_token_tracking()
+    _start_eval_audit("generator")
     _notify_dashboard_agent_start("generator")
 
     skipped = 0
@@ -1152,6 +1202,7 @@ async def run_generator_eval(
     logger.info("Generator report written to %s", report_path)
 
     _git_commit_and_push_reports(scorecard.get("agent", "unknown"), scorecard)
+    _end_eval_audit("generator", scorecard)
 
     return scorecard
 
