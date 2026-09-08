@@ -491,6 +491,8 @@ body::before {
   font-size: 0.6rem;
   font-weight: 700;
   padding: 6px 16px;
+  min-width: 180px;
+  text-align: center;
   background: transparent;
   color: var(--neon-cyan);
   border: 1px solid var(--neon-cyan);
