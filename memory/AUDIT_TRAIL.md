@@ -2393,3 +2393,498 @@
 - **Errors:** 0
 
 ---
+
+## Run test-audit-1788829260 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 500 in / 200 out
+- **Cost:** $0.0015
+- **Nodes:** test-node
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-fields-1788829260 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run test-multi-1788829260 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 600 in / 300 out
+- **Cost:** $0.0060
+- **Nodes:** node-0, node-1, node-2
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-audit-1788829311 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 500 in / 200 out
+- **Cost:** $0.0015
+- **Nodes:** test-node
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-fields-1788829311 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run test-multi-1788829311 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 600 in / 300 out
+- **Cost:** $0.0060
+- **Nodes:** node-0, node-1, node-2
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788829311 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788829311 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 50000 in / 20000 out
+- **Cost:** $0.3500
+- **Nodes:** eval:triage
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run eval-healer-1788829311 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 10000 out
+- **Cost:** $0.2000
+- **Nodes:** eval:healer
+- **Outcome:** error
+- **Errors:** 1
+
+---
+
+## Run ecc-eval-1788829311 — 2026-09-08 01:01
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 9000 out
+- **Cost:** $0.0000
+- **Nodes:** ecc_eval:security-reviewer, ecc_eval:code-reviewer, ecc_eval:python-reviewer
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run test-audit-1788829452 — 2026-09-08 01:04
+
+- **Duration:** 0ms
+- **Tokens:** 500 in / 200 out
+- **Cost:** $0.0015
+- **Nodes:** test-node
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-fields-1788829452 — 2026-09-08 01:04
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run test-multi-1788829452 — 2026-09-08 01:04
+
+- **Duration:** 0ms
+- **Tokens:** 600 in / 300 out
+- **Cost:** $0.0060
+- **Nodes:** node-0, node-1, node-2
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788829452 — 2026-09-08 01:04
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788829452 — 2026-09-08 01:04
+
+- **Duration:** 0ms
+- **Tokens:** 50000 in / 20000 out
+- **Cost:** $0.3500
+- **Nodes:** eval:triage
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run eval-healer-1788829452 — 2026-09-08 01:04
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 10000 out
+- **Cost:** $0.2000
+- **Nodes:** eval:healer
+- **Outcome:** error
+- **Errors:** 1
+
+---
+
+## Run ecc-eval-1788829452 — 2026-09-08 01:04
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 9000 out
+- **Cost:** $0.0000
+- **Nodes:** ecc_eval:security-reviewer, ecc_eval:code-reviewer, ecc_eval:python-reviewer
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run test-audit-1788829752 — 2026-09-08 01:09
+
+- **Duration:** 0ms
+- **Tokens:** 500 in / 200 out
+- **Cost:** $0.0015
+- **Nodes:** test-node
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-fields-1788829752 — 2026-09-08 01:09
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run test-multi-1788829752 — 2026-09-08 01:09
+
+- **Duration:** 0ms
+- **Tokens:** 600 in / 300 out
+- **Cost:** $0.0060
+- **Nodes:** node-0, node-1, node-2
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788829752 — 2026-09-08 01:09
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788829752 — 2026-09-08 01:09
+
+- **Duration:** 0ms
+- **Tokens:** 50000 in / 20000 out
+- **Cost:** $0.3500
+- **Nodes:** eval:triage
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run eval-healer-1788829752 — 2026-09-08 01:09
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 10000 out
+- **Cost:** $0.2000
+- **Nodes:** eval:healer
+- **Outcome:** error
+- **Errors:** 1
+
+---
+
+## Run ecc-eval-1788829752 — 2026-09-08 01:09
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 9000 out
+- **Cost:** $0.0000
+- **Nodes:** ecc_eval:security-reviewer, ecc_eval:code-reviewer, ecc_eval:python-reviewer
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run test-audit-1788830379 — 2026-09-08 01:19
+
+- **Duration:** 0ms
+- **Tokens:** 500 in / 200 out
+- **Cost:** $0.0015
+- **Nodes:** test-node
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-fields-1788830379 — 2026-09-08 01:19
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run test-multi-1788830379 — 2026-09-08 01:19
+
+- **Duration:** 0ms
+- **Tokens:** 600 in / 300 out
+- **Cost:** $0.0060
+- **Nodes:** node-0, node-1, node-2
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788830379 — 2026-09-08 01:19
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788830379 — 2026-09-08 01:19
+
+- **Duration:** 0ms
+- **Tokens:** 50000 in / 20000 out
+- **Cost:** $0.3500
+- **Nodes:** eval:triage
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run eval-healer-1788830379 — 2026-09-08 01:19
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 10000 out
+- **Cost:** $0.2000
+- **Nodes:** eval:healer
+- **Outcome:** error
+- **Errors:** 1
+
+---
+
+## Run ecc-eval-1788830379 — 2026-09-08 01:19
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 9000 out
+- **Cost:** $0.0000
+- **Nodes:** ecc_eval:security-reviewer, ecc_eval:code-reviewer, ecc_eval:python-reviewer
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run test-audit-1788836472 — 2026-09-08 03:01
+
+- **Duration:** 0ms
+- **Tokens:** 500 in / 200 out
+- **Cost:** $0.0015
+- **Nodes:** test-node
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-fields-1788836472 — 2026-09-08 03:01
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run test-multi-1788836472 — 2026-09-08 03:01
+
+- **Duration:** 0ms
+- **Tokens:** 600 in / 300 out
+- **Cost:** $0.0060
+- **Nodes:** node-0, node-1, node-2
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788836472 — 2026-09-08 03:01
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788836472 — 2026-09-08 03:01
+
+- **Duration:** 0ms
+- **Tokens:** 50000 in / 20000 out
+- **Cost:** $0.3500
+- **Nodes:** eval:triage
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run eval-healer-1788836472 — 2026-09-08 03:01
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 10000 out
+- **Cost:** $0.2000
+- **Nodes:** eval:healer
+- **Outcome:** error
+- **Errors:** 1
+
+---
+
+## Run ecc-eval-1788836472 — 2026-09-08 03:01
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 9000 out
+- **Cost:** $0.0000
+- **Nodes:** ecc_eval:security-reviewer, ecc_eval:code-reviewer, ecc_eval:python-reviewer
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run test-audit-1788836545 — 2026-09-08 03:02
+
+- **Duration:** 0ms
+- **Tokens:** 500 in / 200 out
+- **Cost:** $0.0015
+- **Nodes:** test-node
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run test-fields-1788836545 — 2026-09-08 03:02
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run test-multi-1788836545 — 2026-09-08 03:02
+
+- **Duration:** 0ms
+- **Tokens:** 600 in / 300 out
+- **Cost:** $0.0060
+- **Nodes:** node-0, node-1, node-2
+- **Outcome:** completed
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788836545 — 2026-09-08 03:02
+
+- **Duration:** 0ms
+- **Tokens:** 0 in / 0 out
+- **Cost:** $0.0000
+- **Nodes:** 
+- **Outcome:** unknown
+- **Errors:** 0
+
+---
+
+## Run eval-triage-1788836545 — 2026-09-08 03:02
+
+- **Duration:** 0ms
+- **Tokens:** 50000 in / 20000 out
+- **Cost:** $0.3500
+- **Nodes:** eval:triage
+- **Outcome:** passed
+- **Errors:** 0
+
+---
+
+## Run eval-healer-1788836545 — 2026-09-08 03:02
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 10000 out
+- **Cost:** $0.2000
+- **Nodes:** eval:healer
+- **Outcome:** error
+- **Errors:** 1
+
+---
+
+## Run ecc-eval-1788836545 — 2026-09-08 03:02
+
+- **Duration:** 0ms
+- **Tokens:** 30000 in / 9000 out
+- **Cost:** $0.0000
+- **Nodes:** ecc_eval:security-reviewer, ecc_eval:code-reviewer, ecc_eval:python-reviewer
+- **Outcome:** passed
+- **Errors:** 0
+
+---

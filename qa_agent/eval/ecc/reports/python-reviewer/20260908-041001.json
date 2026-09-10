@@ -1,0 +1,91 @@
+{
+  "eval_run_id": "ecc-eval-20260908-041001",
+  "agent": "python-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-08T04:10:01.430425+00:00",
+  "scenarios_total": 12,
+  "scores": {
+    "recall": 1.0,
+    "precision": 0.2174,
+    "false_positive_rate": 0.0,
+    "total_planted": 5,
+    "total_found": 5,
+    "total_false_positives": 18
+  },
+  "thresholds": {
+    "recall": 0.95,
+    "precision": 0.8
+  },
+  "passed": true,
+  "token_estimate": 13226,
+  "scenarios": [
+    {
+      "scenario_id": "pr_001_mixed_naming",
+      "planted": 2,
+      "found": 2,
+      "missed": [],
+      "false_positives": 2
+    },
+    {
+      "scenario_id": "pr_002_pep8_violations",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 8
+    },
+    {
+      "scenario_id": "pr_003_mutable_default",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 3
+    },
+    {
+      "scenario_id": "pr_004_bare_except",
+      "planted": 1,
+      "found": 1,
+      "missed": [],
+      "false_positives": 5
+    },
+    {
+      "scenario_id": "pr_005_missing_return_hints",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKKykJPh4J9ZPothXS3'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "pr_006_wrong_generic_types",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLpo4zuXH39ZWevYQq'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "pr_007_eval_user_input",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLqFrU3tDj9eAnfcKP'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "pr_008_pickle_untrusted",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLqw2sdaEbsniB9anw'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "pr_009_string_concat_loop",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLrRJX3LTiERkH6P4E'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "pr_010_clean_dataclasses",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLrtahFU1LsxDCKxGk'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "pr_011_clean_exception_handling",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLsLNEutupqXFG3CbM'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "pr_012_clean_string_building",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLtBDqAu7ypg65vNhB'}",
+      "timed_out": false
+    }
+  ]
+}

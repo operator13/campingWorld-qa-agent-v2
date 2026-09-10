@@ -1,0 +1,73 @@
+{
+  "eval_run_id": "ecc-eval-20260908-041846",
+  "agent": "fastapi-reviewer",
+  "tier": "detection",
+  "timestamp": "2026-09-08T04:18:46.407872+00:00",
+  "scenarios_total": 10,
+  "scores": {
+    "recall": 0.0,
+    "precision": 0.0,
+    "false_positive_rate": 0.0,
+    "total_planted": 0,
+    "total_found": 0,
+    "total_false_positives": 0
+  },
+  "thresholds": {
+    "recall": 0.66,
+    "precision": 0.8
+  },
+  "passed": false,
+  "token_estimate": 0,
+  "scenarios": [
+    {
+      "scenario_id": "fa_001_sync_db_in_async",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1UiR92LcmFCzSTfZF'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_002_missing_await",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1VXHfA6JkhgZHzErh'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_003_no_response_model",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1WAUpKCEYut5p3BwR'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_004_mutable_default_pydantic",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1WfFPU9L6hnLH2EaR'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_005_no_rate_limiting",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1Xa4dNepv7tGUwJw6'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_006_no_cors",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1Y4auBGPzWypribyh'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_007_manual_instantiation",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1YUdzy5GBDdMqWMkF'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_008_clean_async_httpx",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1Z56sYXwzV9HmbKtG'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_009_clean_pydantic_v2",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1Zvwp96AVNvcN5FBk'}",
+      "timed_out": false
+    },
+    {
+      "scenario_id": "fa_010_clean_full_app",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1ahao8uphyZKH8wji'}",
+      "timed_out": false
+    }
+  ]
+}

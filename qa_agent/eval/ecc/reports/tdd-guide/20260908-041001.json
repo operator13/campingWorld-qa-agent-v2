@@ -1,0 +1,89 @@
+{
+  "eval_run_id": "ecc-eval-20260908-041001",
+  "agent": "tdd-guide",
+  "tier": "generative",
+  "timestamp": "2026-09-08T04:10:01.003779+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.2375,
+    "per_scenario": [
+      0.95,
+      0.95,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": false,
+  "token_estimate": 10669,
+  "scenarios": [
+    {
+      "scenario_id": "tdd_001_string_validation",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: The output provides an extensive test suite covering valid SKUs, invalid inputs, edge cases (None, empty strings, wrong types), length violations, structure violations, category/product/warehouse code violations, case sensitivity, unicode/special characters, and boundary values. However, the output appears truncated at the end (class TestBoundaryValues is incomplete), so not all promised test cases are fully shown. The implementation code itself is missing entirely\u2014only tests are provided. While the task asks for tests first (TDD), the acceptance criteria expect both tests AND implementation. Score: 4/5 due to missing implementation and truncated final test class. Actionability: Extremely specific\u2014exact file paths (tests/utils/test_sku_validator.py, app/utils/sku_validator.py), function signatures, pytest commands, helper functions with clear semantics (assert_valid, assert_invalid), and parametrized test organization. Every test is self-contained and runnable. Score: 5/5. Correctness: The test design is technically sound\u2014follows AAA pattern consistently, uses pytest idioms correctly, parametrization is appropriate, type hints are present, and the test structure mirrors the SKU validation rules precisely. The regex-like format rules are correctly translated into discrete test cases. Score: 5/5. Risk Awareness: Exceptional coverage of edge cases\u2014None/wrong types (int, float, list, dict, bool, bytes), empty/blank strings, length violations (off-by-one, extreme lengths), structural issues (missing/wrong hyphens, wrong separators), invalid category codes (all 26 letter pairs tested), product number boundaries (0000, 0001, 9999), warehouse code case sensitivity, unicode attacks (full-width characters, emoji, null bytes, zero-width spaces, Arabic numerals, Cyrillic), SQL injection attempts, embedded control characters (newline, carriage return, tab). Score: 5/5. Convention Adherence: Follows Python/pytest conventions perfectly\u2014docstrings explain purpose, test class organization by concern, descriptive test names, parametrize decorator usage, helper functions for DRY assertions, type hints, proper use of pytest.mark, clear AAA pattern in each test. Aligns with TDD methodology as requested. Score: 5/5.",
+      "error": null
+    },
+    {
+      "scenario_id": "tdd_002_cart_calculator",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: The output provides comprehensive test coverage for all acceptance criteria (empty cart, single/multiple items, percentage/fixed/combined discounts, edge cases). However, the implementation code itself is not shown\u2014only the test file is provided. The task asks for both tests AND implementation, so this is incomplete on that front. The test file is cut off mid-test, suggesting the full output was truncated. Actionability: Excellent\u2014specific file paths (tests/services/test_cart_calculator.py, app/services/cart_calculator.py), exact imports, fixture definitions, and test method signatures are all provided. A developer could immediately begin implementing against these tests. Correctness: The TDD approach is sound and follows best practices. Test organization by concern (subtotal, invalid inputs, percentage, fixed, mixed discounts) is logical. Business rule interpretation is accurate: multiplicative stacking for percentages, percentage-before-fixed ordering, floor at zero, min_order filtering. Rounding strategy (ROUND_HALF_UP) is appropriate for financial calculations. Risk Awareness: Exceptional coverage of edge cases\u2014negative prices/quantities, zero quantities, discounts exceeding totals, invalid discount types, percentage bounds validation, None inputs, floating-point precision, large quantities, fractional prices. The CartCalculationError exception pattern is defensive. Convention Adherence: Follows pytest conventions (fixtures, class-based test organization, AAA pattern), uses dataclasses as specified, Decimal for financial precision, proper docstrings, clear naming. The comment structure and test grouping demonstrate professional standards. Minor issue: The output is truncated mid-test (test_multiple_percentage_then_multiple_fixed is incomplete), which prevents full evaluation of the complete test suite and prevents seeing the actual implementation code that should follow the RED phase.",
+      "error": null
+    },
+    {
+      "scenario_id": "tdd_003_pagination_off_by_one",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKKCsJnCsLp64erUVs2'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_004_cache_race_condition",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLpEq8t652meJLZuGh'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_005_extract_auth_logic",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLphcgfymZ6NFKytj5'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_006_callback_to_async",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLqAPvckvxRGX5X7Yg'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_007_file_upload_validation",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLqvHYsbPjGGfkvbz6'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_008_currency_conversion",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLrMLJ8cvFjKLuZVo5'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    }
+  ]
+}

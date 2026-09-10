@@ -1,0 +1,75 @@
+{
+  "eval_run_id": "ecc-eval-20260908-041846",
+  "agent": "tdd-guide",
+  "tier": "generative",
+  "timestamp": "2026-09-08T04:18:46.426484+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.0,
+    "per_scenario": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": false,
+  "token_estimate": 0,
+  "scenarios": [
+    {
+      "scenario_id": "tdd_001_string_validation",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1WanDzQUJo9ofXunh'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_002_cart_calculator",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1X8mYn7mC8wvdKdkG'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_003_pagination_off_by_one",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1XfGpHi8hi3YCqaKz'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_004_cache_race_condition",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1YC25d3ohQsb1zD8j'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_005_extract_auth_logic",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1Z5MNo8SWx9hBqYrC'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_006_callback_to_async",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1Zsy7dGixsQxQ8upq'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_007_file_upload_validation",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1aJmj4GYd8XtDkvNL'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "tdd_008_currency_conversion",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqL1akK5f7pAW7VHFReF'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    }
+  ]
+}

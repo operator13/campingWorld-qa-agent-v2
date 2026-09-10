@@ -1,0 +1,89 @@
+{
+  "eval_run_id": "ecc-eval-20260908-041002",
+  "agent": "e2e-runner",
+  "tier": "generative",
+  "timestamp": "2026-09-08T04:10:02.253100+00:00",
+  "scenarios_total": 8,
+  "scores": {
+    "quality": 0.2313,
+    "per_scenario": [
+      0.95,
+      0.9,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": false,
+  "token_estimate": 11195,
+  "scenarios": [
+    {
+      "scenario_id": "e2e_001_new_user_flow",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: Output covers happy path, all validation scenarios (empty fields, invalid email, password mismatch, min length), and proper Page Object Model structure. The spec file appears truncated mid-test (REG-03d incomplete), which prevents full coverage verification, but all major test cases are present or clearly outlined. Actionability: Excellent\u2014provides complete file paths (page_objects/RegisterPage.ts, tests_generated/register.spec.ts), exact locator strategies with fallbacks, specific method signatures, and clear implementation details. Code is production-ready with minimal interpretation needed. Correctness: Technically sound approach using semantic locators (getByTestId, getByRole), proper async/await patterns, Promise.all for race condition handling, and correct AAA pattern in tests. Error locator fallbacks (.or() chains) show defensive coding. No hardcoded waits\u2014uses waitForURL instead. Assertions correctly placed in spec, not POM. Risk_awareness: Comprehensive\u2014addresses test isolation via uniqueEmail(), race conditions with Promise.all, resilience via data-testid + aria fallbacks, accessibility compliance (role=",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_002_product_search_filter",
+      "quality_score": 0.9,
+      "dimension_scores": {
+        "completeness": 4,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: The output covers all major requirements (Page Object Model, semantic locators, search/filter tests, AAA pattern). The test spec appears truncated at the end (cuts off mid-test), which prevents full coverage verification of all planned test cases (empty state, add-to-cart, combined filters are mentioned but incomplete). Actionability: Excellent\u2014provides complete, production-ready code with exact file paths (page_objects/SearchPage.ts, tests_generated/search.spec.ts), clear method signatures, and comprehensive JSDoc comments. Every action is specific and implementable. Correctness: Technically sound approach using Playwright best practices: proper use of getByRole/getByTestId, network response interception for reliable waits, no hardcoded timeouts, proper fixture setup, and idempotent filter methods. The Page Object design is clean with good separation of concerns. Assertions correctly placed in spec, not page object. Risk_awareness: Good identification of medium-risk level and network-idle waits to avoid flakiness. Handles empty states, keyboard accessibility, and includes error handling (e.g., checkbox already-checked guard). However, could better address potential race conditions in concurrent filter applications or network timeout scenarios. Convention_adherence: Excellent adherence\u2014follows AAA pattern consistently, uses semantic locators exclusively, implements proper Page Object Model with chainability where appropriate, includes comprehensive documentation, and uses Playwright test fixtures correctly. The code style and structure align with modern Playwright conventions.",
+      "error": null
+    },
+    {
+      "scenario_id": "e2e_003_flaky_timing",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKKfgcFLitpBB1RsQ3W'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "e2e_004_flaky_race_condition",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLuohCWgxZ6vWHXtXQ'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "e2e_005_broken_locator_text",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLvRf4CCQwHpKmbrsc'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "e2e_006_broken_locator_restructured",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLvsh8rLwWWL2R7S79'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "e2e_007_passing_test_decoy",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLwJVMxUAQNWDUr4q8'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "e2e_008_stable_pom_decoy",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLwi3nyGBmCQV9ZZb4'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    }
+  ]
+}

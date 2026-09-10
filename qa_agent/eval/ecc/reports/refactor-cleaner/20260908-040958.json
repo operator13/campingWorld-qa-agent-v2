@@ -1,0 +1,117 @@
+{
+  "eval_run_id": "ecc-eval-20260908-040958",
+  "agent": "refactor-cleaner",
+  "tier": "generative",
+  "timestamp": "2026-09-08T04:09:58.802835+00:00",
+  "scenarios_total": 10,
+  "scores": {
+    "quality": 0.39,
+    "per_scenario": [
+      1.0,
+      0.95,
+      1.0,
+      0.95,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "thresholds": {
+    "quality": 0.7
+  },
+  "passed": false,
+  "token_estimate": 10074,
+  "scenarios": [
+    {
+      "scenario_id": "rc_001_unused_export_function",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014correctly identifies formatLegacyDate as unused, recommends removal, confirms formatDate and isToday are in use, and addresses test verification. Actionability: Provides exact file paths, complete cleaned code, specific verification commands with expected outputs, and a ready-to-use git commit message. Correctness: The technical approach is sound\u2014correctly analyzes the grep results, identifies that formatLegacyDate has zero importers, notes that isToday internally uses formatDate (both must stay), and chooses full removal over unexport (appropriate since the function body is also dead code). Risk_awareness: Comprehensive safety checklist covers detection confirmation, grep verification, API surface analysis, dynamic import risks, dependency impact, and includes a revert instruction if grep finds missed consumers. Convention_adherence: Follows TypeScript/Node.js conventions (proper file paths, standard npm/git commands), uses conventional commit format, and aligns with typical dead code removal workflows.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_002_unused_export_class",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014XmlReportGenerator is correctly identified as dead code, removal is recommended, HtmlReportGenerator is preserved, and test verification is included. Actionability: The output provides exact file paths, the cleaned code snippet, specific bash commands to verify and commit, and a detailed commit message. Correctness: The technical approach is sound\u2014grep analysis correctly identifies zero references, the removal preserves the working class, and the verification steps (tsc, jest) are appropriate. Risk_awareness: The agent identifies this as a safe internal module removal and notes the need for test verification. However, it could have mentioned potential edge cases like barrel exports (index.ts re-exports) or plugin systems that might dynamically load classes, though these are unlikely given the evidence. Convention_adherence: The commit message follows conventional commits format, the verification workflow is standard practice, and the structured analysis aligns with professional code review conventions.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_003_unused_export_type",
+      "quality_score": 1.0,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 5,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014correctly identifies InternalCacheEntry as export-only-for-self, recommends removing only the export keyword (not the type), correctly preserves CacheConfig, and includes verification that tests pass. Actionability: Provides exact code changes with before/after, specific grep commands with expected output, concrete verification steps (tsc, jest, knip), and a ready-to-use commit message. Correctness: The technical analysis is sound\u2014correctly identifies that InternalCacheEntry is used only internally (Map generic parameter and type annotation), while CacheConfig and CacheService are correctly flagged as external dependencies. The refactored code is syntactically correct and maintains all functionality. Risk_awareness: Comprehensively addresses risks by categorizing as SAFE, explaining why the change is non-breaking, noting the encapsulation benefit, and providing a post-change verification checklist with specific commands. Convention_adherence: Follows TypeScript best practices (encapsulation, minimal public API surface), uses standard tooling (tsc, jest, knip), includes a well-formatted commit message following conventional commits, and uses clear documentation patterns (tables, checklists, code blocks).",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_004_duplicate_function",
+      "quality_score": 0.95,
+      "dimension_scores": {
+        "completeness": 5,
+        "actionability": 5,
+        "correctness": 5,
+        "risk_awareness": 4,
+        "convention_adherence": 5
+      },
+      "reasoning": "Completeness: All acceptance criteria are addressed\u2014duplication identified, shared utility recommended, both call sites updated with complete code, and tests provided. Actionability: Extremely detailed with exact file paths, complete code blocks for all files (new and modified), step-by-step instructions, verification commands, and commit messages. Correctness: The refactoring approach is technically sound\u2014consolidating identical functions into a shared utility is the standard pattern. Import structure is correct, function signature is appropriate, and no logic is altered. Risk_awareness: Good identification that both functions are internal/private (safe to refactor). However, could have mentioned potential import cycle risks or discussed whether to keep a deprecated alias for gradual migration. The edge case testing (empty strings, unicode, special chars) is thorough but could note locale-dependent behavior of \\w more explicitly. Convention_adherence: Follows Python conventions excellently\u2014proper module structure (utils package with __init__.py), comprehensive docstrings with Args/Returns/Examples, type hints, pytest patterns, and appropriate test organization. The commit message format is professional. Minor: Could have mentioned __all__ exports in __init__.py for explicit API definition, though not critical.",
+      "error": null
+    },
+    {
+      "scenario_id": "rc_005_near_duplicate",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKJE7CJEK8eePRCtx1n'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "rc_006_unused_dependency",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLenorrpbCJcV4rhMn'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "rc_007_unused_dev_dependency",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLfCcRFLfRqNeKQJZq'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "rc_008_live_code_decoy",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLfjN23SdunQ54GtMy'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "rc_009_public_api_decoy",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLgBQBPNSEDmuWx53P'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    },
+    {
+      "scenario_id": "rc_010_dynamic_import_decoy",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CeqKLgxXymKE2yiCBQjco'}",
+      "timed_out": false,
+      "quality_score": 0.0
+    }
+  ]
+}
