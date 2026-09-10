@@ -67,7 +67,7 @@ MAX_RETRIES = 3
 # ---------------------------------------------------------------------------
 
 GRACEFUL_SHUTDOWN_TIMEOUT = 60  # seconds to wait for running evals
-EVAL_SUBPROCESS_TIMEOUT = 300  # 5 minutes max per eval subprocess
+EVAL_SUBPROCESS_TIMEOUT = 900  # 15 minutes max per eval subprocess
 
 
 @asynccontextmanager
